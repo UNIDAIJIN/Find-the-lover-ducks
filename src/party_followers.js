@@ -1,4 +1,6 @@
 // party_followers.js
+// Followers trail the leader by a fixed *pixel distance* along their path,
+// so diagonal/cardinal speed transitions never cause jitter.
 export function createFollowers({
   gap2 = 30,
   gap3 = 60,
@@ -6,40 +8,63 @@ export function createFollowers({
   frameMs = 180,
   maxFoot = 4096,
 } = {}) {
-  const MAX_FOOT = maxFoot | 0;
-  if ((MAX_FOOT & (MAX_FOOT - 1)) !== 0) throw new Error("maxFoot must be power of two");
+  const MAX = maxFoot | 0;
+  if ((MAX & (MAX - 1)) !== 0) throw new Error("maxFoot must be power of two");
 
-  const foot = new Array(MAX_FOOT);
-  let footW = 0;
-  let footN = 0;
+  // Ring buffer storing trail points and their cumulative distances.
+  const xs = new Float32Array(MAX);
+  const ys = new Float32Array(MAX);
+  const ds = new Float32Array(MAX); // cumulative distance at each entry
+  let w = 0;         // write index (next slot)
+  let n = 0;         // number of valid entries
+  let totalDist = 0; // cumulative distance of the newest entry
   let ready = false;
 
+  // Index of entry i steps back from newest (0 = newest).
+  function ri(i) { return (w - 1 - i + MAX) & (MAX - 1); }
+
   function footPush(x, y) {
-    foot[footW] = { x, y };
-    footW = (footW + 1) & (MAX_FOOT - 1);
-    if (footN < MAX_FOOT) footN++;
+    if (n > 0) {
+      const prev = ri(0);
+      const ddx = x - xs[prev], ddy = y - ys[prev];
+      totalDist += Math.sqrt(ddx * ddx + ddy * ddy);
+    }
+    xs[w] = x; ys[w] = y; ds[w] = totalDist;
+    w = (w + 1) & (MAX - 1);
+    if (n < MAX) n++;
   }
-  function footGetFromOldest(i) {
-    const start = (footW - footN) & (MAX_FOOT - 1);
-    return foot[(start + i) & (MAX_FOOT - 1)];
-  }
-  function followerTarget(gap) {
-    const i = footN - 1 - gap;
-    if (i < 0) return null;
-    return footGetFromOldest(i);
+
+  // Return interpolated {x,y} at cumulative distance targetD along the trail.
+  function trailAt(targetD) {
+    if (n === 0) return null;
+    // Scan newest→oldest (descending dist) to find the straddle pair.
+    for (let i = 0; i < n; i++) {
+      const a = ri(i);
+      if (ds[a] <= targetD) {
+        if (i === 0) return { x: xs[a], y: ys[a] };
+        const b = ri(i - 1); // newer entry (ds[b] > targetD)
+        const span = ds[b] - ds[a];
+        if (span < 0.0001) return { x: xs[a], y: ys[a] };
+        const t = (targetD - ds[a]) / span;
+        return { x: xs[a] + t * (xs[b] - xs[a]), y: ys[a] + t * (ys[b] - ys[a]) };
+      }
+    }
+    // targetD is older than the whole buffer — clamp to oldest entry.
+    const old = ri(n - 1);
+    return { x: xs[old], y: ys[old] };
   }
 
   function reset({ leader, p2, p3, p4 }) {
     if (!leader || !p2 || !p3 || !p4) throw new Error("reset requires leader,p2,p3,p4");
-
-    footW = 0;
-    footN = 0;
-    for (let i = 0; i < gap4 + 8; i++) footPush(leader.x, leader.y);
-
+    w = 0; n = 0; totalDist = 0;
+    // Pre-fill so followers start at leader position (all same point → dist stays 0).
+    for (let i = 0; i < gap4 + 8; i++) {
+      xs[w] = leader.x; ys[w] = leader.y; ds[w] = 0;
+      w = (w + 1) & (MAX - 1); n++;
+    }
     p2.x = p3.x = p4.x = leader.x;
     p2.y = p3.y = p4.y = leader.y;
     p2.frame = p3.frame = p4.frame = 0;
-
     ready = true;
   }
 
@@ -47,17 +72,14 @@ export function createFollowers({
     footPush(x, y);
   }
 
-  function stepFollower(t, gap, c) {
-    const p = followerTarget(gap);
+  function stepFollower(t, gapPx, c) {
+    const p = trailAt(totalDist - gapPx);
     if (!p) return;
-
-    if (c.x !== p.x || c.y !== p.y) {
-      c.x = p.x;
-      c.y = p.y;
-      if (t - (c.last | 0) > frameMs) {
-        c.frame ^= 1;
-        c.last = t;
-      }
+    const moved = c.x !== p.x || c.y !== p.y;
+    c.x = p.x;
+    c.y = p.y;
+    if (moved) {
+      if (t - (c.last | 0) > frameMs) { c.frame ^= 1; c.last = t; }
     } else {
       c.frame = 0;
     }
