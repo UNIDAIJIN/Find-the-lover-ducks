@@ -578,7 +578,7 @@ export function createBattleSystem(cfg) {
       // 特殊勝利チェック
       if (isRubberDuck) {
         queueEvent({
-          autoMs: 0,
+          autoMs: 1,
           apply: () => {
             if ((st.ducksThrown | 0) >= DUCK_WIN_COUNT) {
               queueMsg(
