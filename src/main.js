@@ -188,6 +188,9 @@ function updateCam() {
   cam.y = Math.max(0, Math.min(maxY, cy));
 }
 
+// ---- Entry auto-walk ----
+let autoWalk = null; // { dx, dy, frames }
+
 // ---- Door warp ----
 let doorCooldown = 0;
 function doorCheck(t) {
@@ -250,6 +253,9 @@ function loadMap(id, opt = null) {
     leader.y = sy;
     leader.frame = 0;
     leader.last = 0;
+
+    const entryDoor = (def.doors || []).find(d => d.id === opt?.doorId);
+    autoWalk = entryDoor?.entryWalk ? { ...entryDoor.entryWalk } : null;
 
     spawnActorsForMap(current.id);
 
@@ -445,6 +451,20 @@ function update(t) {
   if (input.consume("z")) tryInteract(t); // ★tを渡す
 
   if (!mapReady) {
+    updateCam();
+    return;
+  }
+
+  if (autoWalk && autoWalk.frames > 0) {
+    const nx = leader.x + autoWalk.dx;
+    const ny = leader.y + autoWalk.dy;
+    if (!hitBg(nx, ny) && !hitNpc(nx, ny)) {
+      leader.x = nx; leader.y = ny;
+      followers.push(leader.x, leader.y);
+      if (t - leader.last > FRAME_MS) { leader.frame ^= 1; leader.last = t; }
+    }
+    autoWalk.frames--;
+    if (autoWalk.frames <= 0) autoWalk = null;
     updateCam();
     return;
   }
