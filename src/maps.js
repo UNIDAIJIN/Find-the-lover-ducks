@@ -1,5 +1,6 @@
 // maps.js
 // マップ定義を一元管理する
+import { indoor01Map } from "./data/maps/indoor_01.js";
 
 // ---- util: ダミー画像（1px） ----
 const BLACK_1PX =
@@ -18,11 +19,7 @@ export const MAPS = {
   },
 
   // ===== 室内 =====
-  indoor_01: {
-    bgSrc: "assets/maps/indoor_01.png",
-    colSrc: "assets/maps/indoor_01_col.png",
-    bgmSrc: "assets/audio/bgm0.mp3",
-  },
+  indoor_01: indoor01Map,
 
   // ===== 戦闘（黒画面） =====
   // ・当たり判定なし
