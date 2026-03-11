@@ -6,19 +6,8 @@ import { makeColStore, scanMarkers } from "./col.js";
 import { START_INVENTORY, itemName, itemBgmSrc } from "./items.js";
 import { PICKUPS_BY_MAP } from "./pickups.js";
 import { NPCS_BY_MAP } from "./npcs.js";
-import { createBattleSystem } from "./battle.js";
-import { createInput } from "./input.js";
-
-import { createDialog } from "./ui_dialog.js";
-import { createChoice } from "./ui_choice.js";
-import { createFade } from "./fx_fade.js";
-import { runNpcEvent } from "./npc_events.js";
-
-// ★ 1,2,3,4 の切り出し
-import { createBgm } from "./audio_bgm.js";
-import { createSea } from "./fx_sea.js";
-import { createFollowers } from "./party_followers.js";
-import { createInventory } from "./ui_inventory.js";
+import { REGISTRY } from "./registry.js";
+const { createInput, createBgm, createSea, createDialog, createChoice, createFade, createInventory, createFollowers, createBattleSystem, runNpcEvent } = REGISTRY;
 
 const DEBUG = false;
 
