@@ -6,10 +6,16 @@ export const outdoorMap = {
   spawn:  { x: 2358, y: 3106 },
   doors: [
     {
-      id:       1,
-      to:       "indoor_01",
-      trigger:  null, // TODO: set { x, y, w, h } once door position is confirmed in outdoor_col
-      entryAt:  null, // TODO: set where player appears in outdoor after exiting indoor
+      id:      1,
+      to:      "indoor_01",
+      trigger: null, // TODO: outdoor → indoor_01 のドア位置未設定
+      entryAt: null, // TODO: indoor_01 から戻ったときの出現位置
+    },
+    {
+      id:      2,
+      to:      "pool",
+      trigger: { x: 1957, y: 3236, w: 16, h: 8 }, // 底辺中心 (1965,3240)
+      entryAt: { x: 1965, y: 3248 }, // pool から戻ったときの出現位置
     },
   ],
 };
