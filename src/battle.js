@@ -29,10 +29,12 @@ export function createBattleSystem(cfg) {
     a.preload = "auto";
     return a;
   }
-  const se_hit = makeSe("se_hit.mp3", 0.6);
-  const se_chibi = makeSe("se_chibi.mp3", 0.7);
-  const se_koke = makeSe("se_koke.mp3", 0.7);
-  const se_doku = makeSe("se_doku.mp3", 0.6);
+  const se_hit    = makeSe("se_hit.mp3",    0.6);
+  const se_chibi  = makeSe("se_chibi.mp3",  0.7);
+  const se_koke   = makeSe("se_koke.mp3",   0.7);
+  const se_doku   = makeSe("se_doku.mp3",   0.6);
+  const se_cursor  = makeSe("se_cursor.mp3",  0.5);
+  const se_confirm = makeSe("se_confirm.mp3", 0.5);
 
   function playSe(a) {
     try {
@@ -700,10 +702,12 @@ export function createBattleSystem(cfg) {
     if (input.consume("ArrowUp")) {
       if (st.phase === "items") invMove(-1);
       else st.menuIdx = (st.menuIdx + st.cmds.length - 1) % st.cmds.length;
+      playSe(se_cursor);
     }
     if (input.consume("ArrowDown")) {
       if (st.phase === "items") invMove(+1);
       else st.menuIdx = (st.menuIdx + 1) % st.cmds.length;
+      playSe(se_cursor);
     }
   }
 
@@ -733,6 +737,7 @@ export function createBattleSystem(cfg) {
       const id = st.invItems[st.invCursor | 0];
       if (!id) return;
 
+      playSe(se_confirm);
       st.invItems.splice(st.invCursor | 0, 1);
       if (st.invCursor >= st.invItems.length) st.invCursor = Math.max(0, st.invItems.length - 1);
 
@@ -747,6 +752,8 @@ export function createBattleSystem(cfg) {
     }
 
     const cmd = st.cmds[st.menuIdx];
+
+    playSe(se_confirm);
 
     if (cmd === "こうげき") {
       c.action = { type: "attack" };
