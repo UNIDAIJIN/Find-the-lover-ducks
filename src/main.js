@@ -458,21 +458,33 @@ function update(t) {
   let dx = 0,
     dy = 0;
 
-  if (input.down("ArrowLeft")) dx = -SPEED;
-  else if (input.down("ArrowRight")) dx = SPEED;
-  else if (input.down("ArrowUp")) dy = -SPEED;
-  else if (input.down("ArrowDown")) dy = SPEED;
-
-  const nx = leader.x + dx,
-    ny = leader.y + dy;
+  if (input.down("ArrowLeft"))  dx = -SPEED;
+  if (input.down("ArrowRight")) dx =  SPEED;
+  if (input.down("ArrowUp"))    dy = -SPEED;
+  if (input.down("ArrowDown"))  dy =  SPEED;
 
   if (dx || dy) {
+    const nx = leader.x + dx;
+    const ny = leader.y + dy;
+
+    let moved = false;
     if (!hitBg(nx, ny) && !hitNpc(nx, ny)) {
       leader.x = nx;
       leader.y = ny;
+      moved = true;
+    } else if (dx && dy) {
+      // diagonal blocked — try sliding along each axis
+      if (!hitBg(nx, leader.y) && !hitNpc(nx, leader.y)) {
+        leader.x = nx;
+        moved = true;
+      } else if (!hitBg(leader.x, ny) && !hitNpc(leader.x, ny)) {
+        leader.y = ny;
+        moved = true;
+      }
+    }
 
-      followers.push(nx, ny);
-
+    if (moved) {
+      followers.push(leader.x, leader.y);
       if (t - leader.last > FRAME_MS) {
         leader.frame ^= 1;
         leader.last = t;
