@@ -1,8 +1,8 @@
 // main.js
 import { CONFIG } from "./config.js";
 import { SPRITES } from "./sprites.js";
-import { MAPS, DOOR_ID_TO_INDOOR } from "./maps.js";
-import { makeColStore, scanMarkers } from "./col.js";
+import { MAPS } from "./maps.js";
+import { makeColStore } from "./col.js";
 import { START_INVENTORY, itemName, itemBgmSrc, itemThrowDmg } from "./items.js";
 import { PICKUPS_BY_MAP } from "./pickups.js";
 import { NPCS_BY_MAP } from "./npcs.js";
@@ -198,20 +198,18 @@ function doorCheck(t) {
   if (fade.isActive()) return;
 
   const f = footBox(leader.x, leader.y);
-  const { r, g, b } = col.read((f.x + (f.w >> 1)) | 0, (f.y + (f.h >> 1)) | 0);
+  const fx = (f.x + (f.w >> 1)) | 0;
+  const fy = (f.y + (f.h >> 1)) | 0;
 
-  if (current.id === "outdoor" && r === 255 && g === 0 && b > 0) {
-    const next = DOOR_ID_TO_INDOOR[b | 0];
-    if (!next) return;
-    doorCooldown = t + DOOR_COOLDOWN_MS;
-    fade.startMapFade(next, { mode: "in", id: b | 0 }, t, loadMap);
-    return;
-  }
-
-  if (current.id !== "outdoor" && r === 0 && g === 255 && b > 0) {
-    doorCooldown = t + DOOR_COOLDOWN_MS;
-    fade.startMapFade("outdoor", { mode: "out", id: b | 0 }, t, loadMap);
-    return;
+  const def = MAPS[current.id];
+  for (const door of def.doors || []) {
+    if (!door.trigger) continue;
+    const tr = door.trigger;
+    if (fx >= tr.x && fx < tr.x + tr.w && fy >= tr.y && fy < tr.y + tr.h) {
+      doorCooldown = t + DOOR_COOLDOWN_MS;
+      fade.startMapFade(door.to, { doorId: door.id }, t, loadMap);
+      return;
+    }
   }
 }
 
@@ -234,26 +232,17 @@ function loadMap(id, opt = null) {
     current.bgW = bgImg.naturalWidth | 0;
     current.bgH = bgImg.naturalHeight | 0;
 
-    current.markers = scanMarkers(col);
-
     let sx = current.bgW >> 1,
       sy = current.bgH >> 1;
 
-    if (opt && opt.mode === "in") {
-      const p = current.markers.indoorEntry.get(opt.id) || current.markers.indoorDoor.get(opt.id);
-      if (p) {
-        sx = p.x;
-        sy = p.y;
-      }
-    } else if (opt && opt.mode === "out") {
-      const p = current.markers.outdoorDoor.get(opt.id);
-      if (p) {
-        sx = p.x;
-        sy = p.y;
-      }
-    } else if (current.markers.spawn) {
-      sx = current.markers.spawn.x;
-      sy = current.markers.spawn.y;
+    if (opt && opt.doorId != null) {
+      // find the door on the destination map that matches this id
+      const door = (def.doors || []).find(d => d.id === opt.doorId);
+      if (door?.entryAt) { sx = door.entryAt.x; sy = door.entryAt.y; }
+      else if (def.spawn) { sx = def.spawn.x; sy = def.spawn.y; }
+    } else if (def.spawn) {
+      sx = def.spawn.x;
+      sy = def.spawn.y;
     }
 
     leader.x = sx;

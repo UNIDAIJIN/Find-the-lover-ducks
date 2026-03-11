@@ -13,12 +13,6 @@ export const STATE = {
     id: "outdoor",
     bgW: 0,
     bgH: 0,
-    markers: {
-      spawn: null,
-      outdoorDoor: new Map(),
-      indoorDoor:  new Map(),
-      indoorEntry: new Map(),
-    },
   },
 
   // ---- Camera ----

@@ -28,7 +28,3 @@ export const MAPS = {
   },
 };
 
-// ---- ドア対応表（outdoor → indoor） ----
-export const DOOR_ID_TO_INDOOR = {
-  1: "indoor_01",
-};
