@@ -297,6 +297,19 @@ function drawSprite(img, f, x, y) {
   ctx.drawImage(img, (f * SPR) | 0, 0, SPR, SPR, (x - cam.x) | 0, (y - cam.y) | 0, SPR, SPR);
 }
 
+function drawSparkles(ctx, t, rect) {
+  const N = 60;
+  ctx.fillStyle = "#fff";
+  for (let i = 0; i < N; i++) {
+    const sx = rect.x + ((i * 79 + 13) % rect.w);
+    const sy = rect.y + ((i * 53 + 29) % rect.h);
+    const alpha = (Math.sin(t * (0.002 + (i % 5) * 0.0008) + i * 0.9) * 0.5 + 0.5) * 0.65;
+    ctx.globalAlpha = alpha;
+    ctx.fillRect((sx - (cam.x | 0)) | 0, (sy - (cam.y | 0)) | 0, 2, 2);
+  }
+  ctx.globalAlpha = 1;
+}
+
 function draw() {
   ctx.clearRect(0, 0, BASE_W, BASE_H);
 
@@ -313,9 +326,8 @@ function draw() {
     ctx.drawImage(bgImg, -(cam.x | 0), -(cam.y | 0));
   }
 
-  if (MAPS[current.id]?.seaOverlay) {
-    sea.draw(ctx, tt, cam, BASE_W, BASE_H);
-  }
+  const sparkleRect = MAPS[current.id]?.sparkleRect;
+  if (sparkleRect) drawSparkles(ctx, tt, sparkleRect);
 
   const list = [
     { img: p4.img, x: p4.x, y: p4.y, frame: p4.frame },
