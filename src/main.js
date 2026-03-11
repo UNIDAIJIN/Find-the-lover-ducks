@@ -8,6 +8,7 @@ import { PICKUPS_BY_MAP } from "./pickups.js";
 import { NPCS_BY_MAP } from "./npcs.js";
 import { REGISTRY } from "./registry.js";
 const { createInput, createBgm, createSea, createDialog, createChoice, createFade, createInventory, createFollowers, createBattleSystem, runNpcEvent } = REGISTRY;
+import { STATE } from "./state.js";
 
 const DEBUG = false;
 
@@ -58,25 +59,13 @@ const sea = createSea({
 const bgImg = new Image();
 const col = makeColStore();
 
-const current = {
-  id: "outdoor",
-  bgW: 0,
-  bgH: 0,
-  markers: {
-    spawn: null,
-    outdoorDoor: new Map(),
-    indoorDoor: new Map(),
-    indoorEntry: new Map(),
-  },
-};
+const { current, cam, leader, p2, p3, p4, collectedItems } = STATE;
+leader.img = SPRITES.p1;
+p2.img = SPRITES.p2;
+p3.img = SPRITES.p3;
+p4.img = SPRITES.p4;
 
 let mapReady = false;
-
-// party
-const leader = { x: 0, y: 0, frame: 0, last: 0, dir: { x: 0, y: 1 }, img: SPRITES.p1 };
-const p2 = { x: 0, y: 0, frame: 0, last: 0, img: SPRITES.p2 };
-const p3 = { x: 0, y: 0, frame: 0, last: 0, img: SPRITES.p3 };
-const p4 = { x: 0, y: 0, frame: 0, last: 0, img: SPRITES.p4 };
 
 // ---- Followers (externalized) ----
 const followers = createFollowers({
@@ -88,7 +77,6 @@ const followers = createFollowers({
 
 // actors
 let actors = [];
-const collectedItems = new Set();
 // NPC_FRAME_MS comes from CONFIG (= FRAME_MS × 2)
 
 function talkBoxLeader() {
@@ -189,7 +177,6 @@ function hitNpc(nx, ny) {
 }
 
 // ---- Camera ----
-const cam = { x: 0, y: 0 };
 function updateCam() {
   const maxX = Math.max(0, (current.bgW | 0) - BASE_W);
   const maxY = Math.max(0, (current.bgH | 0) - BASE_H);
