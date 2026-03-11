@@ -565,15 +565,19 @@ export function createBattleSystem(cfg) {
         apply: () => {
           playSe(se_hit);
           st.boss.hp = nextBossHp;
-          if (isRubberDuck) {
-            st.ducksThrown = (st.ducksThrown | 0) + 1;
-            const src = typeof itemBgmSrc === "function" ? itemBgmSrc(id) : null;
-            if (src) { unlockBgm(); setOverrideBgm(src); }
-          }
+          if (isRubberDuck) st.ducksThrown = (st.ducksThrown | 0) + 1;
         },
       });
 
       if (dmg > 0) queueMsg([`ミナミに${dmg}のダメージ！`], { autoMs: 550 });
+
+      if (isRubberDuck) {
+        const src = typeof itemBgmSrc === "function" ? itemBgmSrc(id) : null;
+        queueMsg([`ラバーダックからおんがくがながれた！`], {
+          autoMs: 800,
+          apply: () => { if (src) { unlockBgm(); setOverrideBgm(src); } },
+        });
+      }
 
       // 特殊勝利チェック
       if (isRubberDuck) {
@@ -731,12 +735,6 @@ export function createBattleSystem(cfg) {
 
       st.invItems.splice(st.invCursor | 0, 1);
       if (st.invCursor >= st.invItems.length) st.invCursor = Math.max(0, st.invItems.length - 1);
-
-      const src = itemBgmSrc(id);
-      if (src) {
-        unlockBgm();
-        setOverrideBgm(src);
-      }
 
       c.action = { type: "item", itemId: id };
       st.phase = "choose";
