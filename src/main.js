@@ -180,8 +180,8 @@ function hitNpc(nx, ny) {
 function updateCam() {
   const maxX = Math.max(0, (current.bgW | 0) - BASE_W);
   const maxY = Math.max(0, (current.bgH | 0) - BASE_H);
-  const cx = Math.floor(leader.x + 8 - BASE_W / 2);
-  const cy = Math.floor(leader.y + 8 - BASE_H / 2);
+  const cx = leader.x + 8 - BASE_W / 2;
+  const cy = leader.y + 8 - BASE_H / 2;
   cam.x = Math.max(0, Math.min(maxX, cx));
   cam.y = Math.max(0, Math.min(maxY, cy));
 }
@@ -312,7 +312,7 @@ function draw() {
   sea.draw(ctx, tt, cam, BASE_W, BASE_H);
 
   if (bgImg.complete && bgImg.naturalWidth > 0) {
-    ctx.drawImage(bgImg, -cam.x, -cam.y);
+    ctx.drawImage(bgImg, -(cam.x | 0), -(cam.y | 0));
   }
 
   const list = [
