@@ -574,7 +574,7 @@ export function createBattleSystem(cfg) {
       if (isRubberDuck) {
         const src = typeof itemBgmSrc === "function" ? itemBgmSrc(id) : null;
         queueMsg([`ラバーダックからおんがくがながれた！`], {
-          autoMs: 800,
+          autoMs: 0,
           apply: () => { if (src) { unlockBgm(); setOverrideBgm(src); } },
         });
       }
