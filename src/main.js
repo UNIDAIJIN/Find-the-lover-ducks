@@ -458,13 +458,15 @@ function update(t) {
   let dx = 0,
     dy = 0;
 
-  if (input.down("ArrowLeft"))  dx = -SPEED;
-  if (input.down("ArrowRight")) dx =  SPEED;
-  if (input.down("ArrowUp"))    dy = -SPEED;
-  if (input.down("ArrowDown"))  dy =  SPEED;
+  const spd = SPEED * (input.down("c") ? 5 : 1);
+
+  if (input.down("ArrowLeft"))  dx = -spd;
+  if (input.down("ArrowRight")) dx =  spd;
+  if (input.down("ArrowUp"))    dy = -spd;
+  if (input.down("ArrowDown"))  dy =  spd;
 
   // normalize diagonal so speed stays consistent
-  if (dx && dy) { const n = SPEED / Math.SQRT2; dx = dx > 0 ? n : -n; dy = dy > 0 ? n : -n; }
+  if (dx && dy) { const n = spd / Math.SQRT2; dx = dx > 0 ? n : -n; dy = dy > 0 ? n : -n; }
 
   if (dx || dy) {
     const nx = leader.x + dx;
