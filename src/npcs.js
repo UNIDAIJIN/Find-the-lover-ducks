@@ -1,22 +1,19 @@
 // npcs.js
 import { CONFIG } from "./config.js";
 import { SPRITES } from "./sprites.js";
+import { boardNpc } from "./data/npcs/board.js";
 
 const { NPC_FRAME_MS } = CONFIG;
 
+// Resolve a data NPC (spriteKey: string) into a runtime NPC (img: HTMLImageElement).
+function resolve(def) {
+  const { spriteKey, ...rest } = def;
+  return { ...rest, img: SPRITES[spriteKey], animMs: NPC_FRAME_MS };
+}
+
 export const NPCS_BY_MAP = {
   outdoor: [
-    {
-      kind: "npc",
-      name: "board",
-      x: 2689,
-      y: 3352,
-      img: SPRITES.board,
-      talkHit: { x: 0, y: 0, w: 16, h: 14 },
-      talkPages: [["ここは モリタサキイン・ザ・プールの いえ"]],
-      solid: true,
-      animMs: NPC_FRAME_MS,
-    },
+    resolve(boardNpc),
     {
       kind: "npc",
       name: "seats",
