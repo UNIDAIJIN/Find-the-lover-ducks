@@ -39,8 +39,8 @@ export function createBattleSystem(cfg) {
   function playSe(a) {
     try {
       a.currentTime = 0;
-      a.play().catch(() => {});
-    } catch (_e) {}
+      a.play().catch((e) => console.warn("[SE]", a.src, e.name, e.message));
+    } catch (_e) { console.warn("[SE catch]", _e); }
   }
 
   let st = null;
