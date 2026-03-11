@@ -8,6 +8,7 @@ export function createInput() {
   function normKey(k) {
     if (k === "Z") return "z";
     if (k === "X") return "x";
+    if (k === "C") return "c";
     return k;
   }
 
@@ -16,7 +17,7 @@ export function createInput() {
   }
 
   function isOurKey(k) {
-    return isArrowKey(k) || k === "z" || k === "x";
+    return isArrowKey(k) || k === "z" || k === "x" || k === "c";
   }
 
   function onKeyDown(e) {
