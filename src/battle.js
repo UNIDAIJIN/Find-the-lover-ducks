@@ -7,11 +7,14 @@ export function createBattleSystem(cfg) {
     BASE_H,
     itemName,
     itemBgmSrc,
+    itemThrowDmg,
     unlockBgm,
     setOverrideBgm,
     getFieldInventorySnapshot,
     onExitToField,
   } = cfg;
+
+  const DUCK_WIN_COUNT = 10;
 
   const bossImg = new Image();
   bossImg.src = "assets/boss.png";
@@ -208,6 +211,7 @@ export function createBattleSystem(cfg) {
 
       invItems: inv.slice(),
       invCursor: 0,
+      ducksThrown: 0,
 
       queue: [],
 
@@ -546,20 +550,45 @@ export function createBattleSystem(cfg) {
     }
 
     if (a.type === "item") {
-      const heal = 60;
-      const prev = c.hp | 0;
-      const nextHp = Math.min(c.maxHp | 0, prev + heal);
+      const id = a.itemId;
+      const dmg = (typeof itemThrowDmg === "function" ? itemThrowDmg(id) : 0) | 0;
+      const isRubberDuck = String(id).startsWith("rubber_duck");
 
-      queueMsg([`${c.name}は ${itemName(a.itemId)}を つかった。`], { autoMs: 550 });
+      queueMsg([`${c.name}は ${itemName(id)}を なげつけた！`], { autoMs: 550 });
+
+      const prevBoss = st.boss.hp | 0;
+      const nextBossHp = Math.max(0, prevBoss - dmg);
 
       queueEvent({
         autoMs: 120,
+        shake: { mode: "boss", amp: 3, ms: 180 },
         apply: () => {
-          c.hp = nextHp | 0;
+          playSe(se_hit);
+          st.boss.hp = nextBossHp;
+          if (isRubberDuck) {
+            st.ducksThrown = (st.ducksThrown | 0) + 1;
+            const src = typeof itemBgmSrc === "function" ? itemBgmSrc(id) : null;
+            if (src) { unlockBgm(); setOverrideBgm(src); }
+          }
         },
       });
 
-      queueMsg([`${heal} かいふく。`], { autoMs: 550 });
+      if (dmg > 0) queueMsg([`ミナミに${dmg}のダメージ！`], { autoMs: 550 });
+
+      // 特殊勝利チェック
+      if (isRubberDuck) {
+        queueEvent({
+          autoMs: 0,
+          apply: () => {
+            if ((st.ducksThrown | 0) >= DUCK_WIN_COUNT) {
+              queueMsg(
+                [`ラバーダックを${DUCK_WIN_COUNT}個なげつけた！`, `とくしゅしょうり！！`],
+                { autoMs: 1200, onClose: () => endToField() }
+              );
+            }
+          },
+        });
+      }
 
       if (c.name === "RIKU") enqueueRikuPoisonAfterRikuAction();
       return;
@@ -617,6 +646,11 @@ export function createBattleSystem(cfg) {
 
     if ((st.boss.hp | 0) <= 0) {
       queueMsg(["たおした。"], { autoMs: 800, onClose: () => endToField() });
+      return;
+    }
+
+    if ((st.ducksThrown | 0) >= DUCK_WIN_COUNT) {
+      // 特殊勝利は item アクション内で既にキューに積まれる。ここでは二重発火を防ぐだけ。
       return;
     }
 

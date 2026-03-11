@@ -3,7 +3,7 @@ import { CONFIG } from "./config.js";
 import { SPRITES } from "./sprites.js";
 import { MAPS, DOOR_ID_TO_INDOOR } from "./maps.js";
 import { makeColStore, scanMarkers } from "./col.js";
-import { START_INVENTORY, itemName, itemBgmSrc } from "./items.js";
+import { START_INVENTORY, itemName, itemBgmSrc, itemThrowDmg } from "./items.js";
 import { PICKUPS_BY_MAP } from "./pickups.js";
 import { NPCS_BY_MAP } from "./npcs.js";
 import { REGISTRY } from "./registry.js";
@@ -140,6 +140,7 @@ const battle = createBattleSystem({
   BASE_H,
   itemName,
   itemBgmSrc,
+  itemThrowDmg,
   unlockBgm: () => bgmCtl.unlock(),
   setOverrideBgm: (src) => bgmCtl.setOverride(src),
   getFieldInventorySnapshot: () => inventory.getSnapshot(),
