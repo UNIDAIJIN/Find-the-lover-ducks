@@ -1,7 +1,7 @@
 // data/maps/pool.js
 export const poolMap = {
   bgSrc:        "assets/maps/pool.png",
-  sparkleRect:  { x: 125, y: 198, w: 446, h: 137 },
+  waterColor: [61, 209, 195], // sea と同じ色のピクセルに揺らぎを適用
   bgTopSrc: "assets/maps/pool_top.png",
   colSrc:   "assets/maps/pool_col.png",
   bgmSrc:   "assets/audio/bgm0.mp3",

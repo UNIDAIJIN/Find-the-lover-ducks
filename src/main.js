@@ -60,6 +60,43 @@ const bgImg    = new Image();
 const bgTopImg = new Image();
 const col = makeColStore();
 
+// ---- Water sea overlay (color-masked) ----
+const seaTempCanvas = document.createElement("canvas");
+seaTempCanvas.width  = BASE_W;
+seaTempCanvas.height = BASE_H;
+const seaTempCtx = seaTempCanvas.getContext("2d");
+let waterMaskCanvas = null;
+
+function buildWaterMask(img, color) {
+  const [tr, tg, tb] = color;
+  const mc = document.createElement("canvas");
+  mc.width  = img.naturalWidth;
+  mc.height = img.naturalHeight;
+  const mx = mc.getContext("2d", { willReadFrequently: true });
+  mx.drawImage(img, 0, 0);
+  const id = mx.getImageData(0, 0, mc.width, mc.height);
+  const d  = id.data;
+  for (let i = 0; i < d.length; i += 4) {
+    if (d[i] === tr && d[i+1] === tg && d[i+2] === tb) {
+      d[i] = d[i+1] = d[i+2] = 255; d[i+3] = 255;
+    } else {
+      d[i+3] = 0;
+    }
+  }
+  mx.putImageData(id, 0, 0);
+  waterMaskCanvas = mc;
+}
+
+function drawWaterSea(ctx, t) {
+  if (!waterMaskCanvas) return;
+  seaTempCtx.clearRect(0, 0, BASE_W, BASE_H);
+  sea.draw(seaTempCtx, t, cam, BASE_W, BASE_H);
+  seaTempCtx.globalCompositeOperation = "destination-in";
+  seaTempCtx.drawImage(waterMaskCanvas, -(cam.x | 0), -(cam.y | 0));
+  seaTempCtx.globalCompositeOperation = "source-over";
+  ctx.drawImage(seaTempCanvas, 0, 0);
+}
+
 const { current, cam, leader, p2, p3, p4, collectedItems } = STATE;
 leader.img = SPRITES.p1;
 p2.img = SPRITES.p2;
@@ -257,6 +294,9 @@ function loadMap(id, opt = null) {
     const entryDoor = (def.doors || []).find(d => d.id === opt?.doorId);
     autoWalk = entryDoor?.entryWalk ? { ...entryDoor.entryWalk } : null;
 
+    if (def.waterColor) buildWaterMask(bgImg, def.waterColor);
+    else waterMaskCanvas = null;
+
     spawnActorsForMap(current.id);
 
     if (def.bgmSrc) bgmCtl.setMap(def.bgmSrc);
@@ -297,18 +337,6 @@ function drawSprite(img, f, x, y) {
   ctx.drawImage(img, (f * SPR) | 0, 0, SPR, SPR, (x - cam.x) | 0, (y - cam.y) | 0, SPR, SPR);
 }
 
-function drawSparkles(ctx, t, rect) {
-  const N = 60;
-  ctx.fillStyle = "#fff";
-  for (let i = 0; i < N; i++) {
-    const sx = rect.x + ((i * 79 + 13) % rect.w);
-    const sy = rect.y + ((i * 53 + 29) % rect.h);
-    const alpha = (Math.sin(t * (0.002 + (i % 5) * 0.0008) + i * 0.9) * 0.5 + 0.5) * 0.65;
-    ctx.globalAlpha = alpha;
-    ctx.fillRect((sx - (cam.x | 0)) | 0, (sy - (cam.y | 0)) | 0, 2, 2);
-  }
-  ctx.globalAlpha = 1;
-}
 
 function draw() {
   ctx.clearRect(0, 0, BASE_W, BASE_H);
@@ -326,8 +354,7 @@ function draw() {
     ctx.drawImage(bgImg, -(cam.x | 0), -(cam.y | 0));
   }
 
-  const sparkleRect = MAPS[current.id]?.sparkleRect;
-  if (sparkleRect) drawSparkles(ctx, tt, sparkleRect);
+  drawWaterSea(ctx, tt);
 
   const list = [
     { img: p4.img, x: p4.x, y: p4.y, frame: p4.frame },
