@@ -463,6 +463,9 @@ function update(t) {
   if (input.down("ArrowUp"))    dy = -SPEED;
   if (input.down("ArrowDown"))  dy =  SPEED;
 
+  // normalize diagonal so speed stays consistent
+  if (dx && dy) { const n = SPEED / Math.SQRT2; dx = dx > 0 ? n : -n; dy = dy > 0 ? n : -n; }
+
   if (dx || dy) {
     const nx = leader.x + dx;
     const ny = leader.y + dy;
