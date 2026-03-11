@@ -1,7 +1,17 @@
 // npcs.js
 import { CONFIG } from "./config.js";
 import { SPRITES } from "./sprites.js";
-import { boardNpc } from "./data/npcs/board.js";
+
+import { boardNpc }         from "./data/npcs/board.js";
+import { seatsNpc }         from "./data/npcs/seats.js";
+import { cat1Npc }          from "./data/npcs/cat1.js";
+import { fanFlowerNpc }     from "./data/npcs/fan_flower.js";
+import { outdoorMinamiNpc } from "./data/npcs/minami_outdoor.js";
+import { saboNpc }          from "./data/npcs/sabo.js";
+import { saboHatNpc }       from "./data/npcs/sabo_hat.js";
+import { rickyNpc }         from "./data/npcs/ricky.js";
+import { oharaNpc }         from "./data/npcs/ohara.js";
+import { indoorMinamiNpc }  from "./data/npcs/minami_indoor01.js";
 
 const { NPC_FRAME_MS } = CONFIG;
 
@@ -14,78 +24,14 @@ function resolve(def) {
 export const NPCS_BY_MAP = {
   outdoor: [
     resolve(boardNpc),
-    {
-      kind: "npc",
-      name: "seats",
-      x: 2678,
-      y: 3318,
-      img: SPRITES.seats,
-      talkHit: { x: 0, y: 0, w: 16, h: 14 },
-      talkPages: [["ここは モリタサキ・イン・ザ・プールの いえ"]],
-      solid: true,
-      animMs: NPC_FRAME_MS,
-    },
-    {
-      kind: "npc",
-      name: "cat1",
-      x: 2656,
-      y: 3307,
-      img: SPRITES.cat1,
-      talkHit: { x: 0, y: 0, w: 16, h: 14 },
-      talkPages: [["ここは モリタサキ・イン・ザ・プールの いえ"]],
-      solid: true,
-      animMs: NPC_FRAME_MS,
-    },
-    {
-      kind: "npc",
-      name: "fan_flower",
-      x: 2625,
-      y: 3349,
-      img: SPRITES.fan_flower,
-      talkHit: { x: 0, y: 0, w: 0, h: 0 },
-      talkPages: [[""]],
-      solid: true,
-      animMs: NPC_FRAME_MS,
-    },
-    {
-      kind: "npc",
-      name: "minami",
-      x: 2220,
-      y: 3300,
-      img: SPRITES.minami,
-      talkHit: { x: 0, y: 0, w: 16, h: 14 },
-      talkPages: [["……"], ["（戦闘テスト）"]],
-      solid: true,
-      animMs: NPC_FRAME_MS,
-      battleTrigger: true,
-    },
-    {
-      kind: "npc",
-      name: "sabo",
-      x: 1860,
-      y: 1520,
-      img: SPRITES.sabo,
-      talkHit: { x: 0, y: 0, w: 16, h: 14 },
-      talkPages: [["……"], ["（戦闘テスト）"]],
-      solid: true,
-      animMs: NPC_FRAME_MS,
-      battleTrigger: true,
-    },
-    {
-      kind: "npc",
-      name: "sabo",
-      x: 1880,
-      y: 1520,
-      img: SPRITES.sabo_hat,
-      talkHit: { x: 0, y: 0, w: 16, h: 14 },
-      talkPages: [["……"], ["（戦闘テスト）"]],
-      solid: true,
-      animMs: NPC_FRAME_MS,
-      battleTrigger: true,
-    },
+    resolve(seatsNpc),
+    resolve(cat1Npc),
+    resolve(fanFlowerNpc),
+    resolve(outdoorMinamiNpc),
+    resolve(saboNpc),
+    resolve(saboHatNpc),
 
-
-    // ★ hisaro
+    // ★ hisaro（event構造が複雑なため未データ化）
     {
       kind: "npc",
       id: "hisaro",
@@ -111,39 +57,8 @@ export const NPCS_BY_MAP = {
   ],
 
   indoor_01: [
-    {
-      kind: "npc",
-      name: "ricky",
-      x: 120,
-      y: 150,
-      img: SPRITES.ricky,
-      talkHit: { x: 0, y: 0, w: 16, h: 14 },
-      talkPages: [["……", "お、きたな。"]],
-      solid: true,
-      animMs: NPC_FRAME_MS,
-    },
-    {
-      kind: "npc",
-      name: "ohara",
-      x: 140,
-      y: 150,
-      img: SPRITES.ohara,
-      talkHit: { x: 0, y: 0, w: 16, h: 14 },
-      talkPages: [["……"], ["オハラだよ。"]],
-      solid: true,
-      animMs: NPC_FRAME_MS,
-    },
-    {
-      kind: "npc",
-      name: "minami",
-      x: 160,
-      y: 150,
-      img: SPRITES.minami,
-      talkHit: { x: 0, y: 0, w: 16, h: 14 },
-      talkPages: [["……"], ["ミナミです。"]],
-      solid: true,
-      animMs: NPC_FRAME_MS,
-      battleTrigger: true,
-    },
+    resolve(rickyNpc),
+    resolve(oharaNpc),
+    resolve(indoorMinamiNpc),
   ],
 };
