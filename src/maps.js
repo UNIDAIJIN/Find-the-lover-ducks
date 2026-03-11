@@ -1,5 +1,6 @@
 // maps.js
 // マップ定義を一元管理する
+import { outdoorMap }  from "./data/maps/outdoor.js";
 import { indoor01Map } from "./data/maps/indoor_01.js";
 
 // ---- util: ダミー画像（1px） ----
@@ -12,11 +13,7 @@ const CLEAR_1PX =
 // ---- MAPS ----
 export const MAPS = {
   // ===== フィールド =====
-  outdoor: {
-    bgSrc: "assets/maps/outdoor.png",
-    colSrc: "assets/maps/outdoor_col.png",
-    bgmSrc: "assets/audio/bgm0.mp3",
-  },
+  outdoor: outdoorMap,
 
   // ===== 室内 =====
   indoor_01: indoor01Map,
