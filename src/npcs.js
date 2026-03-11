@@ -11,7 +11,8 @@ import { saboNpc }          from "./data/npcs/sabo.js";
 import { saboHatNpc }       from "./data/npcs/sabo_hat.js";
 import { rickyNpc }         from "./data/npcs/ricky.js";
 import { oharaNpc }         from "./data/npcs/ohara.js";
-import { indoorMinamiNpc }  from "./data/npcs/minami_indoor01.js";
+import { indoorMinamiNpc } from "./data/npcs/minami_indoor01.js";
+import { hisaroNpc }      from "./data/npcs/hisaro.js";
 
 const { NPC_FRAME_MS } = CONFIG;
 
@@ -30,30 +31,7 @@ export const NPCS_BY_MAP = {
     resolve(outdoorMinamiNpc),
     resolve(saboNpc),
     resolve(saboHatNpc),
-
-    // ★ hisaro（event構造が複雑なため未データ化）
-    {
-      kind: "npc",
-      id: "hisaro",
-      name: "hisaro",
-      x: 2418,
-      y: 3191,
-      img: SPRITES.hisaro,
-      solid: true,
-      talkHit: { x: 0, y: 0, w: 16, h: 16 },
-      animMs: 360,
-      event: {
-        type: "hisaro_sunlover",
-        lines: ["ここは ひサロ サン・ラヴァー さ。", "きみも やいていくかい？"],
-        options: ["はい", "いいえ"],
-        fadeOutMs: 350,
-        holdMs: 3000,
-        fadeInMs: 350,
-        partySkin: "t2",
-        onYesDialog: [["いいじゃないか。", "にあっているぜ。"]],
-        onNoDialog: [["おまえたちみたいな", "もやしには おにあいさ。"]],
-      },
-    },
+    resolve(hisaroNpc),
   ],
 
   indoor_01: [
