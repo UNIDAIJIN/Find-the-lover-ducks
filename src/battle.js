@@ -17,7 +17,7 @@ export function createBattleSystem(cfg) {
   const DUCK_WIN_COUNT = 10;
 
   const bossImg = new Image();
-  bossImg.src = "assets/boss.png";
+  bossImg.src = "assets/battle/boss.png";
 
   // =====================
   // SE (Sound Effects)
