@@ -2,6 +2,7 @@
 // マップ定義を一元管理する
 import { outdoorMap }  from "./data/maps/outdoor.js";
 import { indoor01Map } from "./data/maps/indoor_01.js";
+import { poolMap }     from "./data/maps/pool.js";
 
 // ---- util: ダミー画像（1px） ----
 const BLACK_1PX =
@@ -17,6 +18,7 @@ export const MAPS = {
 
   // ===== 室内 =====
   indoor_01: indoor01Map,
+  pool:      poolMap,
 
   // ===== 戦闘（黒画面） =====
   // ・当たり判定なし

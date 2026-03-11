@@ -56,7 +56,8 @@ const sea = createSea({
 });
 
 // ---- Map / Collision ----
-const bgImg = new Image();
+const bgImg    = new Image();
+const bgTopImg = new Image();
 const col = makeColStore();
 
 const { current, cam, leader, p2, p3, p4, collectedItems } = STATE;
@@ -269,6 +270,7 @@ function loadMap(id, opt = null) {
     done();
   };
   bgImg.src = def.bgSrc;
+  bgTopImg.src = def.bgTopSrc || "";
 
   col.load(def.colSrc, () => {
     colOK = true;
@@ -315,6 +317,10 @@ function draw() {
 
   list.sort((a, b) => a.y - b.y);
   list.forEach((o) => drawSprite(o.img, o.frame, o.x, o.y));
+
+  if (bgTopImg.complete && bgTopImg.naturalWidth > 0) {
+    ctx.drawImage(bgTopImg, -(cam.x | 0), -(cam.y | 0));
+  }
 
   inventory.draw(ctx);
 
