@@ -1,6 +1,7 @@
 // data/maps/pool.js
 export const poolMap = {
-  bgSrc:    "assets/maps/pool.png",
+  bgSrc:      "assets/maps/pool.png",
+  seaOverlay: true,
   bgTopSrc: "assets/maps/pool_top.png",
   colSrc:   "assets/maps/pool_col.png",
   bgmSrc:   "assets/audio/bgm0.mp3",

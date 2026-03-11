@@ -15,7 +15,7 @@ export const outdoorMap = {
       id:        2,
       to:        "pool",
       trigger:   { x: 1957, y: 3236, w: 16, h: 8 }, // 底辺中心 (1965,3240)
-      entryAt:   { x: 1964, y: 3241 },
+      entryAt:   { x: 1960, y: 3241 },
       entryWalk: { dx: 0, dy: 1, frames: 20 },
     },
   ],

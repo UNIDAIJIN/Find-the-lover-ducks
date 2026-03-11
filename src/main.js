@@ -313,6 +313,10 @@ function draw() {
     ctx.drawImage(bgImg, -(cam.x | 0), -(cam.y | 0));
   }
 
+  if (MAPS[current.id]?.seaOverlay) {
+    sea.draw(ctx, tt, cam, BASE_W, BASE_H);
+  }
+
   const list = [
     { img: p4.img, x: p4.x, y: p4.y, frame: p4.frame },
     { img: p3.img, x: p3.x, y: p3.y, frame: p3.frame },
