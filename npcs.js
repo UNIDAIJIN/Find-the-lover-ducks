@@ -1,7 +1,8 @@
 // npcs.js
+import { CONFIG } from "./config.js";
 import { SPRITES } from "./sprites.js";
 
-const NPC_FRAME_MS = 180 * 2;
+const { NPC_FRAME_MS } = CONFIG;
 
 export const NPCS_BY_MAP = {
   outdoor: [

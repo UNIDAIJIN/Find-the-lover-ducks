@@ -1,4 +1,5 @@
 // main.js
+import { CONFIG } from "./config.js";
 import { SPRITES } from "./sprites.js";
 import { MAPS, DOOR_ID_TO_INDOOR } from "./maps.js";
 import { makeColStore, scanMarkers } from "./col.js";
@@ -25,21 +26,12 @@ const canvas = document.getElementById("c");
 const ctx = canvas.getContext("2d");
 ctx.imageSmoothingEnabled = false;
 
-const BASE_W = 256;
-const BASE_H = 240;
-const SCALE = 3;
+const { BASE_W, BASE_H, SCALE, SPR, SPEED, FRAME_MS, GAP2, GAP3, GAP4, NPC_FRAME_MS, DOOR_COOLDOWN_MS, MAP_FADE_OUT_MS, MAP_FADE_IN_MS } = CONFIG;
 
 canvas.width = BASE_W;
 canvas.height = BASE_H;
 canvas.style.width = BASE_W * SCALE + "px";
 canvas.style.height = BASE_H * SCALE + "px";
-
-const SPR = 16;
-const SPEED = 1;
-const FRAME_MS = 180;
-const GAP2 = 30;
-const GAP3 = 60;
-const GAP4 = 90;
 
 const input = createInput();
 
@@ -51,7 +43,7 @@ function nowMs() {
 // UI / FX
 const dialog = createDialog({ BASE_W, BASE_H, input });
 const choice = createChoice({ BASE_W, BASE_H, input });
-const fade = createFade({ BASE_W, BASE_H, input });
+const fade = createFade({ BASE_W, BASE_H, input, mapOutMs: MAP_FADE_OUT_MS, mapInMs: MAP_FADE_IN_MS });
 
 // 初期：ダイアログの上にchoiceを積むための基準を渡す
 if (typeof dialog.getRect === "function" && typeof choice.setAnchorRect === "function") {
@@ -108,7 +100,7 @@ const followers = createFollowers({
 // actors
 let actors = [];
 const collectedItems = new Set();
-const NPC_FRAME_MS = FRAME_MS * 2;
+// NPC_FRAME_MS comes from CONFIG (= FRAME_MS × 2)
 
 function talkBoxLeader() {
   return { x: leader.x, y: leader.y, w: SPR, h: SPR };
@@ -234,13 +226,13 @@ function doorCheck(t) {
   if (current.id === "outdoor" && r === 255 && g === 0 && b > 0) {
     const next = DOOR_ID_TO_INDOOR[b | 0];
     if (!next) return;
-    doorCooldown = t + 220;
+    doorCooldown = t + DOOR_COOLDOWN_MS;
     fade.startMapFade(next, { mode: "in", id: b | 0 }, t, loadMap);
     return;
   }
 
   if (current.id !== "outdoor" && r === 0 && g === 255 && b > 0) {
-    doorCooldown = t + 220;
+    doorCooldown = t + DOOR_COOLDOWN_MS;
     fade.startMapFade("outdoor", { mode: "out", id: b | 0 }, t, loadMap);
     return;
   }
