@@ -9,6 +9,7 @@ export const boardNpc = {
   x:         2689,
   y:         3352,
   talkHit:   { x: 0, y: 0, w: 16, h: 14 },
+  talkType:  "sign",
   talkPages: [["ここは モリタサキイン・ザ・プールの いえ"]],
   solid:     true,
 };

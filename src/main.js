@@ -420,9 +420,9 @@ function tryInteract(t) {
           bgmCtl.unlock();
           bgmCtl.setOverride(BATTLE_BGM_SRC);
           battle.start(input);
-        });
+        }, act.talkType ?? "talk");
       } else {
-        dialog.open(act.talkPages || [["……"]]);
+        dialog.open(act.talkPages || [["……"]], null, act.talkType ?? "talk");
       }
       return;
     }
