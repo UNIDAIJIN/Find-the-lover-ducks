@@ -16,6 +16,20 @@ export function createBattleSystem(cfg) {
 
   const DUCK_WIN_COUNT = 10;
 
+  const DUCK_REACTIONS = [
+    null, // 0
+    { lines: ["ミナミ「なんだこれは！」"] },
+    { lines: ["ミナミ「このおとはなんなんだ！」"] },
+    { lines: ["ミナミ「こんなものいたくもかゆくもない！」"] },
+    { lines: ["ミナミ「うるさい！うるさい！」"] },
+    { lines: ["ミナミ「ぐぐぐ、クソガキども！」"] },
+    { lines: ["ミナミ「ちからがぬける・・・！」"] },
+    { lines: ["ミナミ「やめろ！それをこっちにむけるな！」"] },
+    { lines: ["ミナミ「おい！やめろ！」"] },
+    { lines: ["ミナミ「フハハ！おもしろい！」"] },
+    { lines: ["ミナミ「フハハ！フハハハ！」"], win: true },
+  ];
+
   const bossImg = new Image();
   bossImg.src = "assets/battle/boss.png";
 
@@ -230,6 +244,11 @@ export function createBattleSystem(cfg) {
       flashUntil: 0,
       flashColor: "#0f0",
       flashAlpha: 0.22,
+
+      bossFlashUntil: 0,
+      bossFadeFrom: 0,
+      bossFadeDur: 0,
+      showYouWin: false,
 
       uiKickUntil: 0,
       uiKickMode: "none",
@@ -581,16 +600,36 @@ export function createBattleSystem(cfg) {
         });
       }
 
-      // 特殊勝利チェック
+      // ボスリアクション
       if (isRubberDuck) {
         queueEvent({
           autoMs: 1,
           apply: () => {
-            if ((st.ducksThrown | 0) >= DUCK_WIN_COUNT) {
-              queueMsg(
-                [`ラバーダックを${DUCK_WIN_COUNT}個なげつけた！`, `とくしゅしょうり！！`],
-                { autoMs: 1200, onClose: () => endToField() }
-              );
+            const reaction = DUCK_REACTIONS[st.ducksThrown | 0];
+            if (!reaction) return;
+            if (reaction.win) {
+              // 10投目：Z送り → 赤点滅2.2s → ウボァ(フェード同時3s) → YOU WIN! 3s → フィールドへ
+              queueMsg(reaction.lines, { autoMs: 0 });
+              const FLASH_MS = 2200;
+              queueEvent({
+                autoMs: FLASH_MS,
+                apply: () => { st.bossFlashUntil = (st.now | 0) + FLASH_MS; },
+              });
+              const FADE_MS = 3000;
+              queueMsg(["ミナミ「ウボァーーーーー！！」"], {
+                autoMs: FADE_MS,
+                apply: () => {
+                  st.bossFadeFrom = st.now | 0;
+                  st.bossFadeDur  = FADE_MS;
+                },
+              });
+              queueEvent({
+                autoMs: 3000,
+                apply:   () => { st.showYouWin = true; },
+                onClose: () => endToField(),
+              });
+            } else {
+              queueMsg(reaction.lines, { autoMs: 0 });
             }
           },
         });
@@ -820,6 +859,11 @@ export function createBattleSystem(cfg) {
       flashUntil: st.flashUntil,
       flashColor: st.flashColor,
       flashAlpha: st.flashAlpha,
+
+      bossFlashUntil: st.bossFlashUntil,
+      bossFadeFrom:   st.bossFadeFrom,
+      bossFadeDur:    st.bossFadeDur,
+      showYouWin:     st.showYouWin,
 
       uiKickUntil: st.uiKickUntil,
       uiKickMode: st.uiKickMode,

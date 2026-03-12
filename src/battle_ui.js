@@ -13,6 +13,11 @@ export function drawBattleScreen(ctx, st, opt) {
     flashColor = st.flashColor || "#0f0",
     flashAlpha = typeof st.flashAlpha === "number" ? st.flashAlpha : 0.22,
 
+    bossFlashUntil = st.bossFlashUntil | 0,
+    bossFadeFrom   = st.bossFadeFrom   | 0,
+    bossFadeDur    = st.bossFadeDur    | 0,
+    showYouWin     = !!st.showYouWin,
+
     uiKickUntil = st.uiKickUntil | 0,
     uiKickMode = st.uiKickMode || "none",
     uiKickDx = st.uiKickDx | 0,
@@ -25,6 +30,10 @@ export function drawBattleScreen(ctx, st, opt) {
     cmdIntroSince = st.cmdIntroSince | 0,
     cmdIntroUntil = st.cmdIntroUntil | 0,
   } = opt || {};
+
+  const bossAlpha = bossFadeDur
+    ? Math.max(0, 1 - (now - bossFadeFrom) / bossFadeDur)
+    : 1;
 
   const THEME =
     uiTheme === "red"
@@ -147,6 +156,18 @@ export function drawBattleScreen(ctx, st, opt) {
         drawText(visible[i], logX + 10, logY + 8 + i * 14, THEME.text);
       }
     }
+  } else if (showYouWin) {
+    const text = "YOU WIN!";
+    const cx = logX + logW / 2;
+    const cy = logY + logH / 2;
+    const s = Math.sin((now | 0) / 260);
+    const blinkAlpha = 0.45 + (s * 0.5 + 0.5) * 0.35;
+    ctx.save();
+    ctx.globalAlpha = blinkAlpha;
+    ctx.fillStyle = THEME.text;
+    const yw = ctx.measureText(text).width;
+    ctx.fillText(text, (cx - yw / 2) | 0, (cy - 6) | 0);
+    ctx.restore();
   } else {
     // st.msg が無いとき：コマンド入力中だけ COMMAND PHASE を出す
     const inCommand = st.phase === "choose" || st.phase === "items";
@@ -211,7 +232,19 @@ export function drawBattleScreen(ctx, st, opt) {
     const bh = bossImg.naturalHeight | 0;
     const x = ((BASE_W - bw) / 2) | 0;
     const y = (bossAreaTop + ((bossAreaH - bh) / 2)) | 0;
+
+    ctx.save();
+    ctx.globalAlpha = bossAlpha;
     ctx.drawImage(bossImg, x, y);
+
+    // 赤点滅（フェードと同じアルファを乗算）
+    if ((bossFlashUntil | 0) > (now | 0)) {
+      const pulse = 0.45 + 0.45 * Math.sin((now | 0) / 80);
+      ctx.globalAlpha = bossAlpha * pulse;
+      ctx.fillStyle = "#f00";
+      ctx.fillRect(x, y, bw, bh);
+    }
+    ctx.restore();
   }
   ctx.restore();
 
