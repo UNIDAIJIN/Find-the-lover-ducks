@@ -13,6 +13,7 @@ import { rickyNpc }         from "./data/npcs/ricky.js";
 import { oharaNpc }         from "./data/npcs/ohara.js";
 import { indoorMinamiNpc } from "./data/npcs/minami_indoor01.js";
 import { hisaroNpc }      from "./data/npcs/hisaro.js";
+import { natsumiNpc }     from "./data/npcs/natsumi.js";
 
 const { NPC_FRAME_MS } = CONFIG;
 
@@ -32,6 +33,7 @@ export const NPCS_BY_MAP = {
     resolve(saboNpc),
     resolve(saboHatNpc),
     resolve(hisaroNpc),
+    resolve(natsumiNpc),
   ],
 
   indoor_01: [
