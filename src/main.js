@@ -437,7 +437,7 @@ function tryInteract(t) {
       actors.splice(i, 1);
 
       const name = itemName(id);
-      dialog.open([[`${name} をてにいれた。`]]);
+      dialog.open([[`${name} をてにいれた。`]], null, "sign");
       return;
     }
   }
