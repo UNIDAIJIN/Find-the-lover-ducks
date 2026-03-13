@@ -15,7 +15,7 @@ export function setupMobileController(input) {
       width: 100%;
       max-width: 480px;
       background: #000;
-      padding: 10px 0 20px;
+      padding: 20px 0;
     }
 
     #c {
