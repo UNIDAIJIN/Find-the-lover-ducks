@@ -70,6 +70,7 @@ export function createEnding({ BASE_W, BASE_H }) {
   }
 
   function isActive() { return active; }
+  function isDone()   { return active && phase === "done"; }
 
   function update(t) {
     if (!active) return;
@@ -88,6 +89,11 @@ export function createEnding({ BASE_W, BASE_H }) {
         phase          = "fadeout";
         fadeOutStartMs = t;
       }
+    }
+
+    if (phase === "fadeout") {
+      const p = ease((t - fadeOutStartMs) / FADEOUT_MS);
+      if (p >= 1) phase = "done";
     }
   }
 
@@ -128,8 +134,8 @@ export function createEnding({ BASE_W, BASE_H }) {
     ctx.restore();
 
     // --- 最後の真っ暗フェードアウト ---
-    if (phase === "fadeout") {
-      const p = ease((t - fadeOutStartMs) / FADEOUT_MS);
+    if (phase === "fadeout" || phase === "done") {
+      const p = phase === "done" ? 1 : ease((t - fadeOutStartMs) / FADEOUT_MS);
       ctx.save();
       ctx.globalAlpha = p;
       ctx.fillStyle   = "#000";
@@ -146,8 +152,26 @@ export function createEnding({ BASE_W, BASE_H }) {
       const x = Math.round((BASE_W - ctx.measureText(FIXED_LINE).width) / 2);
       ctx.fillText(FIXED_LINE, x, FIXED_Y);
       ctx.restore();
+
+      // done 後：Zを促すテキスト（点滅）
+      if (phase === "done") {
+        const blink = Math.sin(t / 400) > 0;
+        if (blink) {
+          const prompt = "press any button";
+          ctx.save();
+          ctx.font         = "normal 10px PixelMplus10";
+          ctx.textBaseline = "top";
+          ctx.textAlign    = "left";
+          ctx.fillStyle    = "#fff";
+          const px = Math.round((BASE_W - ctx.measureText(prompt).width) / 2);
+          ctx.fillText(prompt, px, FIXED_Y + 20);
+          ctx.restore();
+        }
+      }
     }
   }
 
-  return { start, isActive, update, draw };
+  function stop() { active = false; phase = "waiting"; }
+
+  return { start, isActive, isDone, stop, update, draw };
 }

@@ -672,6 +672,20 @@ function update(t) {
     ending.update(t);
     updateNpcAnim(t);
     updateCam();
+
+    // フェードアウト完了後、Zでタイトルに戻る
+    if (ending.isDone() && (input.consume("z") || input.consume("x") || input.consume("ArrowUp") || input.consume("ArrowDown") || input.consume("ArrowLeft") || input.consume("ArrowRight"))) {
+      ending.stop();
+      bgmCtl.setOverride(null);
+      partyVisible = true;
+      collectedItems.clear();
+      inventory.resetItems([]);
+      loadMap("outdoor");
+      title.start({
+        onNewGame()  { collectedItems.clear(); inventory.resetItems([]); loadMap("outdoor"); },
+        onContinue() { loadGame(); },
+      });
+    }
     return;
   }
 
