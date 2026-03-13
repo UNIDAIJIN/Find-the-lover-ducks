@@ -3,7 +3,7 @@ export function setupMobileController(input) {
   const style = document.createElement("style");
   style.textContent = `
     body {
-      background: #c8b89a;
+      background: #1a1a1a;
       margin: 0;
       padding: 0;
       display: flex;
@@ -14,9 +14,8 @@ export function setupMobileController(input) {
     #screen-wrap {
       width: 100%;
       max-width: 480px;
-      background: #e8d8c0;
-      padding: 16px 0 0;
-      box-shadow: inset 0 -4px 12px rgba(0,0,0,0.2);
+      background: #000;
+      padding: 10px 0 20px;
     }
 
     #c {
@@ -29,14 +28,14 @@ export function setupMobileController(input) {
     #mobile-ctrl {
       width: 100%;
       max-width: 480px;
-      background: #e8d8c0;
+      background: #2e2e2e;
       box-sizing: border-box;
-      padding: 18px 24px 28px;
+      padding: 36px 24px 28px;
       display: flex;
       flex-direction: column;
       align-items: center;
       border-radius: 0;
-      box-shadow: inset 0 4px 12px rgba(0,0,0,0.25);
+      box-shadow: inset 0 4px 12px rgba(0,0,0,0.4);
     }
 
     #mobile-ctrl .row-main {
@@ -58,16 +57,16 @@ export function setupMobileController(input) {
       position: absolute;
       inset: 0;
       border-radius: 50%;
-      background: #b8a080;
-      box-shadow: 0 4px 0 #0d0020, inset 0 2px 6px rgba(0,0,0,0.6);
+      background: #1a1a1a;
+      box-shadow: 0 4px 0 #0a0a0a, inset 0 2px 6px rgba(0,0,0,0.6);
     }
     .stick-knob {
       position: absolute;
       width: 54px;
       height: 54px;
       border-radius: 50%;
-      background: radial-gradient(circle at 38% 35%, #d4c0a8, #8a7060);
-      box-shadow: 0 4px 0 #8a7060;
+      background: radial-gradient(circle at 38% 35%, #555, #222);
+      box-shadow: 0 4px 0 #0a0a0a;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
@@ -92,8 +91,8 @@ export function setupMobileController(input) {
       height: 58px;
       border-radius: 50%;
       border: none;
-      background: #b8a080;
-      color: #5a4030;
+      background: #1a1a1a;
+      color: #aaa;
       font-size: 15px;
       font-weight: bold;
       font-family: sans-serif;
@@ -101,14 +100,14 @@ export function setupMobileController(input) {
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 5px 0 #8a7060;
+      box-shadow: 0 5px 0 #0a0a0a;
       -webkit-tap-highlight-color: transparent;
       touch-action: none;
     }
     .btn-ab:active, .btn-ab.pressed {
-      box-shadow: 0 1px 0 #0d0020;
+      box-shadow: 0 1px 0 #0a0a0a;
       transform: translateY(4px);
-      background: #a08870;
+      background: #333;
     }
     .btn-ab.btn-b { margin-top: 20px; }
 
@@ -123,20 +122,20 @@ export function setupMobileController(input) {
       height: 26px;
       border-radius: 13px;
       border: none;
-      background: #b8a080;
-      color: #5a4030;
+      background: #1a1a1a;
+      color: #aaa;
       font-size: 11px;
       font-family: sans-serif;
       letter-spacing: 0.5px;
       cursor: pointer;
-      box-shadow: 0 3px 0 #8a7060;
+      box-shadow: 0 3px 0 #0a0a0a;
       -webkit-tap-highlight-color: transparent;
       touch-action: none;
     }
     .btn-small:active, .btn-small.pressed {
-      box-shadow: 0 1px 0 #0d0020;
+      box-shadow: 0 1px 0 #0a0a0a;
       transform: translateY(2px);
-      background: #a08870;
+      background: #333;
     }
   `;
   document.head.appendChild(style);
