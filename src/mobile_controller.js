@@ -27,7 +27,6 @@ export function setupMobileController(input) {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 0;
       border-radius: 0 0 48px 48px;
       box-shadow: inset 0 4px 12px rgba(0,0,0,0.5);
     }
@@ -40,41 +39,39 @@ export function setupMobileController(input) {
       padding: 0 8px;
     }
 
-    /* ---- D-pad ---- */
-    .dpad {
+    /* ---- スティック ---- */
+    .stick-wrap {
       position: relative;
       width: 130px;
       height: 130px;
       flex-shrink: 0;
     }
-    .dpad button {
+    .stick-base {
       position: absolute;
+      inset: 0;
+      border-radius: 50%;
       background: #1a0040;
-      border: none;
-      border-radius: 8px;
-      color: #888;
-      font-size: 16px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      -webkit-tap-highlight-color: transparent;
-      touch-action: none;
-      box-shadow: 0 4px 0 #0d0020;
+      box-shadow: 0 4px 0 #0d0020, inset 0 2px 6px rgba(0,0,0,0.6);
     }
-    .dpad button:active, .dpad button.pressed { background: #2d007a; box-shadow: 0 1px 0 #0d0020; transform: translateY(3px); }
-    .dpad .d-up    { top: 0;   left: 43px; width: 44px; height: 44px; border-radius: 8px 8px 0 0; }
-    .dpad .d-down  { bottom: 0;left: 43px; width: 44px; height: 44px; border-radius: 0 0 8px 8px; }
-    .dpad .d-left  { top: 43px;left: 0;   width: 44px; height: 44px; border-radius: 8px 0 0 8px; }
-    .dpad .d-right { top: 43px;right: 0;  width: 44px; height: 44px; border-radius: 0 8px 8px 0; }
-    .dpad .d-center{ top: 43px;left: 43px;width: 44px; height: 44px; background: #1a0040; border: none; border-radius: 0; pointer-events: none; box-shadow: none; }
+    .stick-knob {
+      position: absolute;
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 38% 35%, #5a2ab0, #1a0040);
+      box-shadow: 0 4px 0 #0d0020;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      transition: transform 0.05s;
+    }
 
     /* ---- A/B ---- */
     .ab-group {
       display: flex;
       flex-direction: column;
       align-items: flex-end;
-      gap: 6px;
       flex-shrink: 0;
     }
     .ab-row {
@@ -100,11 +97,14 @@ export function setupMobileController(input) {
       -webkit-tap-highlight-color: transparent;
       touch-action: none;
     }
-    .btn-ab:active, .btn-ab.pressed { box-shadow: 0 1px 0 #0d0020; transform: translateY(4px); background: #2d007a; }
-    .btn-ab.btn-a { margin-bottom: 0; }
+    .btn-ab:active, .btn-ab.pressed {
+      box-shadow: 0 1px 0 #0d0020;
+      transform: translateY(4px);
+      background: #2d007a;
+    }
     .btn-ab.btn-b { margin-top: 20px; }
 
-    /* ---- 下段ボタン ---- */
+    /* ---- 下段 ---- */
     .row-bottom {
       display: flex;
       gap: 20px;
@@ -125,7 +125,11 @@ export function setupMobileController(input) {
       -webkit-tap-highlight-color: transparent;
       touch-action: none;
     }
-    .btn-small:active, .btn-small.pressed { box-shadow: 0 1px 0 #0d0020; transform: translateY(2px); background: #2d007a; }
+    .btn-small:active, .btn-small.pressed {
+      box-shadow: 0 1px 0 #0d0020;
+      transform: translateY(2px);
+      background: #2d007a;
+    }
   `;
   document.head.appendChild(style);
 
@@ -133,12 +137,9 @@ export function setupMobileController(input) {
   ctrl.id = "mobile-ctrl";
   ctrl.innerHTML = `
     <div class="row-main">
-      <div class="dpad">
-        <div class="d-center"></div>
-        <button class="d-up"    data-key="ArrowUp">▲</button>
-        <button class="d-down"  data-key="ArrowDown">▼</button>
-        <button class="d-left"  data-key="ArrowLeft">◀</button>
-        <button class="d-right" data-key="ArrowRight">▶</button>
+      <div class="stick-wrap" id="stick-wrap">
+        <div class="stick-base"></div>
+        <div class="stick-knob" id="stick-knob"></div>
       </div>
       <div class="ab-group">
         <div class="ab-row">
@@ -154,10 +155,99 @@ export function setupMobileController(input) {
   `;
   document.body.appendChild(ctrl);
 
-  // 押しっぱなし系
+  // ---- 振動 ----
+  function vibrate(ms = 10) {
+    try { navigator.vibrate?.(ms); } catch (_) {}
+  }
+
+  // ---- スティック ロジック ----
+  const stickWrap = ctrl.querySelector("#stick-wrap");
+  const stickKnob = ctrl.querySelector("#stick-knob");
+  const RADIUS    = 65;   // ベース半径 (px)
+  const DEAD      = 18;   // デッドゾーン (px)
+  const CLAMP     = 38;   // ノブの最大移動量 (px)
+
+  let stickActive = false;
+  let currentKeys = new Set();
+
+  function setKeys(keys) {
+    // 新しく押すキー
+    for (const k of keys) {
+      if (!currentKeys.has(k)) input.press(k);
+    }
+    // 離すキー
+    for (const k of currentKeys) {
+      if (!keys.has(k)) input.release(k);
+    }
+    currentKeys = new Set(keys);
+  }
+
+  function onStickMove(cx, cy, touch) {
+    const rect = stickWrap.getBoundingClientRect();
+    const ox   = rect.left + rect.width  / 2;
+    const oy   = rect.top  + rect.height / 2;
+    const dx   = touch.clientX - ox;
+    const dy   = touch.clientY - oy;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    // ノブ位置
+    const clampedDist = Math.min(dist, CLAMP);
+    const angle = Math.atan2(dy, dx);
+    const kx = Math.cos(angle) * clampedDist;
+    const ky = Math.sin(angle) * clampedDist;
+    stickKnob.style.transform = `translate(calc(-50% + ${kx}px), calc(-50% + ${ky}px))`;
+
+    // 方向判定（8方向）
+    const keys = new Set();
+    if (dist >= DEAD) {
+      const deg = (angle * 180 / Math.PI + 360) % 360;
+      if (deg >= 337.5 || deg < 22.5)   keys.add("ArrowRight");
+      else if (deg < 67.5)               { keys.add("ArrowRight"); keys.add("ArrowDown"); }
+      else if (deg < 112.5)              keys.add("ArrowDown");
+      else if (deg < 157.5)              { keys.add("ArrowLeft");  keys.add("ArrowDown"); }
+      else if (deg < 202.5)              keys.add("ArrowLeft");
+      else if (deg < 247.5)              { keys.add("ArrowLeft");  keys.add("ArrowUp"); }
+      else if (deg < 292.5)              keys.add("ArrowUp");
+      else if (deg < 337.5)              { keys.add("ArrowRight"); keys.add("ArrowUp"); }
+    }
+    setKeys(keys);
+  }
+
+  function onStickEnd() {
+    stickKnob.style.transform = "translate(-50%, -50%)";
+    setKeys(new Set());
+    stickActive = false;
+  }
+
+  stickWrap.addEventListener("touchstart", e => {
+    e.preventDefault();
+    stickActive = true;
+    vibrate(8);
+    onStickMove(0, 0, e.touches[0]);
+  }, { passive: false });
+
+  stickWrap.addEventListener("touchmove", e => {
+    e.preventDefault();
+    if (stickActive) onStickMove(0, 0, e.touches[0]);
+  }, { passive: false });
+
+  stickWrap.addEventListener("touchend",    e => { e.preventDefault(); onStickEnd(); }, { passive: false });
+  stickWrap.addEventListener("touchcancel", e => { e.preventDefault(); onStickEnd(); }, { passive: false });
+
+  // マウスフォールバック
+  stickWrap.addEventListener("mousedown", e => {
+    stickActive = true;
+    onStickMove(0, 0, e);
+    const move = ev => { if (stickActive) onStickMove(0, 0, ev); };
+    const up   = ()  => { onStickEnd(); window.removeEventListener("mousemove", move); window.removeEventListener("mouseup", up); };
+    window.addEventListener("mousemove", move);
+    window.addEventListener("mouseup",   up);
+  });
+
+  // ---- A/B ボタン ----
   ctrl.querySelectorAll("[data-key]").forEach(btn => {
     const key = btn.dataset.key;
-    const press   = e => { e.preventDefault(); btn.classList.add("pressed");    input.press(key); };
+    const press   = e => { e.preventDefault(); btn.classList.add("pressed");    vibrate(12); input.press(key); };
     const release = e => { e.preventDefault(); btn.classList.remove("pressed"); input.release(key); };
     btn.addEventListener("touchstart",  press,   { passive: false });
     btn.addEventListener("touchend",    release, { passive: false });
@@ -167,12 +257,13 @@ export function setupMobileController(input) {
     btn.addEventListener("mouseleave", release);
   });
 
-  // 瞬間押し系
+  // ---- SAVE/LOAD ----
   ctrl.querySelectorAll("[data-key-tap]").forEach(btn => {
     const key = btn.dataset.keyTap;
     const tap = e => {
       e.preventDefault();
       btn.classList.add("pressed");
+      vibrate(15);
       input.press(key);
       setTimeout(() => { input.release(key); btn.classList.remove("pressed"); }, 80);
     };
