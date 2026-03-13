@@ -9,6 +9,7 @@ export function createInput() {
     if (k === "Z") return "z";
     if (k === "X") return "x";
     if (k === "C") return "c";
+    if (k === "D") return "d";
     return k;
   }
 
@@ -17,7 +18,7 @@ export function createInput() {
   }
 
   function isOurKey(k) {
-    return isArrowKey(k) || k === "z" || k === "x" || k === "c";
+    return isArrowKey(k) || k === "z" || k === "x" || k === "c" || k === "d";
   }
 
   function onKeyDown(e) {

@@ -4,7 +4,7 @@ import { rubberDucks } from "./data/items/rubber_duck.js";
 const ALL_ITEMS = [...rubberDucks];
 const ITEM_MAP = new Map(ALL_ITEMS.map((d) => [d.id, d]));
 
-export const START_INVENTORY = [];
+export const START_INVENTORY = rubberDucks.map((d) => d.id); // DEBUG: 全ラバーダック所持
 
 export function itemName(id)     { return ITEM_MAP.get(id)?.name    ?? id;   }
 export function itemBgmSrc(id)   { return ITEM_MAP.get(id)?.bgmSrc  ?? null; }

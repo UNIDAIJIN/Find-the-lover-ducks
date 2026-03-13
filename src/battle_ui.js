@@ -31,6 +31,10 @@ export function drawBattleScreen(ctx, st, opt) {
     // ★ COMMAND PHASE intro anim
     cmdIntroSince = st.cmdIntroSince | 0,
     cmdIntroUntil = st.cmdIntroUntil | 0,
+
+    // エンカウント演出
+    encFlashFrom = st.encFlashFrom | 0,
+    encFlashMs   = st.encFlashMs   | 0,
   } = opt || {};
 
   const bossAlpha = bossFadeDur
@@ -85,7 +89,7 @@ export function drawBattleScreen(ctx, st, opt) {
   ctx.fillStyle = THEME.bg;
   ctx.fillRect(0, 0, BASE_W, BASE_H);
 
-  ctx.font = "10px PixelMplus10";
+  ctx.font = "normal 10px PixelMplus10";
   ctx.textBaseline = "top";
 
   // --- LOG (固定：上) ---
@@ -119,9 +123,10 @@ export function drawBattleScreen(ctx, st, opt) {
   // =====================
   // LOG layer (no shake)
   // =====================
+  drawBox(logX, logY, logW, logH);
+
   ctx.save();
   ctx.globalAlpha = logAlpha;
-  drawBox(logX, logY, logW, logH);
 
   // ---- LOG CONTENT ----
   if (st.msg && (st.msg.lines || []).length) {
@@ -236,24 +241,38 @@ export function drawBattleScreen(ctx, st, opt) {
   ctx.save();
   if (shaking && mode === "boss") shakeTranslate();
 
+  // エンカウントフラッシュ進行度 0→1
+  const encT = encFlashMs > 0
+    ? Math.min(1, Math.max(0, (now - encFlashFrom) / encFlashMs))
+    : 1;
+  const encE = 1 - Math.pow(1 - encT, 3); // easeOut
+
   if (bossImg && bossImg.complete && bossImg.naturalWidth > 0) {
     const BOSS_SCALE = 3;
     const bw = (bossImg.naturalWidth  * BOSS_SCALE) | 0;
     const bh = (bossImg.naturalHeight * BOSS_SCALE) | 0;
-    const x = ((BASE_W - bw) / 2) | 0;
-    const y = (statY - bh) | 0;
+    const bx = ((BASE_W - bw) / 2) | 0;
+    const by = (statY - bh) | 0;
+
+    // ズームイン: 1.4→1.0 倍
+    const zoomScale = 1.4 - 0.4 * encE;
+    const cx = bx + bw / 2;
+    const cy = by + bh / 2;
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
     ctx.globalAlpha = bossAlpha;
-    ctx.drawImage(bossImg, x, y, bw, bh);
+    ctx.translate(cx, cy);
+    ctx.scale(zoomScale, zoomScale);
+    ctx.translate(-cx, -cy);
+    ctx.drawImage(bossImg, bx, by, bw, bh);
 
     // 赤点滅（フェードと同じアルファを乗算）
     if ((bossFlashUntil | 0) > (now | 0)) {
       const pulse = 0.45 + 0.45 * Math.sin((now | 0) / 80);
       ctx.globalAlpha = bossAlpha * pulse;
       ctx.fillStyle = "#f00";
-      ctx.fillRect(x, y, bw, bh);
+      ctx.fillRect(bx, by, bw, bh);
     }
     ctx.restore();
   }
@@ -364,6 +383,18 @@ export function drawBattleScreen(ctx, st, opt) {
   }
 
   ctx.restore();
+
+  // =====================
+  // Encounter flash (白フラッシュ: 1→0)
+  // =====================
+  if (encT < 1) {
+    const a = Math.pow(1 - encT, 2);
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, BASE_W, BASE_H);
+    ctx.restore();
+  }
 
   // =====================
   // Flash overlay

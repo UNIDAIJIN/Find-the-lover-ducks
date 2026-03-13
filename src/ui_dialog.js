@@ -6,6 +6,10 @@ export function createDialog({ BASE_W, BASE_H, input } = {}) {
   let onClose = null;
   let type    = "talk"; // "talk" | "sign"
 
+  // auto-advance state
+  let autoAdvanceMs = 0;  // 0 = 無効
+  let autoAdvanceAt = 0;
+
   // typewriter state
   let charIndex  = 0;
   let lastCharMs = 0;
@@ -54,12 +58,14 @@ export function createDialog({ BASE_W, BASE_H, input } = {}) {
   }
 
   // ---- public API ----
-  function open(p, onCloseFn = null, dialogType = "talk") {
-    active  = true;
-    pages   = Array.isArray(p) ? p : [];
-    index   = 0;
-    onClose = typeof onCloseFn === "function" ? onCloseFn : null;
-    type    = dialogType;
+  function open(p, onCloseFn = null, dialogType = "talk", autoMs = 0) {
+    active         = true;
+    pages          = Array.isArray(p) ? p : [];
+    index          = 0;
+    onClose        = typeof onCloseFn === "function" ? onCloseFn : null;
+    type           = dialogType;
+    autoAdvanceMs  = autoMs | 0;
+    autoAdvanceAt  = autoMs > 0 ? Date.now() + autoMs : 0;
     resetTyping();
 
     if (onPageChangeCb) onPageChangeCb(index);
@@ -84,6 +90,7 @@ export function createDialog({ BASE_W, BASE_H, input } = {}) {
       close();
     } else {
       resetTyping();
+      if (autoAdvanceMs > 0) autoAdvanceAt = Date.now() + autoAdvanceMs;
     }
   }
 
@@ -104,6 +111,12 @@ export function createDialog({ BASE_W, BASE_H, input } = {}) {
       }
     }
 
+    if (autoAdvanceMs > 0) {
+      // Z 無効・時間で自動送り
+      if (Date.now() >= autoAdvanceAt) advance();
+      return;
+    }
+
     if (input.consume("z")) {
       if (type === "talk" && !isTypingDone()) {
         // 表示中→即時完了
@@ -114,8 +127,40 @@ export function createDialog({ BASE_W, BASE_H, input } = {}) {
     }
   }
 
+  function wrapText(ctx, text, maxWidth) {
+    if (ctx.measureText(text).width <= maxWidth) return [text];
+    const result = [];
+    const tokens = text.split(" ");
+    let line = "";
+    for (const word of tokens) {
+      const candidate = line ? line + " " + word : word;
+      if (ctx.measureText(candidate).width <= maxWidth) {
+        line = candidate;
+      } else {
+        if (line) { result.push(line); line = ""; }
+        if (ctx.measureText(word).width <= maxWidth) {
+          line = word;
+        } else {
+          // 1語が長すぎる場合は文字単位で折り返す
+          for (const char of word) {
+            const test = line + char;
+            if (ctx.measureText(test).width > maxWidth) {
+              if (line) result.push(line);
+              line = char;
+            } else {
+              line = test;
+            }
+          }
+        }
+      }
+    }
+    if (line) result.push(line);
+    return result;
+  }
+
   function drawBox(ctx, lines, instant) {
-    const pad = 10;
+    const pad   = 10;
+    const maxW  = rect.w - pad * 2;
 
     ctx.fillStyle = "rgba(0,0,0,1)";
     ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
@@ -124,27 +169,37 @@ export function createDialog({ BASE_W, BASE_H, input } = {}) {
     ctx.strokeRect(rect.x + 0.5, rect.y + 0.5, rect.w - 1, rect.h - 1);
 
     ctx.fillStyle = "#fff";
-    ctx.font = "10px PixelMplus10";
+    ctx.font = "normal 10px PixelMplus10";
     ctx.textBaseline = "top";
 
-    if (instant) {
-      // sign: 全文即時
-      for (let i = 0; i < lines.length; i++) {
-        ctx.fillText(lines[i], rect.x + pad, rect.y + pad + i * 16);
-      }
-    } else {
-      // talk: typewriter
-      let remaining = charIndex;
-      for (let i = 0; i < lines.length; i++) {
-        const line = String(lines[i] ?? "");
-        if (remaining <= 0) break;
-        ctx.fillText(line.slice(0, remaining), rect.x + pad, rect.y + pad + i * 16);
-        remaining -= line.length;
+    // 全行を先にラップ確定させる
+    const wrappedLines = [];
+    for (const line of lines) {
+      for (const wl of wrapText(ctx, String(line ?? ""), maxW)) {
+        wrappedLines.push(wl);
       }
     }
 
-    // カーソル：タイプ完了時のみ表示
-    if (instant || isTypingDone()) {
+    let row = 0;
+    if (instant) {
+      // sign: 全文即時
+      for (const wl of wrappedLines) {
+        ctx.fillText(wl, rect.x + pad, rect.y + pad + row * 16);
+        row++;
+      }
+    } else {
+      // talk: typewriter（折り返し位置は固定済み）
+      let remaining = charIndex;
+      for (const wl of wrappedLines) {
+        if (remaining <= 0) break;
+        ctx.fillText(wl.slice(0, remaining), rect.x + pad, rect.y + pad + row * 16);
+        remaining -= wl.length;
+        row++;
+      }
+    }
+
+    // カーソル：タイプ完了時のみ表示（auto-advance 時は非表示）
+    if (autoAdvanceMs <= 0 && (instant || isTypingDone())) {
       const cursor = index < pages.length - 1 ? "▶" : "▼";
       ctx.fillText(cursor, rect.x + rect.w - 18, rect.y + rect.h - 20);
     }

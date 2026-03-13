@@ -18,5 +18,12 @@ export const outdoorMap = {
       entryAt:   { x: 1955, y: 3230 },
       entryWalk: { dx: 0, dy: 1, frames: 20 },
     },
+    {
+      id:        3,
+      to:        "vj_room01",
+      trigger:   { x: 2411, y: 2155, w: 16, h: 8 }, // 中心 (2419,2159)
+      entryAt:   { x: 2412, y: 2144 },
+      entryWalk: { dx: 0, dy: 1, frames: 20 },
+    },
   ],
 };

@@ -19,7 +19,10 @@ export const SPRITES = {
   p4_t2: loadSprite("assets/sprites/p4_t2.png"),
   
   // npc
-  natsumi: loadSprite("assets/sprites/natsumi_play.png"),
+  natsumi:   loadSprite("assets/sprites/natsumi_play.png"),
+  riku_play: loadSprite("assets/sprites/riku_play.png"),
+  maki_play: loadSprite("assets/sprites/maki_play.png"),
+  nino_play: loadSprite("assets/sprites/nino_play.png"),
   ricky: loadSprite("assets/sprites/ricky.png"),
   ohara: loadSprite("assets/sprites/ohara.png"),
   minami: loadSprite("assets/sprites/minami.png"),

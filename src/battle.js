@@ -49,6 +49,7 @@ export function createBattleSystem(cfg) {
   const se_doku   = makeSe("se_doku.mp3",   0.6);
   const se_cursor  = makeSe("se_cursor.mp3",  0.5);
   const se_confirm = makeSe("se_confirm.mp3", 0.5);
+  const se_encount = makeSe("se_encount.mp3", 0.9);
 
   function playSe(a) {
     try {
@@ -147,6 +148,7 @@ export function createBattleSystem(cfg) {
       lines: (lines || []).slice(),
       onClose: typeof opt.onClose === "function" ? opt.onClose : null,
       autoMs: opt.autoMs ?? 0,
+      noSkip: !!opt.noSkip,
 
       shake: opt.shake || null,
       apply: typeof opt.apply === "function" ? opt.apply : null,
@@ -174,6 +176,7 @@ export function createBattleSystem(cfg) {
       lines: next.lines,
       onClose: next.onClose,
       autoMs: next.autoMs,
+      noSkip: next.noSkip,
 
       shake: next.shake,
       apply: next.apply,
@@ -264,15 +267,22 @@ export function createBattleSystem(cfg) {
 
       // ★ UIで参照するなら必ず持たせる（未定義事故を潰す）
       commandPhaseSince: now0,
+
+      // エンカウント演出
+      encFlashFrom: now0,
+      encFlashMs:   600,
     };
 
     // 入力を掃除
     if (inputOrKeys && typeof inputOrKeys.clear === "function") inputOrKeys.clear();
     if (inputOrKeys instanceof Set) inputOrKeys.clear();
 
-    // ★ ここで戦闘開始文
-    queueMsg([`${st.boss.name}が たちはだかった！`], {
-      autoMs: 700,
+    // SE
+    playSe(se_encount);
+
+    // ★ ここで戦闘開始文（フラッシュ後に表示）
+    queueMsg([`ブイジェイのボス ミナミが たちはだかった！`], {
+      autoMs: 2000,
       center: false,
       onClose: () => {
         if (!st) return;
@@ -611,10 +621,11 @@ export function createBattleSystem(cfg) {
             if (!reaction) return;
             if (reaction.win) {
               // 10投目：Z送り → ウボァー表示と同時に赤点滅＋フェード(3s) → YOU WIN! 3s → フィールドへ
-              queueMsg(reaction.lines, { autoMs: 0 });
+              queueMsg(reaction.lines, { autoMs: 2000, noSkip: true });
               const EFFECT_MS = 3000;
               queueMsg(["ミナミ「ウボァーーーーー！！」"], {
                 autoMs: EFFECT_MS,
+                noSkip: true,
                 apply: () => {
                   st.bossFlashUntil = (st.now | 0) + EFFECT_MS;
                   st.bossFadeFrom   = st.now | 0;
@@ -629,7 +640,7 @@ export function createBattleSystem(cfg) {
                 onClose: () => endToField("win"),
               });
             } else {
-              queueMsg(reaction.lines, { autoMs: 0 });
+              queueMsg(reaction.lines, { autoMs: 2000, noSkip: true });
             }
           },
         });
@@ -755,6 +766,7 @@ export function createBattleSystem(cfg) {
     if (!st) return;
 
     if (st.msg) {
+      if (st.msg.noSkip) return; // Z 無効
       closeMsg();
       return;
     }

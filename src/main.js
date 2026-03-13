@@ -9,8 +9,9 @@ import { NPCS_BY_MAP } from "./npcs.js";
 import { REGISTRY } from "./registry.js";
 const { createInput, createBgm, createSea, createDialog, createChoice, createFade, createInventory, createFollowers, createBattleSystem, runNpcEvent } = REGISTRY;
 import { STATE } from "./state.js";
+import { createEnding } from "./ending.js";
 
-const DEBUG = false;
+const DEBUG = true;
 
 const canvas = document.getElementById("c");
 const ctx = canvas.getContext("2d");
@@ -173,7 +174,58 @@ const inventory = createInventory({
 });
 
 // ---- Battle ----
-let pendingBattlePages = null; // { win, lose }
+let pendingBattlePages   = null; // { win, lose, winEnding }
+let partyVisible         = true;
+let pendingEndingFadeIn  = false;
+
+// ---- Encounter transition (画面が砕け散る) ----
+let battleTransition = null; // { off, shards, startMs, duration, flashUntil, onDone }
+const BT_COLS = 10, BT_ROWS = 8;
+const BT_DURATION = 550;
+
+function startBattleTransition(onDone) {
+  // 現在のキャンバスをスナップショット
+  const off = document.createElement("canvas");
+  off.width  = BASE_W;
+  off.height = BASE_H;
+  const offCtx = off.getContext("2d");
+  offCtx.imageSmoothingEnabled = false;
+  offCtx.drawImage(canvas, 0, 0, BASE_W, BASE_H);
+
+  const sw = BASE_W / BT_COLS;
+  const sh = BASE_H / BT_ROWS;
+  const cx = BASE_W / 2;
+  const cy = BASE_H / 2;
+  const shards = [];
+
+  for (let r = 0; r < BT_ROWS; r++) {
+    for (let c = 0; c < BT_COLS; c++) {
+      const sx = c * sw;
+      const sy = r * sh;
+      const pcx = sx + sw / 2;
+      const pcy = sy + sh / 2;
+      const dx = pcx - cx;
+      const dy = pcy - cy;
+      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      const speed = (0.25 + Math.random() * 0.25);
+      shards.push({
+        sx, sy,
+        vx: (dx / dist) * speed + (Math.random() - 0.5) * 0.1,
+        vy: (dy / dist) * speed + (Math.random() - 0.5) * 0.1,
+        rotSpeed: (Math.random() - 0.5) * 0.009,
+      });
+    }
+  }
+
+  const now = nowMs();
+  battleTransition = {
+    off, shards, startMs: now,
+    duration: BT_DURATION,
+    flashUntil: now + 100,
+    onDone,
+  };
+}
+const ending = createEnding({ BASE_W, BASE_H });
 
 const battle = createBattleSystem({
   BASE_W,
@@ -187,11 +239,26 @@ const battle = createBattleSystem({
   onExitToField: (result) => {
     input.clear();
     bgmCtl.setOverride(null);
-    const pages = result === "win"
-      ? pendingBattlePages?.win
-      : pendingBattlePages?.lose;
+    const pages      = result === "win" ? pendingBattlePages?.win  : pendingBattlePages?.lose;
+    const isEnding   = result === "win" && !!pendingBattlePages?.winEnding;
     pendingBattlePages = null;
-    if (pages && pages.length) dialog.open(pages, null, "talk");
+
+    const triggerEnding = () => {
+      bgmCtl.setOverride("about:blank");
+      fade.startCutFade(nowMs(), {
+        outMs:   220,
+        holdMs:  3000,
+        inMs:    160,
+        onBlack: () => { partyVisible = false; loadMap("vj_room02", { isEnding: true }); },
+        onEnd:   () => { pendingEndingFadeIn = true; },
+      });
+    };
+
+    if (pages && pages.length) {
+      setTimeout(() => dialog.open(pages, isEnding ? triggerEnding : null, "talk"), 1000);
+    } else if (isEnding) {
+      setTimeout(triggerEnding, 1000);
+    }
   },
 });
 
@@ -306,8 +373,14 @@ function loadMap(id, opt = null) {
 
     spawnActorsForMap(current.id);
 
-    if (def.bgmSrc) bgmCtl.setMap(def.bgmSrc);
-    else bgmCtl.setMap(bgmCtl.getMapSrc());
+    if (opt?.isEnding) {
+      // partyVisible/pendingEndingFadeIn は startCutFade の onBlack/onEnd で設定済み
+      // BGM は about:blank override で無音のまま維持
+    } else if (def.bgmSrc) {
+      bgmCtl.setMap(def.bgmSrc);
+    } else {
+      bgmCtl.setMap(bgmCtl.getMapSrc());
+    }
 
     followers.reset({ leader, p2, p3, p4 });
     updateCam();
@@ -346,7 +419,54 @@ function drawSprite(img, f, x, y) {
 
 
 function draw() {
+  // フレーム先頭でコンテキスト状態をリセット（ブラー防止）
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalAlpha = 1;
+  ctx.imageSmoothingEnabled = false;
   ctx.clearRect(0, 0, BASE_W, BASE_H);
+
+  // エンカウント遷移アニメ中
+  if (battleTransition) {
+    const bt = battleTransition;
+    const t  = nowMs();
+    const elapsed  = t - bt.startMs;
+    const progress = Math.min(1, elapsed / bt.duration);
+    const sw = BASE_W / BT_COLS;
+    const sh = BASE_H / BT_ROWS;
+
+    // 黒背景
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, BASE_W, BASE_H);
+
+    // 各シャード
+    ctx.imageSmoothingEnabled = false;
+    for (const s of bt.shards) {
+      const px  = s.sx + s.vx * elapsed;
+      const py  = s.sy + s.vy * elapsed;
+      const rot = s.rotSpeed * elapsed;
+      const a   = Math.max(0, 1 - progress * 1.6);
+
+      ctx.save();
+      ctx.globalAlpha = a;
+      ctx.translate((px + sw / 2) | 0, (py + sh / 2) | 0);
+      ctx.rotate(rot);
+      ctx.drawImage(bt.off, s.sx, s.sy, sw, sh, (-sw / 2) | 0, (-sh / 2) | 0, sw, sh);
+      ctx.restore();
+    }
+
+    // 開始直後の白フラッシュ
+    if (t < bt.flashUntil) {
+      const fp = 1 - (t - bt.startMs) / (bt.flashUntil - bt.startMs);
+      ctx.save();
+      ctx.globalAlpha = fp * 0.9;
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(0, 0, BASE_W, BASE_H);
+      ctx.restore();
+    }
+
+    fade.draw(ctx);
+    return;
+  }
 
   if (battle.isActive()) {
     battle.draw(ctx);
@@ -363,13 +483,19 @@ function draw() {
 
   drawWaterSea(ctx, tt);
 
-  const list = [
-    { img: p4.img, x: p4.x, y: p4.y, frame: p4.frame },
-    { img: p3.img, x: p3.x, y: p3.y, frame: p3.frame },
-    { img: p2.img, x: p2.x, y: p2.y, frame: p2.frame },
-    { img: leader.img, x: leader.x, y: leader.y, frame: leader.frame },
-  ];
-  for (const act of actors) list.push({ img: act.img, x: act.x, y: act.y, frame: act.frame });
+  const list = [];
+  if (partyVisible) {
+    list.push(
+      { img: p4.img, x: p4.x, y: p4.y, frame: p4.frame },
+      { img: p3.img, x: p3.x, y: p3.y, frame: p3.frame },
+      { img: p2.img, x: p2.x, y: p2.y, frame: p2.frame },
+      { img: leader.img, x: leader.x, y: leader.y, frame: leader.frame },
+    );
+  }
+  for (const act of actors) {
+    if (act.hidden) continue;
+    list.push({ img: act.img, x: act.x, y: act.y, frame: act.frame });
+  }
 
   list.sort((a, b) => a.y - b.y);
   list.forEach((o) => drawSprite(o.img, o.frame, o.x, o.y));
@@ -382,6 +508,7 @@ function draw() {
 
   dialog.draw(ctx);
   choice.draw(ctx);
+  ending.draw(ctx, tt);
   fade.draw(ctx);
 }
 
@@ -424,13 +551,16 @@ function tryInteract(t) {
 
       if (act.battleTrigger) {
         pendingBattlePages = {
-          win:  act.battleWinPages  || null,
-          lose: act.battleLosePages || null,
+          win:        act.battleWinPages  || null,
+          lose:       act.battleLosePages || null,
+          winEnding:  !!act.battleWinEnding,
         };
         dialog.open(act.talkPages || [["……"]], () => {
-          bgmCtl.unlock();
-          bgmCtl.setOverride(BATTLE_BGM_SRC);
-          battle.start(input);
+          startBattleTransition(() => {
+            bgmCtl.unlock();
+            bgmCtl.setOverride(BATTLE_BGM_SRC);
+            battle.start(input);
+          });
         }, act.talkType ?? "talk");
       } else {
         dialog.open(act.talkPages || [["……"]], null, act.talkType ?? "talk");
@@ -459,6 +589,32 @@ function update(t) {
   if (fade.isActive()) {
     fade.update(t, () => mapReady);
     updateCam();
+    return;
+  }
+
+  // フェードイン完了 → エンディング開始
+  if (pendingEndingFadeIn) {
+    pendingEndingFadeIn = false;
+    bgmCtl.setOverride("assets/audio/bgm_end.mp3");
+    ending.start(t);
+  }
+
+  // ending 中は入力ブロック
+  if (ending.isActive()) {
+    ending.update(t);
+    updateNpcAnim(t);
+    updateCam();
+    return;
+  }
+
+  // エンカウント遷移中
+  if (battleTransition) {
+    const elapsed = nowMs() - battleTransition.startMs;
+    if (elapsed >= battleTransition.duration) {
+      const onDone = battleTransition.onDone;
+      battleTransition = null;
+      onDone();
+    }
     return;
   }
 
@@ -503,6 +659,13 @@ function update(t) {
   // field
   if (input.consume("x")) inventory.toggle();
   if (input.consume("z")) tryInteract(t); // ★tを渡す
+
+  // デバッグ：D キーで vj_room02 に即移動
+  if (DEBUG && input.consume("d")) {
+    partyVisible = false;
+    loadMap("vj_room02", { isEnding: true });
+    pendingEndingFadeIn = true;
+  }
 
   if (!mapReady) {
     updateCam();

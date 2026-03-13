@@ -3,6 +3,8 @@
 import { outdoorMap }  from "./data/maps/outdoor.js";
 import { indoor01Map } from "./data/maps/indoor_01.js";
 import { poolMap }     from "./data/maps/pool.js";
+import { vjRoom01Map } from "./data/maps/vj_room01.js";
+import { vjRoom02Map } from "./data/maps/vj_room02.js";
 
 // ---- util: ダミー画像（1px） ----
 const BLACK_1PX =
@@ -19,6 +21,8 @@ export const MAPS = {
   // ===== 室内 =====
   indoor_01: indoor01Map,
   pool:      poolMap,
+  vj_room01: vjRoom01Map,
+  vj_room02: vjRoom02Map,
 
   // ===== 戦闘（黒画面） =====
   // ・当たり判定なし

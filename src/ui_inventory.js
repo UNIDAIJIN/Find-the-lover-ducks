@@ -90,7 +90,7 @@ export function createInventory({
     }
 
     closeInv();
-    if (dialog) dialog.open([[`${name} をつかった。`]]);
+    if (dialog) dialog.open([[`${name} をつかった。`]], null, "sign");
   }
 
   function update() {
