@@ -173,6 +173,8 @@ const inventory = createInventory({
 });
 
 // ---- Battle ----
+let pendingBattlePages = null; // { win, lose }
+
 const battle = createBattleSystem({
   BASE_W,
   BASE_H,
@@ -182,9 +184,14 @@ const battle = createBattleSystem({
   unlockBgm: () => bgmCtl.unlock(),
   setOverrideBgm: (src) => bgmCtl.setOverride(src),
   getFieldInventorySnapshot: () => inventory.getSnapshot(),
-  onExitToField: () => {
+  onExitToField: (result) => {
     input.clear();
     bgmCtl.setOverride(null);
+    const pages = result === "win"
+      ? pendingBattlePages?.win
+      : pendingBattlePages?.lose;
+    pendingBattlePages = null;
+    if (pages && pages.length) dialog.open(pages, null, "talk");
   },
 });
 
@@ -416,6 +423,10 @@ function tryInteract(t) {
       if (handled) return;
 
       if (act.battleTrigger) {
+        pendingBattlePages = {
+          win:  act.battleWinPages  || null,
+          lose: act.battleLosePages || null,
+        };
         dialog.open(act.talkPages || [["……"]], () => {
           bgmCtl.unlock();
           bgmCtl.setOverride(BATTLE_BGM_SRC);

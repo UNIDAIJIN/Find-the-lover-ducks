@@ -200,9 +200,9 @@ export function createBattleSystem(cfg) {
     pumpMsg();
   }
 
-  function endToField() {
+  function endToField(result = "lose") {
     st = null;
-    if (typeof onExitToField === "function") onExitToField();
+    if (typeof onExitToField === "function") onExitToField(result);
   }
 
   // =========================
@@ -626,7 +626,7 @@ export function createBattleSystem(cfg) {
               queueEvent({
                 autoMs: 3000,
                 apply:   () => { st.showYouWin = true; },
-                onClose: () => endToField(),
+                onClose: () => endToField("win"),
               });
             } else {
               queueMsg(reaction.lines, { autoMs: 0 });
@@ -690,7 +690,7 @@ export function createBattleSystem(cfg) {
     }
 
     if ((st.boss.hp | 0) <= 0) {
-      queueMsg(["たおした。"], { autoMs: 800, onClose: () => endToField() });
+      queueMsg(["たおした。"], { autoMs: 800, onClose: () => endToField("win") });
       return;
     }
 
