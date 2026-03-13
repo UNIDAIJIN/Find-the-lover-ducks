@@ -14,7 +14,7 @@ import { createTitle  } from "./title.js";
 import { setupMobileController } from "./mobile_controller.js";
 
 const DEBUG  = true;
-const MOBILE = false;
+const MOBILE = true;
 
 const canvas = document.getElementById("c");
 const ctx = canvas.getContext("2d");
