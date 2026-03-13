@@ -116,6 +116,26 @@ export function setupMobileController(input) {
       display: flex;
       gap: 20px;
       margin-top: 18px;
+      align-items: center;
+    }
+    .btn-debug {
+      width: 36px;
+      height: 20px;
+      border-radius: 6px;
+      border: none;
+      background: #111;
+      color: #666;
+      font-size: 10px;
+      font-family: sans-serif;
+      cursor: pointer;
+      box-shadow: 0 2px 0 #0a0a0a;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: none;
+    }
+    .btn-debug:active, .btn-debug.pressed {
+      box-shadow: 0 1px 0 #0a0a0a;
+      transform: translateY(1px);
+      background: #222;
     }
     .btn-small {
       width: 72px;
@@ -165,6 +185,8 @@ export function setupMobileController(input) {
     <div class="row-bottom">
       <button class="btn-small" data-key-tap="s">SAVE</button>
       <button class="btn-small" data-key-tap="l">LOAD</button>
+      <button class="btn-debug" data-key-tap="d">D</button>
+      <button class="btn-debug" data-key-tap="c">C</button>
     </div>
   `;
   document.body.appendChild(ctrl);
