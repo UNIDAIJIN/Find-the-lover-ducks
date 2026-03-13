@@ -16,6 +16,8 @@ export function drawBattleScreen(ctx, st, opt) {
     bossFlashUntil = st.bossFlashUntil | 0,
     bossFadeFrom   = st.bossFadeFrom   | 0,
     bossFadeDur    = st.bossFadeDur    | 0,
+    logFadeFrom    = st.logFadeFrom    | 0,
+    logFadeDur     = st.logFadeDur     | 0,
     showYouWin     = !!st.showYouWin,
 
     uiKickUntil = st.uiKickUntil | 0,
@@ -33,6 +35,10 @@ export function drawBattleScreen(ctx, st, opt) {
 
   const bossAlpha = bossFadeDur
     ? Math.max(0, 1 - (now - bossFadeFrom) / bossFadeDur)
+    : 1;
+
+  const logAlpha = logFadeDur
+    ? Math.max(0, 1 - (now - logFadeFrom) / logFadeDur)
     : 1;
 
   const THEME =
@@ -90,20 +96,20 @@ export function drawBattleScreen(ctx, st, opt) {
 
   // --- UI layout (下) ---
   const statX = 8;
-  const statY = 120;
-  const statW = 150;
   const statH = 76;
+  const statY = BASE_H - 8 - statH;
+  const statW = 150;
 
   const cmdX = 160;
-  const cmdY = 120;
-  const cmdW = 88;
   const cmdH = 76;
+  const cmdY = BASE_H - 8 - cmdH;
+  const cmdW = 88;
 
   // items window（表示中のみ）
   const invX = 160;
-  const invY = 44;
   const invW = 88;
   const invH = 68;
+  const invY = cmdY - invH - 4;
 
   // --- BOSS position ---
   const bossAreaTop = 52;
@@ -113,6 +119,8 @@ export function drawBattleScreen(ctx, st, opt) {
   // =====================
   // LOG layer (no shake)
   // =====================
+  ctx.save();
+  ctx.globalAlpha = logAlpha;
   drawBox(logX, logY, logW, logH);
 
   // ---- LOG CONTENT ----
@@ -207,6 +215,7 @@ export function drawBattleScreen(ctx, st, opt) {
       ctx.restore();
     }
   }
+  ctx.restore(); // logAlpha
 
   // =====================
   // Shake params
@@ -228,14 +237,16 @@ export function drawBattleScreen(ctx, st, opt) {
   if (shaking && mode === "boss") shakeTranslate();
 
   if (bossImg && bossImg.complete && bossImg.naturalWidth > 0) {
-    const bw = bossImg.naturalWidth | 0;
-    const bh = bossImg.naturalHeight | 0;
+    const BOSS_SCALE = 3;
+    const bw = (bossImg.naturalWidth  * BOSS_SCALE) | 0;
+    const bh = (bossImg.naturalHeight * BOSS_SCALE) | 0;
     const x = ((BASE_W - bw) / 2) | 0;
-    const y = (bossAreaTop + ((bossAreaH - bh) / 2)) | 0;
+    const y = (statY - bh) | 0;
 
     ctx.save();
+    ctx.imageSmoothingEnabled = false;
     ctx.globalAlpha = bossAlpha;
-    ctx.drawImage(bossImg, x, y);
+    ctx.drawImage(bossImg, x, y, bw, bh);
 
     // 赤点滅（フェードと同じアルファを乗算）
     if ((bossFlashUntil | 0) > (now | 0)) {

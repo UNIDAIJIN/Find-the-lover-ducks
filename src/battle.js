@@ -248,6 +248,8 @@ export function createBattleSystem(cfg) {
       bossFlashUntil: 0,
       bossFadeFrom: 0,
       bossFadeDur: 0,
+      logFadeFrom: 0,
+      logFadeDur: 0,
       showYouWin: false,
 
       uiKickUntil: 0,
@@ -608,19 +610,17 @@ export function createBattleSystem(cfg) {
             const reaction = DUCK_REACTIONS[st.ducksThrown | 0];
             if (!reaction) return;
             if (reaction.win) {
-              // 10投目：Z送り → 赤点滅2.2s → ウボァ(フェード同時3s) → YOU WIN! 3s → フィールドへ
+              // 10投目：Z送り → ウボァー表示と同時に赤点滅＋フェード(3s) → YOU WIN! 3s → フィールドへ
               queueMsg(reaction.lines, { autoMs: 0 });
-              const FLASH_MS = 2200;
-              queueEvent({
-                autoMs: FLASH_MS,
-                apply: () => { st.bossFlashUntil = (st.now | 0) + FLASH_MS; },
-              });
-              const FADE_MS = 3000;
+              const EFFECT_MS = 3000;
               queueMsg(["ミナミ「ウボァーーーーー！！」"], {
-                autoMs: FADE_MS,
+                autoMs: EFFECT_MS,
                 apply: () => {
-                  st.bossFadeFrom = st.now | 0;
-                  st.bossFadeDur  = FADE_MS;
+                  st.bossFlashUntil = (st.now | 0) + EFFECT_MS;
+                  st.bossFadeFrom   = st.now | 0;
+                  st.bossFadeDur    = EFFECT_MS;
+                  st.logFadeFrom    = st.now | 0;
+                  st.logFadeDur     = EFFECT_MS;
                 },
               });
               queueEvent({
@@ -722,6 +722,7 @@ export function createBattleSystem(cfg) {
     if (st.msg && (st.msg.autoMs | 0) > 0) {
       if (((st.now | 0) - (st.msgSince | 0)) >= (st.msg.autoMs | 0)) closeMsg();
     }
+    if (!st) return; // closeMsg が endToField を呼んで st を null にした場合
 
     // intro / pre_resolve はメッセージ駆動なので入力無しでOK
     if (st.phase === "intro" || st.phase === "pre_resolve") return;
@@ -863,6 +864,8 @@ export function createBattleSystem(cfg) {
       bossFlashUntil: st.bossFlashUntil,
       bossFadeFrom:   st.bossFadeFrom,
       bossFadeDur:    st.bossFadeDur,
+      logFadeFrom:    st.logFadeFrom,
+      logFadeDur:     st.logFadeDur,
       showYouWin:     st.showYouWin,
 
       uiKickUntil: st.uiKickUntil,
