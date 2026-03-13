@@ -1,4 +1,6 @@
 // ui_inventory.js
+import { playCursor, playConfirm } from "./se.js";
+
 export function createInventory({
   BASE_W,
   BASE_H,
@@ -104,17 +106,17 @@ export function createInventory({
     }
     if (n <= 0) return;
 
-    if (input.consume("ArrowUp")) moveCursorTo(inv.cursor - 2);
-    if (input.consume("ArrowDown")) moveCursorTo(inv.cursor + 2);
+    if (input.consume("ArrowUp"))    { moveCursorTo(inv.cursor - 2); playCursor(); }
+    if (input.consume("ArrowDown"))  { moveCursorTo(inv.cursor + 2); playCursor(); }
 
     if (input.consume("ArrowLeft")) {
-      if ((inv.cursor & 1) === 1) moveCursorTo(inv.cursor - 1);
+      if ((inv.cursor & 1) === 1) { moveCursorTo(inv.cursor - 1); playCursor(); }
     }
     if (input.consume("ArrowRight")) {
-      if ((inv.cursor & 1) === 0 && inv.cursor + 1 < n) moveCursorTo(inv.cursor + 1);
+      if ((inv.cursor & 1) === 0 && inv.cursor + 1 < n) { moveCursorTo(inv.cursor + 1); playCursor(); }
     }
 
-    if (input.consume("z")) confirmUse();
+    if (input.consume("z")) { playConfirm(); confirmUse(); }
   }
 
   function addItem(id) {
@@ -127,6 +129,12 @@ export function createInventory({
 
   function getSnapshot() {
     return inv.items.slice();
+  }
+
+  function resetItems(arr) {
+    inv.items = (arr || []).slice();
+    inv.cursor = 0;
+    inv.scrollRow = 0;
   }
 
   function draw(ctx) {
@@ -189,5 +197,6 @@ export function createInventory({
     draw,
     addItem,
     getSnapshot,
+    resetItems,
   };
 }

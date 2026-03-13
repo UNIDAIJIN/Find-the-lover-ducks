@@ -10,8 +10,11 @@ import { REGISTRY } from "./registry.js";
 const { createInput, createBgm, createSea, createDialog, createChoice, createFade, createInventory, createFollowers, createBattleSystem, runNpcEvent } = REGISTRY;
 import { STATE } from "./state.js";
 import { createEnding } from "./ending.js";
+import { createTitle  } from "./title.js";
+import { setupMobileController } from "./mobile_controller.js";
 
-const DEBUG = true;
+const DEBUG  = true;
+const MOBILE = false;
 
 const canvas = document.getElementById("c");
 const ctx = canvas.getContext("2d");
@@ -226,6 +229,38 @@ function startBattleTransition(onDone) {
   };
 }
 const ending = createEnding({ BASE_W, BASE_H });
+const title  = createTitle({ BASE_W, BASE_H, input });
+
+// ---- Save / Load ----
+const SAVE_KEY = "rpg_save";
+let saveNotice = null; // { text, until }
+
+function saveGame() {
+  const data = {
+    mapId:          current.id,
+    leaderX:        leader.x,
+    leaderY:        leader.y,
+    collectedItems: [...collectedItems],
+    inventoryItems: inventory.getSnapshot(),
+  };
+  localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+  saveNotice = { text: "SAVED", until: nowMs() + 1200 };
+}
+
+function loadGame() {
+  const raw = localStorage.getItem(SAVE_KEY);
+  if (!raw) { saveNotice = { text: "NO DATA", until: nowMs() + 1200 }; return; }
+  try {
+    const data = JSON.parse(raw);
+    collectedItems.clear();
+    for (const id of (data.collectedItems || [])) collectedItems.add(id);
+    inventory.resetItems(data.inventoryItems || []);
+    loadMap(data.mapId || "outdoor", { spawnAt: { x: data.leaderX, y: data.leaderY } });
+    saveNotice = { text: "LOADED", until: nowMs() + 1200 };
+  } catch (e) {
+    saveNotice = { text: "LOAD ERROR", until: nowMs() + 1200 };
+  }
+}
 
 const battle = createBattleSystem({
   BASE_W,
@@ -350,7 +385,10 @@ function loadMap(id, opt = null) {
     let sx = current.bgW >> 1,
       sy = current.bgH >> 1;
 
-    if (opt && opt.doorId != null) {
+    if (opt?.spawnAt) {
+      sx = opt.spawnAt.x;
+      sy = opt.spawnAt.y;
+    } else if (opt && opt.doorId != null) {
       // find the door on the destination map that matches this id
       const door = (def.doors || []).find(d => d.id === opt.doorId);
       if (door?.entryAt) { sx = door.entryAt.x; sy = door.entryAt.y; }
@@ -424,6 +462,13 @@ function draw() {
   ctx.globalAlpha = 1;
   ctx.imageSmoothingEnabled = false;
   ctx.clearRect(0, 0, BASE_W, BASE_H);
+
+  // タイトル画面
+  if (title.isActive()) {
+    const tt = typeof performance !== "undefined" ? performance.now() : Date.now();
+    title.draw(ctx, tt);
+    return;
+  }
 
   // エンカウント遷移アニメ中
   if (battleTransition) {
@@ -510,6 +555,23 @@ function draw() {
   choice.draw(ctx);
   ending.draw(ctx, tt);
   fade.draw(ctx);
+
+  // セーブ/ロード通知
+  if (saveNotice && tt < saveNotice.until) {
+    const alpha = Math.min(1, (saveNotice.until - tt) / 300);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.font = "normal 10px PixelMplus10";
+    ctx.textBaseline = "top";
+    ctx.fillStyle = "#000";
+    ctx.fillRect(BASE_W - 70, 4, 66, 14);
+    ctx.strokeStyle = "#fff";
+    ctx.strokeRect(BASE_W - 70 + 0.5, 4.5, 65, 13);
+    ctx.fillStyle = "#fff";
+    const tw = ctx.measureText(saveNotice.text).width;
+    ctx.fillText(saveNotice.text, (BASE_W - 70 + (66 - tw) / 2) | 0, 6);
+    ctx.restore();
+  }
 }
 
 // ---- Update ----
@@ -585,6 +647,12 @@ function tryInteract(t) {
 }
 
 function update(t) {
+  // タイトル画面
+  if (title.isActive()) {
+    title.update();
+    return;
+  }
+
   // fade 最優先
   if (fade.isActive()) {
     fade.update(t, () => mapReady);
@@ -659,6 +727,10 @@ function update(t) {
   // field
   if (input.consume("x")) inventory.toggle();
   if (input.consume("z")) tryInteract(t); // ★tを渡す
+
+  // セーブ / ロード
+  if (input.consume("s")) { saveGame(); return; }
+  if (input.consume("l")) { loadGame(); return; }
 
   // デバッグ：D キーで vj_room02 に即移動
   if (DEBUG && input.consume("d")) {
@@ -739,7 +811,20 @@ function update(t) {
 }
 
 // ---- Loop ----
+// マップを事前ロードしてからタイトル表示
 loadMap("outdoor");
+title.start({
+  onNewGame() {
+    collectedItems.clear();
+    inventory.resetItems([]);
+    loadMap("outdoor");
+  },
+  onContinue() {
+    loadGame();
+  },
+});
+
+if (MOBILE) setupMobileController(input);
 
 if (!window.__rpgLoopStarted) {
   window.__rpgLoopStarted = true;

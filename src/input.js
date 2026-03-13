@@ -10,6 +10,8 @@ export function createInput() {
     if (k === "X") return "x";
     if (k === "C") return "c";
     if (k === "D") return "d";
+    if (k === "S") return "s";
+    if (k === "L") return "l";
     return k;
   }
 
@@ -18,16 +20,13 @@ export function createInput() {
   }
 
   function isOurKey(k) {
-    return isArrowKey(k) || k === "z" || k === "x" || k === "c" || k === "d";
+    return isArrowKey(k) || k === "z" || k === "x" || k === "c" || k === "d" || k === "s" || k === "l";
   }
 
   function onKeyDown(e) {
     const k = normKey(e.key);
     if (!isOurKey(k)) return;
-
     e.preventDefault();
-
-    // 押しっぱなし中のリピートで hit を増やさない
     if (!downSet.has(k)) hitSet.add(k);
     downSet.add(k);
   }
@@ -58,6 +57,16 @@ export function createInput() {
         return true;
       }
       return false;
+    },
+    // タッチ用：押し始め
+    press(key) {
+      const k = normKey(key);
+      if (!downSet.has(k)) hitSet.add(k);
+      downSet.add(k);
+    },
+    // タッチ用：離した
+    release(key) {
+      downSet.delete(normKey(key));
     },
     clear() {
       downSet.clear();

@@ -1,4 +1,6 @@
 // ui_dialog.js
+import { playConfirm } from "./se.js";
+
 export function createDialog({ BASE_W, BASE_H, input } = {}) {
   let active = false;
   let pages  = [];
@@ -122,6 +124,7 @@ export function createDialog({ BASE_W, BASE_H, input } = {}) {
         // 表示中→即時完了
         completeTyping();
       } else {
+        playConfirm();
         advance();
       }
     }
