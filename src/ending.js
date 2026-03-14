@@ -1,10 +1,11 @@
 // ending.js
 export function createEnding({ BASE_W, BASE_H }) {
   let active         = false;
-  let phase          = "waiting"; // "waiting" | "credits" | "fadeout"
+  let phase          = "waiting"; // "waiting" | "credits" | "fadeout" | "hold" | "done"
   let startMs        = 0;
   let creditsStartMs = 0;
   let fadeOutStartMs = 0;
+  let holdStartMs    = 0;
 
   const CREDITS_DELAY_MS  = 8000;
   const DIM_ALPHA         = 0.5;
@@ -12,6 +13,7 @@ export function createEnding({ BASE_W, BASE_H }) {
   const SCROLL_PX_PER_SEC = 24;
   const LINE_H            = 22;
   const FADEOUT_MS        = 2500; // 最後の真っ暗フェードアウト時間
+  const HOLD_MS           = 3000; // 真っ暗後、入力受付までの余韻時間
 
   const CREDITS = [
     "MoritaSaki in the pool 2nd Album",
@@ -93,7 +95,11 @@ export function createEnding({ BASE_W, BASE_H }) {
 
     if (phase === "fadeout") {
       const p = ease((t - fadeOutStartMs) / FADEOUT_MS);
-      if (p >= 1) phase = "done";
+      if (p >= 1) { phase = "hold"; holdStartMs = t; }
+    }
+
+    if (phase === "hold") {
+      if (t - holdStartMs >= HOLD_MS) phase = "done";
     }
   }
 
@@ -134,8 +140,8 @@ export function createEnding({ BASE_W, BASE_H }) {
     ctx.restore();
 
     // --- 最後の真っ暗フェードアウト ---
-    if (phase === "fadeout" || phase === "done") {
-      const p = phase === "done" ? 1 : ease((t - fadeOutStartMs) / FADEOUT_MS);
+    if (phase === "fadeout" || phase === "hold" || phase === "done") {
+      const p = (phase === "hold" || phase === "done") ? 1 : ease((t - fadeOutStartMs) / FADEOUT_MS);
       ctx.save();
       ctx.globalAlpha = p;
       ctx.fillStyle   = "#000";
