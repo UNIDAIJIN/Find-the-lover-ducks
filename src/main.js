@@ -848,7 +848,11 @@ if (!window.__rpgLoopStarted) {
     draw();
     requestAnimationFrame(loop);
   }
-  requestAnimationFrame(loop);
+
+  // フォント読み込み完了後にループ開始（初回テキスト化け防止）
+  document.fonts.load("10px PixelMplus10").then(() => {
+    requestAnimationFrame(loop);
+  });
 }
 
 if (DEBUG) {
