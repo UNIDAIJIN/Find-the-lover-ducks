@@ -1,5 +1,6 @@
 // title.js
 import { playCursor, playConfirm } from "./se.js";
+import { VERSION } from "./config.js";
 
 export function createTitle({ BASE_W, BASE_H, input }) {
   let active     = false;
@@ -70,6 +71,11 @@ export function createTitle({ BASE_W, BASE_H, input }) {
       ctx.imageSmoothingEnabled = false;
       ctx.drawImage(duckImg, frame * SPR, 0, SPR, SPR, dx, dy, dw, dh);
     }
+
+    // バージョン（右上）
+    ctx.fillStyle = "#555";
+    const ver = "v" + VERSION;
+    ctx.fillText(ver, BASE_W - ctx.measureText(ver).width - 4, 4);
 
     // メニュー
     const menuY = BASE_H - 40;

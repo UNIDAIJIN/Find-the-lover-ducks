@@ -2,6 +2,8 @@
 // Global configuration for the RPG engine.
 // Import this file to avoid hardcoded magic numbers scattered across modules.
 
+export const VERSION = "0.1.0";
+
 export const CONFIG = {
   // ---- Canvas / Display ----
   BASE_W: 256,      // base render width in pixels
