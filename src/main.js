@@ -488,6 +488,25 @@ function loadMap(id, opt = null) {
 }
 
 // ---- Draw ----
+// カメラが映している範囲だけ描画（巨大マップのGPU負荷削減）
+function drawMapImg(img, alpha) {
+  if (!img.complete || img.naturalWidth <= 0) return;
+  const sx = cam.x | 0;
+  const sy = cam.y | 0;
+  const sw = Math.min(canvas.width,  img.naturalWidth  - sx);
+  const sh = Math.min(canvas.height, img.naturalHeight - sy);
+  if (sw <= 0 || sh <= 0) return;
+  if (alpha !== undefined && alpha < 1) {
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+    ctx.restore();
+  } else {
+    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+  }
+}
+
 function drawSprite(img, f, x, y) {
   if (!img) {
     if (DEBUG) {
@@ -578,18 +597,11 @@ function draw() {
 
   // ベースレイヤー：shrine完全移行後はbgImgを省略して描画コスト削減
   if (shrineFade >= 1) {
-    if (bgShrineImg.complete && bgShrineImg.naturalWidth > 0)
-      ctx.drawImage(bgShrineImg, -(cam.x | 0), -(cam.y | 0));
+    drawMapImg(bgShrineImg);
   } else {
-    if (bgImg.complete && bgImg.naturalWidth > 0)
-      ctx.drawImage(bgImg, -(cam.x | 0), -(cam.y | 0));
+    drawMapImg(bgImg);
     drawWaterSea(ctx, tt);
-    if (shrineFade > 0 && bgShrineImg.complete && bgShrineImg.naturalWidth > 0) {
-      ctx.save();
-      ctx.globalAlpha = shrineFade;
-      ctx.drawImage(bgShrineImg, -(cam.x | 0), -(cam.y | 0));
-      ctx.restore();
-    }
+    if (shrineFade > 0) drawMapImg(bgShrineImg, shrineFade);
   }
 
   const list = [];
@@ -621,18 +633,10 @@ function draw() {
 
   // トップレイヤー：同様に完全移行後は shrine 側のみ
   if (shrineFade >= 1) {
-    if (bgShrineTopImg.complete && bgShrineTopImg.naturalWidth > 0)
-      ctx.drawImage(bgShrineTopImg, -(cam.x | 0), -(cam.y | 0));
+    drawMapImg(bgShrineTopImg);
   } else {
-    if (bgTopImg.complete && bgTopImg.naturalWidth > 0)
-      ctx.drawImage(bgTopImg, -(cam.x | 0), -(cam.y | 0));
-    if (shrineFade > 0 && bgShrineTopImg.complete && bgShrineTopImg.naturalWidth > 0) {
-      ctx.save();
-      ctx.globalAlpha = shrineFade;
-      ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(bgShrineTopImg, -(cam.x | 0), -(cam.y | 0));
-      ctx.restore();
-    }
+    drawMapImg(bgTopImg);
+    if (shrineFade > 0) drawMapImg(bgShrineTopImg, shrineFade);
   }
 
   inventory.draw(uc);
@@ -990,11 +994,9 @@ if (MOBILE) setupMobileController(input);
 if (!window.__rpgLoopStarted) {
   window.__rpgLoopStarted = true;
 
-  // モバイルは描画を30fpsに絞る（update/入力は60fps維持）
-  let _drawTick = 0;
   function loop(t) {
     update(t);
-    if (!MOBILE || (_drawTick++ & 1) === 0) draw();
+    draw();
     requestAnimationFrame(loop);
   }
 
