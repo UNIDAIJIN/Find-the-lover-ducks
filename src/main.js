@@ -576,18 +576,20 @@ function draw() {
   const tt = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
   sea.draw(ctx, tt, cam, canvas.width, canvas.height);
 
-  if (bgImg.complete && bgImg.naturalWidth > 0) {
-    ctx.drawImage(bgImg, -(cam.x | 0), -(cam.y | 0));
-  }
-
-  drawWaterSea(ctx, tt);
-
-  // shrine クロスフェード
-  if (shrineFade > 0 && bgShrineImg.complete && bgShrineImg.naturalWidth > 0) {
-    ctx.save();
-    ctx.globalAlpha = shrineFade;
-    ctx.drawImage(bgShrineImg, -(cam.x | 0), -(cam.y | 0));
-    ctx.restore();
+  // ベースレイヤー：shrine完全移行後はbgImgを省略して描画コスト削減
+  if (shrineFade >= 1) {
+    if (bgShrineImg.complete && bgShrineImg.naturalWidth > 0)
+      ctx.drawImage(bgShrineImg, -(cam.x | 0), -(cam.y | 0));
+  } else {
+    if (bgImg.complete && bgImg.naturalWidth > 0)
+      ctx.drawImage(bgImg, -(cam.x | 0), -(cam.y | 0));
+    drawWaterSea(ctx, tt);
+    if (shrineFade > 0 && bgShrineImg.complete && bgShrineImg.naturalWidth > 0) {
+      ctx.save();
+      ctx.globalAlpha = shrineFade;
+      ctx.drawImage(bgShrineImg, -(cam.x | 0), -(cam.y | 0));
+      ctx.restore();
+    }
   }
 
   const list = [];
@@ -617,15 +619,20 @@ function draw() {
     }
   });
 
-  if (bgTopImg.complete && bgTopImg.naturalWidth > 0) {
-    ctx.drawImage(bgTopImg, -(cam.x | 0), -(cam.y | 0));
-  }
-  if (shrineFade > 0 && bgShrineTopImg.complete && bgShrineTopImg.naturalWidth > 0) {
-    ctx.save();
-    ctx.globalAlpha = shrineFade;
-    ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(bgShrineTopImg, -(cam.x | 0), -(cam.y | 0));
-    ctx.restore();
+  // トップレイヤー：同様に完全移行後は shrine 側のみ
+  if (shrineFade >= 1) {
+    if (bgShrineTopImg.complete && bgShrineTopImg.naturalWidth > 0)
+      ctx.drawImage(bgShrineTopImg, -(cam.x | 0), -(cam.y | 0));
+  } else {
+    if (bgTopImg.complete && bgTopImg.naturalWidth > 0)
+      ctx.drawImage(bgTopImg, -(cam.x | 0), -(cam.y | 0));
+    if (shrineFade > 0 && bgShrineTopImg.complete && bgShrineTopImg.naturalWidth > 0) {
+      ctx.save();
+      ctx.globalAlpha = shrineFade;
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(bgShrineTopImg, -(cam.x | 0), -(cam.y | 0));
+      ctx.restore();
+    }
   }
 
   inventory.draw(uc);
