@@ -990,9 +990,11 @@ if (MOBILE) setupMobileController(input);
 if (!window.__rpgLoopStarted) {
   window.__rpgLoopStarted = true;
 
+  // モバイルは描画を30fpsに絞る（update/入力は60fps維持）
+  let _drawTick = 0;
   function loop(t) {
     update(t);
-    draw();
+    if (!MOBILE || (_drawTick++ & 1) === 0) draw();
     requestAnimationFrame(loop);
   }
 
