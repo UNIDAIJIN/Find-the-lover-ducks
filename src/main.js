@@ -403,7 +403,7 @@ function shrineTriggerCheck() {
   if (inZone !== shrineTriggerActive) {
     shrineTriggerActive = inZone;
     playSuzu();
-    bgmCtl.audio.volume = inZone ? 0 : 0.35;
+    bgmCtl.audio.muted = inZone; // iOS は volume 変更不可のため muted を使う
     if (IS_MOBILE_DEVICE) {
       // モバイル：白フラッシュ開始。ピーク時に shrineFade をスナップ
       shrineWhite = { phase: "fade-in", alpha: 0, targetMode: inZone };
