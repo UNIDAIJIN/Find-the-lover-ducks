@@ -40,9 +40,9 @@ function nowMs() {
 
 
 // UI / FX
-const dialog = createDialog({ BASE_W, BASE_H, input });
-const choice = createChoice({ BASE_W, BASE_H, input });
-const fade = createFade({ BASE_W, BASE_H, input, mapOutMs: MAP_FADE_OUT_MS, mapInMs: MAP_FADE_IN_MS });
+const dialog = createDialog({ BASE_W: CONFIG.BASE_W, BASE_H: CONFIG.BASE_H, input });
+const choice = createChoice({ BASE_W: CONFIG.BASE_W, BASE_H: CONFIG.BASE_H, input });
+const fade = createFade({ BASE_W: CONFIG.BASE_W, BASE_H: CONFIG.BASE_H, input, mapOutMs: MAP_FADE_OUT_MS, mapInMs: MAP_FADE_IN_MS });
 
 // 初期：ダイアログの上にchoiceを積むための基準を渡す
 if (typeof dialog.getRect === "function" && typeof choice.setAnchorRect === "function") {
@@ -185,8 +185,8 @@ function spawnActorsForMap(mapId) {
 
 // ---- Inventory (externalized) ----
 const inventory = createInventory({
-  BASE_W,
-  BASE_H,
+  BASE_W: CONFIG.BASE_W,
+  BASE_H: CONFIG.BASE_H,
   input,
   itemName,
   itemBgmSrc,
@@ -284,8 +284,8 @@ function loadGame() {
 }
 
 const battle = createBattleSystem({
-  BASE_W,
-  BASE_H,
+  BASE_W: CONFIG.BASE_W,
+  BASE_H: CONFIG.BASE_H,
   itemName,
   itemBgmSrc,
   itemThrowDmg,
@@ -487,6 +487,14 @@ function loadMap(id, opt = null) {
 }
 
 // ---- Draw ----
+// UIをCONFIG解像度で描画するためのスケール適用ヘルパー
+function drawUi(fn) {
+  ctx.save();
+  ctx.scale(canvas.width / CONFIG.BASE_W, canvas.height / CONFIG.BASE_H);
+  fn();
+  ctx.restore();
+}
+
 function drawSprite(img, f, x, y) {
   if (!img) {
     if (DEBUG) {
@@ -553,12 +561,12 @@ function draw() {
       ctx.restore();
     }
 
-    fade.draw(ctx);
+    drawUi(() => fade.draw(ctx));
     return;
   }
 
   if (battle.isActive()) {
-    battle.draw(ctx);
+    drawUi(() => battle.draw(ctx));
     return;
   }
 
@@ -618,12 +626,11 @@ function draw() {
     ctx.restore();
   }
 
-  inventory.draw(ctx);
-
-  dialog.draw(ctx);
-  choice.draw(ctx);
-  ending.draw(ctx, tt);
-  fade.draw(ctx);
+  drawUi(() => inventory.draw(ctx));
+  drawUi(() => dialog.draw(ctx));
+  drawUi(() => choice.draw(ctx));
+  drawUi(() => ending.draw(ctx, tt));
+  drawUi(() => fade.draw(ctx));
 
   // デバッグ：座標表示
   if (DEBUG) {
@@ -641,18 +648,20 @@ function draw() {
   // セーブ/ロード通知
   if (saveNotice && tt < saveNotice.until) {
     const alpha = Math.min(1, (saveNotice.until - tt) / 300);
-    ctx.save();
-    ctx.globalAlpha = alpha;
-    ctx.font = "normal 10px PixelMplus10";
-    ctx.textBaseline = "top";
-    ctx.fillStyle = "#000";
-    ctx.fillRect(BASE_W - 70, 4, 66, 14);
-    ctx.strokeStyle = "#fff";
-    ctx.strokeRect(BASE_W - 70 + 0.5, 4.5, 65, 13);
-    ctx.fillStyle = "#fff";
-    const tw = ctx.measureText(saveNotice.text).width;
-    ctx.fillText(saveNotice.text, (BASE_W - 70 + (66 - tw) / 2) | 0, 6);
-    ctx.restore();
+    drawUi(() => {
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.font = "normal 10px PixelMplus10";
+      ctx.textBaseline = "top";
+      ctx.fillStyle = "#000";
+      ctx.fillRect(CONFIG.BASE_W - 70, 4, 66, 14);
+      ctx.strokeStyle = "#fff";
+      ctx.strokeRect(CONFIG.BASE_W - 70 + 0.5, 4.5, 65, 13);
+      ctx.fillStyle = "#fff";
+      const tw = ctx.measureText(saveNotice.text).width;
+      ctx.fillText(saveNotice.text, (CONFIG.BASE_W - 70 + (66 - tw) / 2) | 0, 6);
+      ctx.restore();
+    });
   }
 }
 
