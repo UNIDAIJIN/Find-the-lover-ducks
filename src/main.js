@@ -75,7 +75,7 @@ const col = makeColStore();
 let shrineMode  = false;
 let shrineFade  = 0;      // 0.0 (normal) → 1.0 (shrine)
 let shrineTriggerActive = false; // 踏み続けている間は再発火しない
-const SHRINE_FADE_SPEED = 1 / 15; // ~15フレームでフェード完了
+const SHRINE_FADE_SPEED = 1 / 6; // ~6フレームでフェード完了（重い遷移区間を短縮）
 
 // ---- Water sea overlay (color-masked) ----
 const seaTempCanvas = document.createElement("canvas");
@@ -588,6 +588,8 @@ function draw() {
 
   // ベースレイヤー：shrine完全移行後はbgImgを省略して描画コスト削減
   if (shrineFade >= 1) {
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
     drawMapImg(bgShrineImg);
   } else {
     drawMapImg(bgImg);
@@ -612,6 +614,7 @@ function draw() {
 
   list.sort((a, b) => a.y - b.y);
   list.forEach((o) => {
+    if (o.alpha !== undefined && o.alpha <= 0) return;
     if (o.alpha !== undefined && o.alpha < 1) {
       ctx.save();
       ctx.globalAlpha = Math.max(0, o.alpha);
