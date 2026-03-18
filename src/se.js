@@ -14,6 +14,8 @@ function play(a) {
 
 const _cursor  = makeSe("se_cursor.mp3",  0.5);
 const _confirm = makeSe("se_confirm.mp3", 0.5);
+const _suzu    = makeSe("se_suzu.mp3",    0.8);
 
 export function playCursor()  { play(_cursor);  }
 export function playConfirm() { play(_confirm); }
+export function playSuzu()    { play(_suzu);    }
