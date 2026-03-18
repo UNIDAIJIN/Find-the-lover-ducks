@@ -20,7 +20,6 @@ const MOBILE = true;
 const canvas = document.getElementById("c");
 const ctx = canvas.getContext("2d");
 ctx.imageSmoothingEnabled = false;
-let uiCtx = null; // UI専用オーバーレイcanvas（後で初期化）
 
 const { SCALE, SPR, SPEED, FRAME_MS, GAP2, GAP3, GAP4, NPC_FRAME_MS, DOOR_COOLDOWN_MS, MAP_FADE_OUT_MS, MAP_FADE_IN_MS } = CONFIG;
 // Mobile: render at lower resolution so each pixel appears ~1.2x larger at the same CSS size
@@ -41,9 +40,9 @@ function nowMs() {
 
 
 // UI / FX
-const dialog = createDialog({ BASE_W: CONFIG.BASE_W, BASE_H: CONFIG.BASE_H, input });
-const choice = createChoice({ BASE_W: CONFIG.BASE_W, BASE_H: CONFIG.BASE_H, input });
-const fade = createFade({ BASE_W: CONFIG.BASE_W, BASE_H: CONFIG.BASE_H, input, mapOutMs: MAP_FADE_OUT_MS, mapInMs: MAP_FADE_IN_MS });
+const dialog = createDialog({ BASE_W, BASE_H, input });
+const choice = createChoice({ BASE_W, BASE_H, input });
+const fade = createFade({ BASE_W, BASE_H, input, mapOutMs: MAP_FADE_OUT_MS, mapInMs: MAP_FADE_IN_MS });
 
 // 初期：ダイアログの上にchoiceを積むための基準を渡す
 if (typeof dialog.getRect === "function" && typeof choice.setAnchorRect === "function") {
@@ -186,8 +185,8 @@ function spawnActorsForMap(mapId) {
 
 // ---- Inventory (externalized) ----
 const inventory = createInventory({
-  BASE_W: CONFIG.BASE_W,
-  BASE_H: CONFIG.BASE_H,
+  BASE_W,
+  BASE_H,
   input,
   itemName,
   itemBgmSrc,
@@ -285,8 +284,8 @@ function loadGame() {
 }
 
 const battle = createBattleSystem({
-  BASE_W: CONFIG.BASE_W,
-  BASE_H: CONFIG.BASE_H,
+  BASE_W,
+  BASE_H,
   itemName,
   itemBgmSrc,
   itemThrowDmg,
@@ -527,14 +526,6 @@ function draw() {
   ctx.imageSmoothingEnabled = false;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // UIオーバーレイcanvasをリセット
-  const uc = uiCtx ?? ctx;
-  if (uiCtx) {
-    uiCtx.setTransform(1, 0, 0, 1, 0, 0);
-    uiCtx.globalAlpha = 1;
-    uiCtx.imageSmoothingEnabled = false;
-    uiCtx.clearRect(0, 0, CONFIG.BASE_W, CONFIG.BASE_H);
-  }
 
   // タイトル画面
   if (title.isActive()) {
@@ -582,12 +573,12 @@ function draw() {
       ctx.restore();
     }
 
-    fade.draw(uc);
+    fade.draw(ctx);
     return;
   }
 
   if (battle.isActive()) {
-    battle.draw(uc);
+    battle.draw(ctx);
     return;
   }
 
@@ -639,11 +630,11 @@ function draw() {
     if (shrineFade > 0) drawMapImg(bgShrineTopImg, shrineFade);
   }
 
-  inventory.draw(uc);
-  dialog.draw(uc);
-  choice.draw(uc);
-  ending.draw(uc, tt);
-  fade.draw(uc);
+  inventory.draw(ctx);
+  dialog.draw(ctx);
+  choice.draw(ctx);
+  ending.draw(ctx, tt);
+  fade.draw(ctx);
 
   // デバッグ：座標表示
   if (DEBUG) {
@@ -661,18 +652,18 @@ function draw() {
   // セーブ/ロード通知
   if (saveNotice && tt < saveNotice.until) {
     const alpha = Math.min(1, (saveNotice.until - tt) / 300);
-    uc.save();
-    uc.globalAlpha = alpha;
-    uc.font = "normal 10px PixelMplus10";
-    uc.textBaseline = "top";
-    uc.fillStyle = "#000";
-    uc.fillRect(CONFIG.BASE_W - 70, 4, 66, 14);
-    uc.strokeStyle = "#fff";
-    uc.strokeRect(CONFIG.BASE_W - 70 + 0.5, 4.5, 65, 13);
-    uc.fillStyle = "#fff";
-    const tw = uc.measureText(saveNotice.text).width;
-    uc.fillText(saveNotice.text, (CONFIG.BASE_W - 70 + (66 - tw) / 2) | 0, 6);
-    uc.restore();
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.font = "normal 10px PixelMplus10";
+    ctx.textBaseline = "top";
+    ctx.fillStyle = "#000";
+    ctx.fillRect(BASE_W - 70, 4, 66, 14);
+    ctx.strokeStyle = "#fff";
+    ctx.strokeRect(BASE_W - 70 + 0.5, 4.5, 65, 13);
+    ctx.fillStyle = "#fff";
+    const tw = ctx.measureText(saveNotice.text).width;
+    ctx.fillText(saveNotice.text, (BASE_W - 70 + (66 - tw) / 2) | 0, 6);
+    ctx.restore();
   }
 }
 
@@ -964,32 +955,6 @@ title.start({
 
 if (MOBILE) setupMobileController(input);
 
-// ---- UIオーバーレイcanvas ----
-{
-  const uiEl = document.createElement("canvas");
-  uiEl.width  = CONFIG.BASE_W;
-  uiEl.height = CONFIG.BASE_H;
-  uiEl.style.cssText = "pointer-events:none;image-rendering:pixelated;image-rendering:crisp-edges;";
-
-  if (MOBILE) {
-    // #screen-wrap (padding:20px 0) の中にゲームcanvasがある
-    const sw = document.getElementById("screen-wrap");
-    sw.style.position = "relative";
-    uiEl.style.cssText += "position:absolute;top:20px;left:0;width:100%;height:auto;";
-    sw.appendChild(uiEl);
-  } else {
-    // desktop: ゲームcanvasをrelativeラッパーで囲む
-    const wrap = document.createElement("div");
-    wrap.style.cssText = "position:relative;display:inline-block;line-height:0;";
-    canvas.parentNode.insertBefore(wrap, canvas);
-    wrap.appendChild(canvas);
-    uiEl.style.cssText += "position:absolute;top:0;left:0;width:100%;height:100%;";
-    wrap.appendChild(uiEl);
-  }
-
-  uiCtx = uiEl.getContext("2d");
-  uiCtx.imageSmoothingEnabled = false;
-}
 
 if (!window.__rpgLoopStarted) {
   window.__rpgLoopStarted = true;
