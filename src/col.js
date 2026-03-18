@@ -35,7 +35,19 @@ export function makeColStore() {
       if (!this.ready || !this.data) return false;
       if (px < 0 || py < 0 || px >= this.w || py >= this.h) return true;
       const i = ((py | 0) * this.w + (px | 0)) * 4;
-      return (this.data[i + 3] | 0) > 0; // any opaque pixel = wall
+      if ((this.data[i + 3] | 0) === 0) return false; // transparent = walkable
+      // red (255,0,0) = zone marker = walkable
+      if ((this.data[i] | 0) > 200 && (this.data[i+1] | 0) < 50 && (this.data[i+2] | 0) < 50) return false;
+      return true;
+    },
+    // Returns zone id at pixel, or null
+    getZone(px, py) {
+      if (!this.ready || !this.data) return null;
+      if (px < 0 || py < 0 || px >= this.w || py >= this.h) return null;
+      const i = ((py | 0) * this.w + (px | 0)) * 4;
+      if ((this.data[i + 3] | 0) === 0) return null;
+      if ((this.data[i] | 0) > 200 && (this.data[i+1] | 0) < 50 && (this.data[i+2] | 0) < 50) return "shrine";
+      return null;
     },
   };
 }

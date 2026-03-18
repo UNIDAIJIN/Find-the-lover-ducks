@@ -1,9 +1,12 @@
 // data/maps/outdoor.js
 export const outdoorMap = {
-  bgSrc:  "assets/maps/outdoor.png",
-  colSrc: "assets/maps/outdoor_col.png",
-  bgmSrc: "assets/audio/bgm0.mp3",
-  spawn:  { x: 2358, y: 3106 },
+  bgSrc:          "assets/maps/outdoor.png",
+  bgTopSrc:       "assets/maps/outdoor_top.png",
+  bgShrineSrc:    "assets/maps/outdoor_shrine.png",
+  bgShrineTopSrc: "assets/maps/outdoor_shrine_top.png",
+  colSrc:         "assets/maps/outdoor_col.png",
+  bgmSrc:         "assets/audio/bgm0.mp3",
+  spawn:          { x: 2358, y: 3106 },
   doors: [
     {
       id:      1,
