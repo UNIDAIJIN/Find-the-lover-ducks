@@ -71,11 +71,17 @@ const bgShrineImg    = new Image();
 const bgShrineTopImg = new Image();
 const col = makeColStore();
 
+// ---- Mobile device detection ----
+const IS_MOBILE_DEVICE = navigator.maxTouchPoints > 0 || /Mobi|Android/i.test(navigator.userAgent);
+
 // ---- Shrine state ----
 let shrineMode  = false;
 let shrineFade  = 0;      // 0.0 (normal) → 1.0 (shrine)
 let shrineTriggerActive = false; // 踏み続けている間は再発火しない
 const SHRINE_FADE_SPEED = 1 / 6; // ~6フレームでフェード完了（重い遷移区間を短縮）
+// モバイル用：白フラッシュで瞬時スイッチ
+let shrineWhite = { phase: "off", alpha: 0, targetMode: false }; // phase: 'off'|'fade-in'|'fade-out'
+const SHRINE_WHITE_SPEED = 1 / 8; // ~8フレームでフェードイン/アウト
 
 // ---- Water sea overlay (color-masked) ----
 const seaTempCanvas = document.createElement("canvas");
@@ -396,9 +402,14 @@ function shrineTriggerCheck() {
 
   if (inZone !== shrineTriggerActive) {
     shrineTriggerActive = inZone;
-    shrineMode = inZone;
     playSuzu();
     bgmCtl.audio.volume = inZone ? 0 : 0.35;
+    if (IS_MOBILE_DEVICE) {
+      // モバイル：白フラッシュ開始。ピーク時に shrineFade をスナップ
+      shrineWhite = { phase: "fade-in", alpha: 0, targetMode: inZone };
+    } else {
+      shrineMode = inZone;
+    }
   }
 }
 
@@ -479,6 +490,7 @@ function loadMap(id, opt = null) {
   shrineMode = false;
   shrineFade = 0;
   shrineTriggerActive = false;
+  shrineWhite = { phase: "off", alpha: 0, targetMode: false };
 
   col.load(def.colSrc, () => {
     colOK = true;
@@ -631,6 +643,15 @@ function draw() {
   } else {
     drawMapImg(bgTopImg);
     if (shrineFade > 0) drawMapImg(bgShrineTopImg, shrineFade);
+  }
+
+  // モバイル：神社切替用の白フラッシュオーバーレイ
+  if (IS_MOBILE_DEVICE && shrineWhite.phase !== "off" && shrineWhite.alpha > 0) {
+    ctx.save();
+    ctx.globalAlpha = shrineWhite.alpha;
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.restore();
   }
 
   inventory.draw(ctx);
@@ -934,8 +955,24 @@ function update(t) {
   shrineTriggerCheck();
 
   // shrine フェードアニメ
-  if (shrineMode && shrineFade < 1) shrineFade = Math.min(1, shrineFade + SHRINE_FADE_SPEED);
-  else if (!shrineMode && shrineFade > 0) shrineFade = Math.max(0, shrineFade - SHRINE_FADE_SPEED);
+  if (IS_MOBILE_DEVICE) {
+    // モバイル：白フラッシュ。ピーク(alpha=1)で shrineFade をスナップして即切替
+    if (shrineWhite.phase === "fade-in") {
+      shrineWhite.alpha = Math.min(1, shrineWhite.alpha + SHRINE_WHITE_SPEED);
+      if (shrineWhite.alpha >= 1) {
+        shrineMode = shrineWhite.targetMode;
+        shrineFade = shrineWhite.targetMode ? 1 : 0;
+        shrineWhite.phase = "fade-out";
+      }
+    } else if (shrineWhite.phase === "fade-out") {
+      shrineWhite.alpha = Math.max(0, shrineWhite.alpha - SHRINE_WHITE_SPEED);
+      if (shrineWhite.alpha <= 0) shrineWhite.phase = "off";
+    }
+  } else {
+    // PC：グラデュアルクロスフェード
+    if (shrineMode && shrineFade < 1) shrineFade = Math.min(1, shrineFade + SHRINE_FADE_SPEED);
+    else if (!shrineMode && shrineFade > 0) shrineFade = Math.max(0, shrineFade - SHRINE_FADE_SPEED);
+  }
 
   updateCam();
 }
