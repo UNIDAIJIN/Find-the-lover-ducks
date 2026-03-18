@@ -12,6 +12,7 @@ import { STATE } from "./state.js";
 import { createEnding } from "./ending.js";
 import { createTitle  } from "./title.js";
 import { setupMobileController } from "./mobile_controller.js";
+import { playSuzu } from "./se.js";
 
 const DEBUG  = true;
 const MOBILE = true;
@@ -20,12 +21,16 @@ const canvas = document.getElementById("c");
 const ctx = canvas.getContext("2d");
 ctx.imageSmoothingEnabled = false;
 
-const { BASE_W, BASE_H, SCALE, SPR, SPEED, FRAME_MS, GAP2, GAP3, GAP4, NPC_FRAME_MS, DOOR_COOLDOWN_MS, MAP_FADE_OUT_MS, MAP_FADE_IN_MS } = CONFIG;
+const { SCALE, SPR, SPEED, FRAME_MS, GAP2, GAP3, GAP4, NPC_FRAME_MS, DOOR_COOLDOWN_MS, MAP_FADE_OUT_MS, MAP_FADE_IN_MS } = CONFIG;
+// Mobile: render at lower resolution so each pixel appears ~1.2x larger at the same CSS size
+const BASE_W = MOBILE ? 192 : CONFIG.BASE_W;
+const BASE_H = MOBILE ? 180 : CONFIG.BASE_H;
 
-canvas.width = BASE_W;
-canvas.height = BASE_H;
-canvas.style.width = BASE_W * SCALE + "px";
-canvas.style.height = BASE_H * SCALE + "px";
+// Start with title resolution (shared between mobile and desktop)
+canvas.width = CONFIG.BASE_W;
+canvas.height = CONFIG.BASE_H;
+canvas.style.width = CONFIG.BASE_W * SCALE + "px";
+canvas.style.height = CONFIG.BASE_H * SCALE + "px";
 
 const input = createInput();
 
@@ -60,16 +65,32 @@ const sea = createSea({
 });
 
 // ---- Map / Collision ----
-const bgImg    = new Image();
-const bgTopImg = new Image();
+const bgImg         = new Image();
+const bgTopImg      = new Image();
+const bgShrineImg    = new Image();
+const bgShrineTopImg = new Image();
 const col = makeColStore();
+
+// ---- Shrine state ----
+let shrineMode  = false;
+let shrineFade  = 0;      // 0.0 (normal) → 1.0 (shrine)
+let shrineTriggerActive = false; // 踏み続けている間は再発火しない
+const SHRINE_FADE_SPEED = 1 / 15; // ~15フレームでフェード完了
 
 // ---- Water sea overlay (color-masked) ----
 const seaTempCanvas = document.createElement("canvas");
-seaTempCanvas.width  = BASE_W;
-seaTempCanvas.height = BASE_H;
+seaTempCanvas.width  = CONFIG.BASE_W;
+seaTempCanvas.height = CONFIG.BASE_H;
 const seaTempCtx = seaTempCanvas.getContext("2d");
 let waterMaskCanvas = null;
+
+// Resize canvas (and seaTempCanvas) when switching between title and gameplay
+function setGameResolution(w, h) {
+  canvas.width = w;
+  canvas.height = h;
+  seaTempCanvas.width = w;
+  seaTempCanvas.height = h;
+}
 
 function buildWaterMask(img, color) {
   const [tr, tg, tb] = color;
@@ -93,8 +114,8 @@ function buildWaterMask(img, color) {
 
 function drawWaterSea(ctx, t) {
   if (!waterMaskCanvas) return;
-  seaTempCtx.clearRect(0, 0, BASE_W, BASE_H);
-  sea.draw(seaTempCtx, t, cam, BASE_W, BASE_H);
+  seaTempCtx.clearRect(0, 0, seaTempCanvas.width, seaTempCanvas.height);
+  sea.draw(seaTempCtx, t, cam, seaTempCanvas.width, seaTempCanvas.height);
   seaTempCtx.globalCompositeOperation = "destination-in";
   seaTempCtx.drawImage(waterMaskCanvas, -(cam.x | 0), -(cam.y | 0));
   seaTempCtx.globalCompositeOperation = "source-over";
@@ -228,8 +249,8 @@ function startBattleTransition(onDone) {
     onDone,
   };
 }
-const ending = createEnding({ BASE_W, BASE_H });
-const title  = createTitle({ BASE_W, BASE_H, input });
+const ending = createEnding({ BASE_W: CONFIG.BASE_W, BASE_H: CONFIG.BASE_H });
+const title  = createTitle({ BASE_W: CONFIG.BASE_W, BASE_H: CONFIG.BASE_H, input });
 
 // ---- Save / Load ----
 const SAVE_KEY = "rpg_save";
@@ -284,7 +305,7 @@ const battle = createBattleSystem({
         outMs:   220,
         holdMs:  3000,
         inMs:    160,
-        onBlack: () => { partyVisible = false; loadMap("vj_room02", { isEnding: true }); },
+        onBlack: () => { setGameResolution(CONFIG.BASE_W, CONFIG.BASE_H); partyVisible = false; loadMap("vj_room02", { isEnding: true }); },
         onEnd:   () => { pendingEndingFadeIn = true; },
       });
     };
@@ -306,12 +327,12 @@ function hitRect(a, b) {
 }
 function hitBg(nx, ny) {
   const f = footBox(nx, ny);
-  return (
-    col.isWallAt(f.x, f.y) ||
-    col.isWallAt(f.x + f.w - 1, f.y) ||
-    col.isWallAt(f.x, f.y + f.h - 1) ||
-    col.isWallAt(f.x + f.w - 1, f.y + f.h - 1)
-  );
+  for (let y = f.y; y < f.y + f.h; y++) {
+    for (let x = f.x; x < f.x + f.w; x++) {
+      if (col.isWallAt(x, y)) return true;
+    }
+  }
+  return false;
 }
 function hitNpc(nx, ny) {
   if (!actors.length) return false;
@@ -326,10 +347,12 @@ function hitNpc(nx, ny) {
 
 // ---- Camera ----
 function updateCam() {
-  const maxX = Math.max(0, (current.bgW | 0) - BASE_W);
-  const maxY = Math.max(0, (current.bgH | 0) - BASE_H);
-  const cx = leader.x + 8 - BASE_W / 2;
-  const cy = leader.y + 8 - BASE_H / 2;
+  const cw = canvas.width;
+  const ch = canvas.height;
+  const maxX = Math.max(0, (current.bgW | 0) - cw);
+  const maxY = Math.max(0, (current.bgH | 0) - ch);
+  const cx = leader.x + 8 - cw / 2;
+  const cy = leader.y + 8 - ch / 2;
   cam.x = Math.max(0, Math.min(maxX, cx));
   cam.y = Math.max(0, Math.min(maxY, cy));
 }
@@ -360,6 +383,22 @@ function doorCheck(t) {
       fade.startMapFade(door.to, { doorId: door.id }, t, loadMap);
       return;
     }
+  }
+}
+
+// ---- Shrine trigger check ----
+function shrineTriggerCheck() {
+  if (!mapReady) return;
+  const f  = footBox(leader.x, leader.y);
+  const fx = (f.x + (f.w >> 1)) | 0;
+  const fy = (f.y + (f.h >> 1)) | 0;
+  const inZone = col.getZone(fx, fy) === "shrine";
+
+  if (inZone !== shrineTriggerActive) {
+    shrineTriggerActive = inZone;
+    shrineMode = inZone;
+    playSuzu();
+    bgmCtl.audio.volume = inZone ? 0 : 0.35;
   }
 }
 
@@ -434,7 +473,12 @@ function loadMap(id, opt = null) {
     done();
   };
   bgImg.src = def.bgSrc;
-  bgTopImg.src = def.bgTopSrc || "";
+  bgTopImg.src         = def.bgTopSrc       || "";
+  bgShrineImg.src      = def.bgShrineSrc    || "";
+  bgShrineTopImg.src   = def.bgShrineTopSrc || "";
+  shrineMode = false;
+  shrineFade = 0;
+  shrineTriggerActive = false;
 
   col.load(def.colSrc, () => {
     colOK = true;
@@ -461,7 +505,7 @@ function draw() {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.globalAlpha = 1;
   ctx.imageSmoothingEnabled = false;
-  ctx.clearRect(0, 0, BASE_W, BASE_H);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   // タイトル画面
   if (title.isActive()) {
@@ -520,7 +564,7 @@ function draw() {
 
   // ★ここは見た目用なので performance.now() でもOK（ゲーム進行の時間とは別）
   const tt = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
-  sea.draw(ctx, tt, cam, BASE_W, BASE_H);
+  sea.draw(ctx, tt, cam, canvas.width, canvas.height);
 
   if (bgImg.complete && bgImg.naturalWidth > 0) {
     ctx.drawImage(bgImg, -(cam.x | 0), -(cam.y | 0));
@@ -528,12 +572,21 @@ function draw() {
 
   drawWaterSea(ctx, tt);
 
+  // shrine クロスフェード
+  if (shrineFade > 0 && bgShrineImg.complete && bgShrineImg.naturalWidth > 0) {
+    ctx.save();
+    ctx.globalAlpha = shrineFade;
+    ctx.drawImage(bgShrineImg, -(cam.x | 0), -(cam.y | 0));
+    ctx.restore();
+  }
+
   const list = [];
   if (partyVisible) {
+    const followerAlpha = 1 - shrineFade;
     list.push(
-      { img: p4.img, x: p4.x, y: p4.y, frame: p4.frame },
-      { img: p3.img, x: p3.x, y: p3.y, frame: p3.frame },
-      { img: p2.img, x: p2.x, y: p2.y, frame: p2.frame },
+      { img: p4.img, x: p4.x, y: p4.y, frame: p4.frame, alpha: followerAlpha },
+      { img: p3.img, x: p3.x, y: p3.y, frame: p3.frame, alpha: followerAlpha },
+      { img: p2.img, x: p2.x, y: p2.y, frame: p2.frame, alpha: followerAlpha },
       { img: leader.img, x: leader.x, y: leader.y, frame: leader.frame },
     );
   }
@@ -543,10 +596,26 @@ function draw() {
   }
 
   list.sort((a, b) => a.y - b.y);
-  list.forEach((o) => drawSprite(o.img, o.frame, o.x, o.y));
+  list.forEach((o) => {
+    if (o.alpha !== undefined && o.alpha < 1) {
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, o.alpha);
+      drawSprite(o.img, o.frame, o.x, o.y);
+      ctx.restore();
+    } else {
+      drawSprite(o.img, o.frame, o.x, o.y);
+    }
+  });
 
   if (bgTopImg.complete && bgTopImg.naturalWidth > 0) {
     ctx.drawImage(bgTopImg, -(cam.x | 0), -(cam.y | 0));
+  }
+  if (shrineFade > 0 && bgShrineTopImg.complete && bgShrineTopImg.naturalWidth > 0) {
+    ctx.save();
+    ctx.globalAlpha = shrineFade;
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(bgShrineTopImg, -(cam.x | 0), -(cam.y | 0));
+    ctx.restore();
   }
 
   inventory.draw(ctx);
@@ -555,6 +624,19 @@ function draw() {
   choice.draw(ctx);
   ending.draw(ctx, tt);
   fade.draw(ctx);
+
+  // デバッグ：座標表示
+  if (DEBUG) {
+    const coord = `${leader.x | 0},${leader.y | 0}`;
+    ctx.save();
+    ctx.font = "normal 10px PixelMplus10";
+    ctx.textBaseline = "top";
+    ctx.fillStyle = "rgba(0,0,0,0.6)";
+    ctx.fillRect(2, 2, ctx.measureText(coord).width + 4, 12);
+    ctx.fillStyle = "#fff";
+    ctx.fillText(coord, 4, 3);
+    ctx.restore();
+  }
 
   // セーブ/ロード通知
   if (saveNotice && tt < saveNotice.until) {
@@ -664,11 +746,22 @@ function update(t) {
   if (pendingEndingFadeIn) {
     pendingEndingFadeIn = false;
     bgmCtl.setOverride("assets/audio/bgm_end.mp3");
+    bgmCtl.audio.loop = false;
     ending.start(t);
   }
 
   // ending 中は入力ブロック
   if (ending.isActive()) {
+    // Debug: D キーでフィールドに即戻る
+    if (DEBUG && input.consume("d")) {
+      ending.stop();
+      bgmCtl.audio.loop = true;
+      bgmCtl.setOverride(null);
+      partyVisible = true;
+      setGameResolution(BASE_W, BASE_H);
+      loadMap("outdoor");
+      return;
+    }
     ending.update(t);
     updateNpcAnim(t);
     updateCam();
@@ -676,14 +769,16 @@ function update(t) {
     // フェードアウト完了後、Zでタイトルに戻る
     if (ending.isDone() && (input.consume("z") || input.consume("x") || input.consume("ArrowUp") || input.consume("ArrowDown") || input.consume("ArrowLeft") || input.consume("ArrowRight"))) {
       ending.stop();
+      bgmCtl.audio.loop = true;
       bgmCtl.setOverride(null);
       partyVisible = true;
       collectedItems.clear();
       inventory.resetItems([]);
       loadMap("outdoor");
+      setGameResolution(CONFIG.BASE_W, CONFIG.BASE_H);
       title.start({
-        onNewGame()  { collectedItems.clear(); inventory.resetItems([]); loadMap("outdoor"); },
-        onContinue() { loadGame(); },
+        onNewGame()  { setGameResolution(BASE_W, BASE_H); collectedItems.clear(); inventory.resetItems([]); loadMap("outdoor"); },
+        onContinue() { setGameResolution(BASE_W, BASE_H); loadGame(); },
       });
     }
     return;
@@ -748,6 +843,7 @@ function update(t) {
 
   // デバッグ：D キーで vj_room02 に即移動
   if (DEBUG && input.consume("d")) {
+    setGameResolution(CONFIG.BASE_W, CONFIG.BASE_H);
     partyVisible = false;
     loadMap("vj_room02", { isEnding: true });
     pendingEndingFadeIn = true;
@@ -821,6 +917,12 @@ function update(t) {
   followers.update(t, { p2, p3, p4 });
 
   doorCheck(t);
+  shrineTriggerCheck();
+
+  // shrine フェードアニメ
+  if (shrineMode && shrineFade < 1) shrineFade = Math.min(1, shrineFade + SHRINE_FADE_SPEED);
+  else if (!shrineMode && shrineFade > 0) shrineFade = Math.max(0, shrineFade - SHRINE_FADE_SPEED);
+
   updateCam();
 }
 
@@ -829,11 +931,13 @@ function update(t) {
 loadMap("outdoor");
 title.start({
   onNewGame() {
+    setGameResolution(BASE_W, BASE_H);
     collectedItems.clear();
     inventory.resetItems([]);
     loadMap("outdoor");
   },
   onContinue() {
+    setGameResolution(BASE_W, BASE_H);
     loadGame();
   },
 });
