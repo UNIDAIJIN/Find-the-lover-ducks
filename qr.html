@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>QR Codes – Find the Lover Ducks</title>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -15,13 +16,24 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 48px;
+      gap: 40px;
       padding: 32px 16px;
     }
-    h1 {
-      font-size: 1.4rem;
-      letter-spacing: 0.05em;
+    h1 { font-size: 1.4rem; letter-spacing: 0.05em; opacity: 0.8; }
+    .color-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.9rem;
       opacity: 0.8;
+    }
+    input[type="color"] {
+      width: 40px; height: 32px;
+      border: 1px solid #444;
+      border-radius: 6px;
+      background: none;
+      cursor: pointer;
+      padding: 2px;
     }
     .cards {
       display: flex;
@@ -39,38 +51,60 @@
       align-items: center;
       gap: 16px;
     }
-    .card img {
+    /* checkerboard shows transparency */
+    .qr-wrap {
+      background-image:
+        linear-gradient(45deg, #ccc 25%, transparent 25%),
+        linear-gradient(-45deg, #ccc 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #ccc 75%),
+        linear-gradient(-45deg, transparent 75%, #ccc 75%);
+      background-size: 12px 12px;
+      background-position: 0 0, 0 6px, 6px -6px, -6px 0px;
+      background-color: #fff;
       border-radius: 8px;
-      display: block;
+      line-height: 0;
     }
-    .label {
-      font-size: 1.1rem;
-      font-weight: bold;
-      letter-spacing: 0.08em;
-    }
+    .qr-wrap canvas { border-radius: 8px; }
+    .label { font-size: 1.1rem; font-weight: bold; letter-spacing: 0.08em; }
     .sublabel {
-      font-size: 0.75rem;
-      opacity: 0.5;
-      word-break: break-all;
-      text-align: center;
-      max-width: 200px;
+      font-size: 0.72rem; opacity: 0.5;
+      word-break: break-all; text-align: center; max-width: 200px;
     }
     .pc  .label { color: #7dd3fc; }
     .mob .label { color: #86efac; }
+    button {
+      background: #2a2a2a;
+      color: #fff;
+      border: 1px solid #444;
+      border-radius: 8px;
+      padding: 8px 20px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      letter-spacing: 0.05em;
+    }
+    button:hover { background: #383838; }
   </style>
 </head>
 <body>
   <h1>Find the Lover Ducks</h1>
+
+  <div class="color-row">
+    <label for="qr-color">QR color</label>
+    <input type="color" id="qr-color" value="#000000">
+  </div>
+
   <div class="cards">
     <div class="card pc">
       <div class="label">PC</div>
-      <img id="qr-pc" width="200" height="200" alt="PC QR">
+      <div class="qr-wrap"><canvas id="qr-pc"></canvas></div>
       <div class="sublabel" id="url-pc"></div>
+      <button onclick="download('qr-pc','qr_pc.png')">Download PNG</button>
     </div>
     <div class="card mob">
       <div class="label">Mobile</div>
-      <img id="qr-mob" width="200" height="200" alt="Mobile QR">
+      <div class="qr-wrap"><canvas id="qr-mob"></canvas></div>
       <div class="sublabel" id="url-mob"></div>
+      <button onclick="download('qr-mob','qr_mobile.png')">Download PNG</button>
     </div>
   </div>
 
@@ -78,14 +112,25 @@
     const BASE = "https://unidaijin.github.io/Find-the-lover-ducks/";
     const urls = { pc: BASE, mob: BASE + "?m=1" };
 
-    function qrSrc(url) {
-      return "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" + encodeURIComponent(url);
-    }
-
-    document.getElementById("qr-pc").src  = qrSrc(urls.pc);
-    document.getElementById("qr-mob").src = qrSrc(urls.mob);
     document.getElementById("url-pc").textContent  = urls.pc;
     document.getElementById("url-mob").textContent = urls.mob;
+
+    function renderAll() {
+      const color = document.getElementById("qr-color").value;
+      const opts = { width: 200, margin: 2, color: { dark: color, light: "#00000000" } };
+      QRCode.toCanvas(document.getElementById("qr-pc"),  urls.pc,  opts);
+      QRCode.toCanvas(document.getElementById("qr-mob"), urls.mob, opts);
+    }
+
+    function download(canvasId, filename) {
+      const a = document.createElement("a");
+      a.href = document.getElementById(canvasId).toDataURL("image/png");
+      a.download = filename;
+      a.click();
+    }
+
+    document.getElementById("qr-color").addEventListener("input", renderAll);
+    renderAll();
   </script>
 </body>
 </html>
