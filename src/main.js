@@ -26,11 +26,25 @@ const { SCALE, SPR, SPEED, FRAME_MS, GAP2, GAP3, GAP4, NPC_FRAME_MS, DOOR_COOLDO
 const BASE_W = MOBILE ? 192 : CONFIG.BASE_W;
 const BASE_H = MOBILE ? 180 : CONFIG.BASE_H;
 
+// Fit canvas CSS size to window while keeping pixel-perfect aspect ratio
+function fitCanvas() {
+  const aspect = canvas.width / canvas.height;
+  const ww = window.innerWidth;
+  const wh = window.innerHeight;
+  if (ww / wh > aspect) {
+    canvas.style.height = wh + "px";
+    canvas.style.width  = Math.floor(wh * aspect) + "px";
+  } else {
+    canvas.style.width  = ww + "px";
+    canvas.style.height = Math.floor(ww / aspect) + "px";
+  }
+}
+window.addEventListener("resize", fitCanvas);
+
 // Start with title resolution (shared between mobile and desktop)
 canvas.width = CONFIG.BASE_W;
 canvas.height = CONFIG.BASE_H;
-canvas.style.width = CONFIG.BASE_W * SCALE + "px";
-canvas.style.height = CONFIG.BASE_H * SCALE + "px";
+fitCanvas();
 
 const input = createInput();
 
@@ -96,6 +110,7 @@ function setGameResolution(w, h) {
   canvas.height = h;
   seaTempCanvas.width = w;
   seaTempCanvas.height = h;
+  fitCanvas();
 }
 
 function buildWaterMask(img, color) {
