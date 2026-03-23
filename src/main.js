@@ -15,7 +15,7 @@ import { setupMobileController } from "./mobile_controller.js";
 import { playSuzu } from "./se.js";
 
 const DEBUG  = true;
-const MOBILE = true;
+const MOBILE = new URLSearchParams(location.search).has('m');
 
 const canvas = document.getElementById("c");
 const ctx = canvas.getContext("2d");
