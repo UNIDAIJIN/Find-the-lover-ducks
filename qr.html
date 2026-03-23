@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>QR Codes – Find the Lover Ducks</title>
-  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
+  <script src="qr-creator.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -115,11 +115,21 @@
     document.getElementById("url-pc").textContent  = urls.pc;
     document.getElementById("url-mob").textContent = urls.mob;
 
-    function renderAll() {
+    function renderOne(canvasId, text) {
       const color = document.getElementById("qr-color").value;
-      const opts = { width: 200, margin: 2, color: { dark: color, light: "#00000000" } };
-      QRCode.toCanvas(document.getElementById("qr-pc"),  urls.pc,  opts);
-      QRCode.toCanvas(document.getElementById("qr-mob"), urls.mob, opts);
+      QrCreator.render({
+        text,
+        radius: 0,
+        ecLevel: "H",
+        fill: color,
+        background: null,
+        size: 200,
+      }, document.getElementById(canvasId));
+    }
+
+    function renderAll() {
+      renderOne("qr-pc",  urls.pc);
+      renderOne("qr-mob", urls.mob);
     }
 
     function download(canvasId, filename) {
