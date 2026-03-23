@@ -4,7 +4,6 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>QR Codes – Find the Lover Ducks</title>
-  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -40,8 +39,9 @@
       align-items: center;
       gap: 16px;
     }
-    .card canvas {
+    .card img {
       border-radius: 8px;
+      display: block;
     }
     .label {
       font-size: 1.1rem;
@@ -55,8 +55,8 @@
       text-align: center;
       max-width: 200px;
     }
-    .pc   .label { color: #7dd3fc; }
-    .mob  .label { color: #86efac; }
+    .pc  .label { color: #7dd3fc; }
+    .mob .label { color: #86efac; }
   </style>
 </head>
 <body>
@@ -64,28 +64,26 @@
   <div class="cards">
     <div class="card pc">
       <div class="label">PC</div>
-      <canvas id="qr-pc"></canvas>
+      <img id="qr-pc" width="200" height="200" alt="PC QR">
       <div class="sublabel" id="url-pc"></div>
     </div>
     <div class="card mob">
       <div class="label">Mobile</div>
-      <canvas id="qr-mob"></canvas>
+      <img id="qr-mob" width="200" height="200" alt="Mobile QR">
       <div class="sublabel" id="url-mob"></div>
     </div>
   </div>
 
   <script>
     const BASE = "https://unidaijin.github.io/Find-the-lover-ducks/";
-    const urls = {
-      pc:  BASE,
-      mob: BASE + "?m=1",
-    };
+    const urls = { pc: BASE, mob: BASE + "?m=1" };
 
-    const opts = { width: 200, margin: 2, color: { dark: "#000", light: "#fff" } };
+    function qrSrc(url) {
+      return "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" + encodeURIComponent(url);
+    }
 
-    QRCode.toCanvas(document.getElementById("qr-pc"),  urls.pc,  opts);
-    QRCode.toCanvas(document.getElementById("qr-mob"), urls.mob, opts);
-
+    document.getElementById("qr-pc").src  = qrSrc(urls.pc);
+    document.getElementById("qr-mob").src = qrSrc(urls.mob);
     document.getElementById("url-pc").textContent  = urls.pc;
     document.getElementById("url-mob").textContent = urls.mob;
   </script>
