@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>工事中</title>
+  <link rel="icon" href="favicon.png" type="image/png">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #FFF8E1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      font-family: serif;
+    }
+    h1 {
+      color: #111;
+      font-size: clamp(28px, 6vw, 56px);
+      letter-spacing: 0.2em;
+      margin-bottom: 40px;
+      font-weight: bold;
+    }
+    canvas {
+      image-rendering: pixelated;
+    }
+  </style>
+</head>
+<body>
+  <h1>工事中</h1>
+  <canvas id="c"></canvas>
+  <script>
+    const SCALE = 6;
+    const SPR   = 16;
+    const GAP   = 8; // px gap between characters (unscaled)
+
+    // Order: 3,1,4,2 → p3, p1, p4, p2
+    const ORDER = [3, 1, 4, 2];
+    const N     = ORDER.length;
+
+    const canvas = document.getElementById("c");
+    canvas.width  = (SPR * N + GAP * (N - 1)) * SCALE;
+    canvas.height = SPR * SCALE;
+    const ctx = canvas.getContext("2d");
+    ctx.imageSmoothingEnabled = false;
+
+    // Load sprites
+    const imgs = {};
+    let loaded = 0;
+    ORDER.forEach(n => {
+      const img = new Image();
+      img.onload = () => { loaded++; };
+      img.src = `assets/sprites/p${n}.png`;
+      imgs[n] = img;
+    });
+
+    const FRAME_MS = 180;
+
+    function draw(t) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const frame = Math.floor(t / FRAME_MS) & 1;
+
+      ORDER.forEach((n, i) => {
+        const img = imgs[n];
+        if (!img || img.naturalWidth <= 0) return;
+        const dx = (i * (SPR + GAP)) * SCALE;
+        ctx.drawImage(img, frame * SPR, 0, SPR, SPR, dx, 0, SPR * SCALE, SPR * SCALE);
+      });
+
+      requestAnimationFrame(draw);
+    }
+
+    requestAnimationFrame(draw);
+  </script>
+</body>
+</html>
