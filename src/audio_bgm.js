@@ -7,7 +7,7 @@ export function createBgm({
   const bgm = new Audio();
   bgm.loop = true;
   bgm.volume = volume;
-  bgm.preload = "auto";
+  bgm.preload = "none";
 
   let unlocked = false;
 
@@ -15,7 +15,7 @@ export function createBgm({
   let mapSrc = defaultSrc;
   let overrideSrc = null;
 
-  // いま再生してるsrc（同じなら張り替えない）
+  // 実際にAudio要素にロード済みのsrc
   let currentSrc = null;
 
   function desiredSrc() {
@@ -25,9 +25,12 @@ export function createBgm({
   function apply(src) {
     if (!src) return;
 
+    // ユーザー操作前はダウンロードしない（遅延ロード）
+    if (!unlocked) return;
+
     // 同じsrcなら、止まってる時だけ再生を試す
     if (currentSrc === src) {
-      if (unlocked && bgm.paused) bgm.play().catch(() => {});
+      if (bgm.paused) bgm.play().catch(() => {});
       return;
     }
 
@@ -38,14 +41,14 @@ export function createBgm({
       bgm.src = src;
       bgm.load();
       bgm.currentTime = 0;
-      if (unlocked) bgm.play().catch(() => {});
+      bgm.play().catch(() => {});
     } catch (_e) {}
   }
 
   function unlock() {
     if (unlocked) return;
     unlocked = true;
-    apply(desiredSrc());
+    apply(desiredSrc()); // この時点で初めてダウンロード開始
   }
 
   // 最初のユーザー操作でアンロック
