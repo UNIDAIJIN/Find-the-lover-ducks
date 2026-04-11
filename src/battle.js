@@ -1,5 +1,6 @@
 // battle.js
 import { drawBattleScreen } from "./battle_ui.js";
+import { playCursor, playConfirm } from "./se.js";
 
 export function createBattleSystem(cfg) {
   const {
@@ -57,8 +58,6 @@ export function createBattleSystem(cfg) {
   const se_chibi  = makeSe("se_chibi.mp3",  0.7);
   const se_koke   = makeSe("se_koke.mp3",   0.7);
   const se_doku   = makeSe("se_doku.mp3",   0.6);
-  const se_cursor  = makeSe("se_cursor.mp3",  0.5);
-  const se_confirm = makeSe("se_confirm.mp3", 0.5);
   const se_encount = makeSe("se_encount.mp3", 0.9);
 
   function playSe(a) {
@@ -916,12 +915,12 @@ export function createBattleSystem(cfg) {
     if (input.consume("ArrowUp")) {
       if (st.phase === "items") invMove(-1);
       else st.menuIdx = (st.menuIdx + st.cmds.length - 1) % st.cmds.length;
-      playSe(se_cursor);
+      playCursor();
     }
     if (input.consume("ArrowDown")) {
       if (st.phase === "items") invMove(+1);
       else st.menuIdx = (st.menuIdx + 1) % st.cmds.length;
-      playSe(se_cursor);
+      playCursor();
     }
   }
 
@@ -952,7 +951,7 @@ export function createBattleSystem(cfg) {
       const id = st.invItems[st.invCursor | 0];
       if (!id) return;
 
-      playSe(se_confirm);
+      playConfirm();
       st.invItems.splice(st.invCursor | 0, 1);
       if (st.invCursor >= st.invItems.length) st.invCursor = Math.max(0, st.invItems.length - 1);
 
@@ -970,7 +969,7 @@ export function createBattleSystem(cfg) {
 
     const cmd = st.cmds[st.menuIdx];
 
-    playSe(se_confirm);
+    playConfirm();
 
     if (cmd === "こうげき") {
       c.action = { type: "attack" };
@@ -1011,6 +1010,7 @@ export function createBattleSystem(cfg) {
     if (st.phase === "intro" || st.phase === "pre_resolve") return;
 
     if (st.phase === "items") {
+      playCursor();
       st.phase = "choose";
       st.invAnimOpen = false;
       st.invAnimSince = st.now | 0;

@@ -1,5 +1,5 @@
 // ui_dialog.js
-import { playConfirm, playTypingVoice } from "./se.js";
+import { playTypingVoice } from "./se.js";
 
 export function createDialog({ BASE_W, BASE_H, input } = {}) {
   let active = false;
@@ -151,7 +151,6 @@ export function createDialog({ BASE_W, BASE_H, input } = {}) {
         // 表示中→即時完了
         completeTyping();
       } else {
-        playConfirm();
         advance();
       }
     }

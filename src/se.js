@@ -107,6 +107,27 @@ export function playConfirm() {
   });
 }
 
+// ---- ブザー音: 短い下降2音 ----
+export function playBuzzer() {
+  const ctx = getCtx();
+  if (ctx.state !== "running") return;
+  const t = ctx.currentTime;
+
+  [[220, 0.00, 0.08], [165, 0.07, 0.11]].forEach(([freq, delay, dur]) => {
+    const st = t + delay;
+    const osc = ctx.createOscillator();
+    const g   = ctx.createGain();
+    osc.connect(g); g.connect(ctx.destination);
+    osc.type = "square";
+    osc.frequency.setValueAtTime(freq, st);
+    osc.frequency.exponentialRampToValueAtTime(Math.max(80, freq * 0.75), st + dur);
+    g.gain.setValueAtTime(0.12, st);
+    g.gain.exponentialRampToValueAtTime(0.001, st + dur);
+    osc.start(st);
+    osc.stop(st + dur + 0.01);
+  });
+}
+
 export function playSuzu()    { play("se_suzu.mp3", 0.8); }
 
 // ---- コイン購入音: チャリン ----

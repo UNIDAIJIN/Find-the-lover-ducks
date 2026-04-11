@@ -51,12 +51,11 @@ export const SPRITES = {
 
   // other
   board: loadSprite("assets/sprites/board.png"),
+  fan: loadSprite("assets/sprites/fan.png"),
   fan_flower: loadSprite("assets/sprites/fan_flower.png"),
+  kori: loadSprite("assets/sprites/kori.png"),
   cat1: loadSprite("assets/sprites/cat_g.png"),
   seats: loadSprite("assets/sprites/seats.png"),
-
-  // 戦闘グラフィック
-  boss: loadSprite("assets/sprites/boss.png"),
 
   // hole マップ
   nidhogg:  loadSprite("assets/sprites/nidhogg.png"),
@@ -98,4 +97,7 @@ export const SPRITES = {
   orca3:   loadSprite("assets/sprites/orca3.png"),
   orca2:   loadSprite("assets/sprites/orca2.png"),
   orca:    loadSprite("assets/sprites/orca.png"),
+  yashi:   loadSprite("assets/sprites/yashi.png"),
+  yashi2:  loadSprite("assets/sprites/yashi2.png"),
+  yashi3:  loadSprite("assets/sprites/yashi3.png"),
 };

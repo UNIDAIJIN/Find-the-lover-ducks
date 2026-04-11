@@ -3,6 +3,8 @@ import { CONFIG } from "./config.js";
 import { SPRITES } from "./sprites.js";
 
 import { boardNpc }         from "./data/npcs/board.js";
+import { fanNpc }           from "./data/npcs/fan.js";
+import { koriNpc }          from "./data/npcs/kori.js";
 import { seatsNpc }         from "./data/npcs/seats.js";
 import { cat1Npc }          from "./data/npcs/cat1.js";
 import { fanFlowerNpc }     from "./data/npcs/fan_flower.js";
@@ -23,6 +25,7 @@ import { balloondogNpc }    from "./data/npcs/balloondog.js";
 import { workmangirlNpc }  from "./data/npcs/workmangirl.js";
 import { workmanNpc }      from "./data/npcs/workman.js";
 import { yahhyNpc }        from "./data/npcs/yahhy.js";
+import { yashiNpc }        from "./data/npcs/yashi.js";
 import { moriGirlNpc }    from "./data/npcs/mori_girl.js";
 import { cactusNpcs }     from "./data/npcs/cactus_group.js";
 import { gateNpc }        from "./data/npcs/gate.js";
@@ -54,6 +57,20 @@ export const NPCS_BY_MAP = {
     resolve(chinanagoOffNpc3),
     resolve(balloondogNpc),
     resolve(yahhyNpc),
+    resolve(yashiNpc),
+    resolve({ ...yashiNpc, name: "yashi2_1", spriteKey: "yashi2", x: 2393, y: 2938 }),
+    resolve({ ...yashiNpc, name: "yashi_2", x: 2419, y: 2914 }),
+    resolve({ ...yashiNpc, name: "yashi_3", x: 2446, y: 2891 }),
+    resolve({ ...yashiNpc, name: "yashi_4", x: 2477, y: 2855 }),
+    resolve({ ...yashiNpc, name: "yashi_5", x: 2503, y: 2831 }),
+    resolve({ ...yashiNpc, name: "yashi_6", x: 2530, y: 2808 }),
+    resolve({ ...yashiNpc, name: "yashi_7", x: 2717, y: 1806, solid: false }),
+    resolve({ ...yashiNpc, name: "yashi_8", x: 2411, y: 1475, solid: false }),
+    resolve({ ...yashiNpc, name: "yashi3_1", spriteKey: "yashi3", x: 2638, y: 1343, solid: false }),
+    resolve({ ...yashiNpc, name: "yashi3_2", spriteKey: "yashi3", x: 2944, y: 1675, solid: false }),
+    resolve(fanNpc),
+    resolve({ ...fanNpc, name: "fan_2", x: 2837, y: 1934 }),
+    resolve(koriNpc),
     resolve(moriGirlNpc),
     resolve(mizugiMNpc),
     resolve(mizugiFNpc),

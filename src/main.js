@@ -242,6 +242,7 @@ let actors = [];
 // 描画ソート用リスト（毎フレームクリアして再利用）
 const _groundList = [];
 const _upperList  = [];
+const _npcList    = [];
 // 描画アイテムプール（毎フレームのオブジェクト生成ゼロ）
 const _POOL_SIZE  = 100;
 const _renderPool = Array.from({ length: _POOL_SIZE }, () => ({}));
@@ -612,6 +613,32 @@ const loading    = createLoading({ BASE_W: CONFIG.BASE_W, BASE_H: CONFIG.BASE_H 
 const SAVE_KEY = "rpg_save";
 let saveNotice = null; // { text, until }
 
+function hasSaveData() {
+  try {
+    return !!localStorage.getItem(SAVE_KEY);
+  } catch (_) {
+    return false;
+  }
+}
+
+function startNewGameFlow() {
+  bgmCtl.setOverride("assets/audio/bgm_select.mp3");
+  bgmCtl.unlock();
+  charSelect.start((leaderIdx) => {
+    bgmCtl.setOverride(null);
+    setupParty(leaderIdx);
+    setGameResolution(BASE_W, BASE_H);
+    resetProgress();
+    inventory.resetItems(DEBUG_ITEMS);
+    fade.startCutFade(nowMs(), {
+      outMs:  1,
+      holdMs: 80,
+      inMs:   500,
+      onBlack: () => loadMap("moritasaki_room"),
+    });
+  });
+}
+
 const questQueue = [];
 
 function drainQuestQueue() {
@@ -682,6 +709,7 @@ function saveGame() {
     leaderX:        leader.x,
     leaderY:        leader.y,
     leaderIdx:      STATE.leaderIdx | 0,
+    charHeight:     { ...charHeight },
     collectedItems: [...collectedItems],
     inventoryItems: inventory.getSnapshot(),
     flags:          { ...STATE.flags },
@@ -706,9 +734,17 @@ function loadGame() {
     STATE.headwear = data.headwear ?? null;
     STATE.achievedQuests.clear();
     for (const q of (data.achievedQuests || [])) STATE.achievedQuests.add(q);
+    Object.assign(charHeight, data.charHeight || {
+      leader: "ground",
+      p2: "ground",
+      p3: "ground",
+      p4: "ground",
+    });
+    heightLevel = charHeight.leader;
     inventory.resetItems(data.inventoryItems || []);
     setupParty(data.leaderIdx | 0);
     applySkinLevel(STATE.flags.skinLevel | 0);
+    bgmCtl.setOverride(null);
     loadMap(data.mapId || "outdoor", { spawnAt: { x: data.leaderX, y: data.leaderY } });
     saveNotice = { text: "LOADED", until: nowMs() + 1200 };
   } catch (e) {
@@ -846,14 +882,16 @@ function hitBg(nx, ny) {
 }
 function npcFootBox(act) {
   const spr = act.spr ?? SPR;
+  const sprH = act.sprH ?? spr;
   if (act.hitW != null) {
-    // 不透明横幅を指定している場合: 左右-1ずつ
-    const w  = act.hitW - 2;
-    const ox = ((spr - act.hitW) / 2 + 1) | 0;
-    return { x: act.x + ox, y: act.y + spr - 8, w, h: 8 };
+    const rawW = Math.max(1, act.hitW | 0);
+    const rawH = Math.max(1, (act.hitH ?? 8) | 0);
+    const w = Math.max(1, rawW - 2);
+    const ox = (((spr - rawW) / 2 + 1) | 0) + (act.hitOx | 0);
+    const oy = Math.max(0, sprH - rawH);
+    return { x: act.x + ox, y: act.y + oy, w, h: rawH };
   }
   const mx = (spr * 0.2) | 0;
-  const sprH = act.sprH ?? spr;
   if (sprH !== spr) {
     return { x: act.x + mx, y: act.y, w: spr - mx * 2, h: sprH };
   }
@@ -1174,8 +1212,7 @@ function loadMap(id, opt = null) {
   shrineMode = false;
   shrineFade = 0;
   shrineTriggerActive = false;
-  charHeight.leader = charHeight.p2 = charHeight.p3 = charHeight.p4 = "ground";
-  heightLevel = "ground";
+  heightLevel = charHeight.leader;
   stairZonePrev.leader = stairZonePrev.p2 = stairZonePrev.p3 = stairZonePrev.p4 = false;
   shrineWhite = { phase: "off", alpha: 0, targetMode: false };
 
@@ -1344,11 +1381,12 @@ function draw() {
 
   // ★ここは見た目用なので performance.now() でもOK（ゲーム進行の時間とは別）
   const tt = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
-  // A: 3フレームに1回だけスパークルを再描画してキャッシュ
-  if (seaSparkleFrame++ % 3 === 0) {
+  const shouldDrawSea = current.id === "outdoor" || !!waterMaskCanvas;
+  const seaUpdateInterval = IS_MOBILE_DEVICE && current.id === "outdoor" ? 6 : 3;
+  if (shouldDrawSea && seaSparkleFrame++ % seaUpdateInterval === 0) {
     sea.draw(seaSparkleCtx, tt, cam, seaSparkleCanvas.width, seaSparkleCanvas.height);
   }
-  ctx.drawImage(seaSparkleCanvas, 0, 0);
+  if (shouldDrawSea) ctx.drawImage(seaSparkleCanvas, 0, 0);
 
   // ベースレイヤー：shrine完全移行後はbgImgを省略して描画コスト削減
   if (shrineFade >= 1) {
@@ -1363,9 +1401,11 @@ function draw() {
 
   _groundList.length = 0;
   _upperList.length  = 0;
+  _npcList.length    = 0;
   _poolIdx = 0;
   const groundList = _groundList;
   const upperList  = _upperList;
+  const npcList    = _npcList;
   if (partyVisible) {
     const followerAlpha = 1 - shrineFade;
     const emerging = holeTransition?.phase === 'emerging';
@@ -1376,7 +1416,6 @@ function draw() {
     const rideBob = orcaRide.active
       ? Math.round((1 - Math.cos((tt - orcaRide.startMs) * Math.PI * 2 / 720)) / 2)
       : 0;
-    const push = (name, o) => (charHeight[name] === "upper" ? upperList : groundList).push(o);
     const _hw = STATE.headwear;
     const _p1imgs = [SPRITES.p1, SPRITES.p1_t1, SPRITES.p1_t2];
     const _p2imgs = [SPRITES.p2, SPRITES.p2_t1, SPRITES.p2_t2];
@@ -1395,38 +1434,48 @@ function draw() {
       }
       return null;
     }
+    const pushParty = (name, o) => (charHeight[name] === "upper" ? upperList : groundList).push(o);
     if (!orcaRide.active) {
       const ip4 = _poolItem(); ip4.img = p4.img; ip4.x = (fx ?? p4.x) + cOff; ip4.y = fy ?? p4.y; ip4.frame = emerging ? 0 : p4.frame; ip4.alpha = followerAlpha; ip4.scale = fs; ip4.metImg = _hwImg(p4.img); ip4.spr = undefined; ip4.sprH = undefined; ip4.shadowImg = undefined;
       const ip3 = _poolItem(); ip3.img = p3.img; ip3.x = (fx ?? p3.x) + cOff; ip3.y = fy ?? p3.y; ip3.frame = emerging ? 0 : p3.frame; ip3.alpha = followerAlpha; ip3.scale = fs; ip3.metImg = _hwImg(p3.img); ip3.spr = undefined; ip3.sprH = undefined; ip3.shadowImg = undefined;
       const ip2 = _poolItem(); ip2.img = p2.img; ip2.x = (fx ?? p2.x) + cOff; ip2.y = fy ?? p2.y; ip2.frame = emerging ? 0 : p2.frame; ip2.alpha = followerAlpha; ip2.scale = fs; ip2.metImg = _hwImg(p2.img); ip2.spr = undefined; ip2.sprH = undefined; ip2.shadowImg = undefined;
-      push("p4", ip4); push("p3", ip3); push("p2", ip2);
+      pushParty("p4", ip4); pushParty("p3", ip3); pushParty("p2", ip2);
     }
     const il = _poolItem(); il.img = leader.img; il.x = (playerHoleDrawX !== null ? playerHoleDrawX : leader.x) + cOff; il.y = (playerHoleDrawY !== null ? playerHoleDrawY : leader.y) + rideBob; il.frame = holeTransition ? 0 : leader.frame; il.alpha = undefined; il.scale = playerHoleScale; il.metImg = _hwImg(leader.img); il.spr = undefined; il.sprH = undefined; il.shadowImg = undefined;
-    push("leader", il);
+    pushParty("leader", il);
   }
   for (const act of actors) {
     if (act.hidden) continue;
     if (act.showWhenBgm && bgmCtl.getOverrideSrc() !== act.showWhenBgm) continue;
     // ビューポートカリング（画面外NPCはスキップ）
     const actSpr = act.spr ?? SPR;
+    const actSprH = act.sprH ?? actSpr;
     if (act.x + actSpr < cam.x - actSpr || act.x > cam.x + canvas.width + actSpr) continue;
-    if (act.y + actSpr < cam.y - actSpr || act.y > cam.y + canvas.height + actSpr) continue;
+    if (act.y + actSprH < cam.y - actSprH || act.y > cam.y + canvas.height + actSprH) continue;
     const isCactus = act.name === "cactus_hat" || act.name?.startsWith("cactus_");
     const ia = _poolItem();
     ia.img = act.img; ia.x = act.x; ia.y = act.y; ia.frame = act.frame;
     ia.spr = act.spr; ia.sprH = act.sprH; ia.alpha = act.alpha; ia.scale = undefined; ia.metImg = undefined;
     ia.shadowImg = undefined; // 影は outdoor.png に合成済み
     ia.shadowOff = isCactus ? _cactusShadowOff : undefined;
-    groundList.push(ia);
+    npcList.push(ia);
   }
 
-  const sortFn = (a, b) => (a.y + (a.spr ?? SPR)) - (b.y + (b.spr ?? SPR));
+  const sortFn = (a, b) => {
+    const aSpr = a.spr ?? SPR;
+    const bSpr = b.spr ?? SPR;
+    const aBottom = a.y + (a.sprH ?? aSpr);
+    const bBottom = b.y + (b.sprH ?? bSpr);
+    return aBottom - bBottom;
+  };
   groundList.sort(sortFn);
   upperList.sort(sortFn);
-
+  npcList.sort(sortFn);
   for (let i = 0; i < groundList.length; i++) drawEntry(groundList[i]);
   drawMapImg(bgMidImg);
-  for (let i = 0; i < upperList.length; i++) drawEntry(upperList[i]);
+  const upperAndNpc = upperList.concat(npcList);
+  upperAndNpc.sort(sortFn);
+  for (let i = 0; i < upperAndNpc.length; i++) drawEntry(upperAndNpc[i]);
 
 // seahole 魚の描画（スプライットの上）
   if (current.id === "seahole") {
@@ -1626,10 +1675,18 @@ function draw() {
     ctx.restore();
   }
 
-  // デバッグ：C ホールドでtalkHit・ドアtrigger可視化
+  // デバッグ：C ホールドで会話/当たり判定・ドアtrigger可視化
   if (DEBUG && input.down("c")) {
     ctx.save();
     ctx.font = "6px monospace";
+
+    // プレイヤー足元当たり判定（黄）
+    const pf = footBox(leader.x, leader.y);
+    ctx.strokeStyle = "rgba(255,220,80,0.95)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(pf.x - cam.x, pf.y - cam.y, pf.w, pf.h);
+    ctx.fillStyle = "rgba(255,220,80,0.18)";
+    ctx.fillRect(pf.x - cam.x, pf.y - cam.y, pf.w, pf.h);
 
     // talkHit
     for (const act of actors) {
@@ -1642,6 +1699,17 @@ function draw() {
       ctx.strokeRect(rx, ry, th.w, th.h);
       ctx.fillStyle = "rgba(80,200,255,0.15)";
       ctx.fillRect(rx, ry, th.w, th.h);
+    }
+
+    // solid NPC の実当たり判定（緑）
+    for (const act of actors) {
+      if (!act.solid) continue;
+      const hb = npcFootBox(act);
+      ctx.strokeStyle = "rgba(80,255,120,0.95)";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(hb.x - cam.x, hb.y - cam.y, hb.w, hb.h);
+      ctx.fillStyle = "rgba(80,255,120,0.18)";
+      ctx.fillRect(hb.x - cam.x, hb.y - cam.y, hb.w, hb.h);
     }
 
     // col.png 当たり判定（2px グリッド、赤）
@@ -2031,8 +2099,8 @@ function update(t) {
       loadMap("outdoor");
       setGameResolution(CONFIG.BASE_W, CONFIG.BASE_H);
       title.start({
-        onNewGame()  { bgmCtl.setOverride("assets/audio/bgm_select.mp3"); bgmCtl.unlock(); charSelect.start((leaderIdx) => { bgmCtl.setOverride(null); setupParty(leaderIdx); setGameResolution(BASE_W, BASE_H); resetProgress(); inventory.resetItems(DEBUG_ITEMS); fade.startCutFade(nowMs(), { outMs: 1, holdMs: 80, inMs: 500, onBlack: () => loadMap("moritasaki_room") }); }); },
-        onContinue() { setGameResolution(BASE_W, BASE_H); loadGame(); },
+        onNewGame()  { startNewGameFlow(); },
+        onContinue() { setGameResolution(BASE_W, BASE_H); if (hasSaveData()) loadGame(); else startNewGameFlow(); },
       });
     }
     return;
@@ -2506,26 +2574,11 @@ loadMap("moritasaki_room", { skipBgm: true });
 
 function startTitle() {
   title.start({
-    onNewGame() {
-      bgmCtl.setOverride("assets/audio/bgm_select.mp3");
-      bgmCtl.unlock();
-      charSelect.start((leaderIdx) => {
-        bgmCtl.setOverride(null);
-        setupParty(leaderIdx);
-        setGameResolution(BASE_W, BASE_H);
-        resetProgress();
-        inventory.resetItems(DEBUG_ITEMS);
-        fade.startCutFade(nowMs(), {
-          outMs:  1,    // アイリスで既に黒
-          holdMs: 80,   // マップ準備待ち
-          inMs:   500,  // フィールドへフェードイン
-          onBlack: () => loadMap("moritasaki_room"),
-        });
-      });
-    },
+    onNewGame() { startNewGameFlow(); },
     onContinue() {
       setGameResolution(BASE_W, BASE_H);
-      loadGame();
+      if (hasSaveData()) loadGame();
+      else startNewGameFlow();
     },
   });
 }

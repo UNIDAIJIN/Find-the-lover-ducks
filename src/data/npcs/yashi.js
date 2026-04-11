@@ -1,0 +1,14 @@
+export const yashiNpc = {
+  kind:      "npc",
+  name:      "yashi",
+  spriteKey: "yashi",
+  x:         2685,
+  y:         3225,
+  spr:       64,
+  sprH:      128,
+  hitW:      8,
+  hitH:      8,
+  hitOx:     -4,
+  talkHit:   { x: 0, y: 0, w: 0, h: 0 },
+  solid:     true,
+};
