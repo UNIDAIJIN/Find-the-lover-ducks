@@ -4,6 +4,7 @@
 export function createInput() {
   const downSet = new Set(); // 押されているキー
   const hitSet = new Set(); // 押された瞬間（1回だけ）
+  let _locked = false;
 
   function normKey(k) {
     if (k === "Z") return "z";
@@ -12,6 +13,8 @@ export function createInput() {
     if (k === "D") return "d";
     if (k === "S") return "s";
     if (k === "L") return "l";
+    if (k === "V") return "v";
+    if (k === "B") return "b";
     return k;
   }
 
@@ -20,7 +23,7 @@ export function createInput() {
   }
 
   function isOurKey(k) {
-    return isArrowKey(k) || k === "z" || k === "x" || k === "c" || k === "d" || k === "s" || k === "l";
+    return isArrowKey(k) || k === "z" || k === "x" || k === "c" || k === "d" || k === "s" || k === "l" || k === "v" || k === "b";
   }
 
   function onKeyDown(e) {
@@ -47,10 +50,14 @@ export function createInput() {
   window.addEventListener("blur", onBlur);
 
   return {
+    lock()   { _locked = true;  downSet.clear(); hitSet.clear(); },
+    unlock() { _locked = false; },
     down(key) {
+      if (_locked) return false;
       return downSet.has(normKey(key));
     },
     consume(key) {
+      if (_locked) return false;
       const k = normKey(key);
       if (hitSet.has(k)) {
         hitSet.delete(k);

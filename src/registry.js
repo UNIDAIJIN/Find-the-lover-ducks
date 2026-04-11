@@ -10,8 +10,11 @@ import { createBgm }          from "./audio_bgm.js";
 import { createSea }          from "./fx_sea.js";
 import { createDialog }       from "./ui_dialog.js";
 import { createChoice }       from "./ui_choice.js";
+import { createShop }         from "./ui_shop.js";
+import { createJumprope }     from "./ui_jumprope.js";
 import { createFade }         from "./fx_fade.js";
 import { createInventory }    from "./ui_inventory.js";
+import { createToast }        from "./ui_toast.js";
 import { createFollowers }    from "./party_followers.js";
 import { createBattleSystem } from "./battle.js";
 import { runNpcEvent }        from "./npc_events.js";
@@ -22,8 +25,11 @@ export const REGISTRY = {
   createSea,
   createDialog,
   createChoice,
+  createShop,
+  createJumprope,
   createFade,
   createInventory,
+  createToast,
   createFollowers,
   createBattleSystem,
   runNpcEvent,

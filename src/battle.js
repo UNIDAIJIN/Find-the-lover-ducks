@@ -12,22 +12,32 @@ export function createBattleSystem(cfg) {
     setOverrideBgm,
     getFieldInventorySnapshot,
     onExitToField,
+    onLoseExit,
+    onRunExit,
   } = cfg;
 
   const DUCK_WIN_COUNT = 10;
 
+  function duckLine(text, extra = {}) {
+    return {
+      lines: ["ミナミ「」"],
+      typed: { prefix: "ミナミ「", text, suffix: "」", charMs: 60 },
+      ...extra,
+    };
+  }
+
   const DUCK_REACTIONS = [
     null, // 0
-    { lines: ["ミナミ「なんだこれは！」"] },
-    { lines: ["ミナミ「このおとはなんなんだ！」"] },
-    { lines: ["ミナミ「こんなものいたくもかゆくもない！」"] },
-    { lines: ["ミナミ「うるさい！うるさい！」"] },
-    { lines: ["ミナミ「ぐぐぐ、クソガキども！」"] },
-    { lines: ["ミナミ「ちからがぬける・・・！」"] },
-    { lines: ["ミナミ「やめろ！それをこっちにむけるな！」"] },
-    { lines: ["ミナミ「おい！やめろ！」"] },
-    { lines: ["ミナミ「フハハ！おもしろい！」"] },
-    { lines: ["ミナミ「フハハ！フハハハ！」"], win: true },
+    duckLine("なんだこれは！"),
+    duckLine("このおとはなんなんだ！"),
+    duckLine("こんなものいたくもかゆくもない！"),
+    duckLine("うるさい！うるさい！"),
+    duckLine("ぐぐぐ、クソガキども！"),
+    duckLine("ちからがぬける・・・！"),
+    duckLine("やめろ！それをこっちにむけるな！"),
+    duckLine("おい！やめろ！"),
+    duckLine("クソ！フハハ！オモシロイ！"),
+    duckLine("フハハ！フハハハ！", { win: true }),
   ];
 
   const bossImg = new Image();
@@ -55,6 +65,125 @@ export function createBattleSystem(cfg) {
     try {
       a.currentTime = 0;
       a.play().catch(() => {});
+    } catch (_e) {}
+  }
+
+  // YOU WIN ジングル（1〜4で切り替え）
+  const JINGLE_PATTERN = 2;
+
+  // LOSE ジングル（下降マイナー）
+  let _loseJinglePlayed = false;
+  function playLoseJingle() {
+    if (_loseJinglePlayed) return;
+    _loseJinglePlayed = true;
+    try {
+      if (!_jingleCtx) _jingleCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const ac = _jingleCtx;
+      const now = ac.currentTime;
+
+      function tone2(freq, start, dur, vol, type = "sine", attack = 0.03, release = 0.5) {
+        const osc = ac.createOscillator();
+        const g   = ac.createGain();
+        osc.connect(g); g.connect(ac.destination);
+        osc.type = type;
+        osc.frequency.value = freq;
+        g.gain.setValueAtTime(0, now + start);
+        g.gain.linearRampToValueAtTime(vol, now + start + attack);
+        g.gain.setValueAtTime(vol, now + start + dur - release);
+        g.gain.exponentialRampToValueAtTime(0.0001, now + start + dur);
+        osc.start(now + start);
+        osc.stop(now + start + dur + 0.05);
+      }
+      function organ2(freq, start, dur, vol) {
+        tone2(freq,       start, dur, vol,        "triangle", 0.03, 0.5);
+        tone2(freq * 2,   start, dur, vol * 0.55, "sawtooth", 0.03, 0.5);
+        tone2(freq * 3,   start, dur, vol * 0.30, "sawtooth", 0.03, 0.5);
+        tone2(freq * 4,   start, dur, vol * 0.15, "sawtooth", 0.03, 0.5);
+        tone2(freq * 0.5, start, dur, vol * 0.25, "triangle", 0.03, 0.5);
+      }
+      // 上から崩れ落ちるように積み上げ → Am
+      const notes = [440.00, 329.63, 261.63, 220.00]; // A5→E4→C4→A3（上から下へ）
+      const step = 0.28;
+      const hold = 1.6;
+      const vol  = 0.32;
+      notes.forEach((f, i) => organ2(f, i * step, hold + (notes.length - i) * step, vol / notes.length));
+    } catch (_e) {}
+  }
+  let _jingleCtx = null;
+  function playYouWinJingle() {
+    try {
+      if (!_jingleCtx) _jingleCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const ac = _jingleCtx;
+      const now = ac.currentTime;
+
+      function tone(freq, start, dur, vol, type = "sine", attack = 0.01, release = 0.15) {
+        const osc = ac.createOscillator();
+        const g   = ac.createGain();
+        osc.connect(g); g.connect(ac.destination);
+        osc.type = type;
+        osc.frequency.value = freq;
+        g.gain.setValueAtTime(0, now + start);
+        g.gain.linearRampToValueAtTime(vol, now + start + attack);
+        g.gain.setValueAtTime(vol, now + start + dur - release);
+        g.gain.exponentialRampToValueAtTime(0.0001, now + start + dur);
+        osc.start(now + start);
+        osc.stop(now + start + dur + 0.05);
+      }
+
+      // オルガン1音：基音(triangle)＋倍音(sawtooth)で輪郭を出す
+      function organ(freq, start, dur, vol) {
+        tone(freq,       start, dur, vol,        "triangle",  0.03, 0.5);
+        tone(freq * 2,   start, dur, vol * 0.55, "sawtooth",  0.03, 0.5);
+        tone(freq * 3,   start, dur, vol * 0.30, "sawtooth",  0.03, 0.5);
+        tone(freq * 4,   start, dur, vol * 0.15, "sawtooth",  0.03, 0.5);
+        tone(freq * 0.5, start, dur, vol * 0.25, "triangle",  0.03, 0.5);
+      }
+      function chord(notes, start, dur, vol) {
+        notes.forEach(f => organ(f, start, dur, vol / notes.length));
+      }
+
+      // 音を1本ずつずらして入れ、最後に全部鳴り揃う
+      // step: 各音の入るタイミング間隔, hold: 最後の音からの余韻
+      function buildChord(notes, step, hold, vol) {
+        const total = hold + notes.length * step;
+        notes.forEach((f, i) => organ(f, i * step, total - i * step, vol / notes.length));
+      }
+
+      if (JINGLE_PATTERN === 1) {
+        // ── パターン1: C major（下から積み上げ）
+        buildChord([261.63, 329.63, 392.00, 523.25], 0.28, 1.6, 0.32);
+
+      } else if (JINGLE_PATTERN === 2) {
+        // ── パターン2: F major（下から積み上げ）
+        buildChord([174.61, 261.63, 349.23, 523.25], 0.28, 1.6, 0.32);
+
+      } else if (JINGLE_PATTERN === 3) {
+        // ── パターン3: C major（上から積み下げ→神聖感）
+        buildChord([523.25, 392.00, 329.63, 261.63], 0.28, 1.6, 0.32);
+
+      } else if (JINGLE_PATTERN === 4) {
+        // ── パターン4: Am（下から積み上げ→切なさ残る）
+        buildChord([220.00, 261.63, 329.63, 440.00], 0.28, 1.6, 0.32);
+      }
+    } catch (_e) {}
+  }
+
+  // タイプライター用ビープ（低め）
+  let _typeCtx = null;
+  function playTypeBeep() {
+    try {
+      if (!_typeCtx) _typeCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const ctx = _typeCtx;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = "square";
+      osc.frequency.value = 220;
+      gain.gain.setValueAtTime(0.06, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.04);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.04);
     } catch (_e) {}
   }
 
@@ -157,7 +286,10 @@ export function createBattleSystem(cfg) {
       uiKick: opt.uiKick || null,
 
       center: !!opt.center,
-      centerStyle: opt.centerStyle || "phase", // unused in this file but kept
+      centerStyle: opt.centerStyle || "phase",
+
+      // タイプライター: { prefix, text, suffix, charMs }
+      typed: opt.typed || null,
     });
     pumpMsg();
   }
@@ -185,6 +317,10 @@ export function createBattleSystem(cfg) {
 
       center: next.center,
       centerStyle: next.centerStyle,
+
+      typed: next.typed || null,
+      typedCount: 0,
+      typedDone: !next.typed,
     };
     st.msgSince = st.now | 0;
 
@@ -212,6 +348,7 @@ export function createBattleSystem(cfg) {
   // START（★ここが “立ちはだかった” の本命）
   // =========================
   function start(inputOrKeys) {
+    _loseJinglePlayed = false;
     const inv = getFieldInventorySnapshot ? getFieldInventorySnapshot() : [];
 
     const now0 = (
@@ -576,9 +713,17 @@ export function createBattleSystem(cfg) {
     }
 
     if (a.type === "run") {
-      queueMsg([`${st.boss.name}「弱虫め」`], { autoMs: 650, onClose: () => endToField() });
-
-      if (c.name === "RIKU") enqueueRikuPoisonAfterRikuAction();
+      queueMsg([`${c.name}たちはにげだした！`], {
+        autoMs: 1200,
+        noSkip: true,
+        onClose: () => {
+          if (typeof onRunExit === "function") {
+            onRunExit(() => { st = null; });
+          } else {
+            endToField();
+          }
+        },
+      });
       return;
     }
 
@@ -621,11 +766,13 @@ export function createBattleSystem(cfg) {
             if (!reaction) return;
             if (reaction.win) {
               // 10投目：Z送り → ウボァー表示と同時に赤点滅＋フェード(3s) → YOU WIN! 3s → フィールドへ
-              queueMsg(reaction.lines, { autoMs: 2000, noSkip: true });
+              queueMsg(reaction.lines, { autoMs: 2000, noSkip: true, typed: reaction.typed || null });
+              queueMsg(["ミナミ「」"], { autoMs: 1500, noSkip: true, typed: { prefix: "ミナミ「", text: "フハ・・・・、", suffix: "」", charMs: 60 } });
               const EFFECT_MS = 3000;
-              queueMsg(["ミナミ「ウボァーーーーー！！」"], {
+              queueMsg(["ミナミ「」"], {
                 autoMs: EFFECT_MS,
                 noSkip: true,
+                typed: { prefix: "ミナミ「", text: "ウボァーーーーー！！", suffix: "」", charMs: 60 },
                 apply: () => {
                   st.bossFlashUntil = (st.now | 0) + EFFECT_MS;
                   st.bossFadeFrom   = st.now | 0;
@@ -636,11 +783,11 @@ export function createBattleSystem(cfg) {
               });
               queueEvent({
                 autoMs: 3000,
-                apply:   () => { st.showYouWin = true; },
+                apply:   () => { st.showYouWin = true; setOverrideBgm("about:blank"); playYouWinJingle(); },
                 onClose: () => endToField("win"),
               });
             } else {
-              queueMsg(reaction.lines, { autoMs: 2000, noSkip: true });
+              queueMsg(reaction.lines, { autoMs: 2000, noSkip: true, typed: reaction.typed || null });
             }
           },
         });
@@ -712,7 +859,13 @@ export function createBattleSystem(cfg) {
 
     if (st.party.every((c) => !isAlive(c))) {
       st.uiTheme = "red";
-      queueMsg(["ぜんめつした。"], { autoMs: 800, onClose: () => endToField() });
+      queueMsg(["ぜんめつした。"], { autoMs: 3500, apply: () => { setOverrideBgm("about:blank"); playLoseJingle(); }, onClose: () => {
+        if (typeof onLoseExit === "function") {
+          onLoseExit(() => { st = null; });
+        } else {
+          endToField();
+        }
+      } });
       return;
     }
 
@@ -729,6 +882,16 @@ export function createBattleSystem(cfg) {
   function update(input, t) {
     if (!st) return;
     st.now = t | 0;
+
+    // タイプライター進行
+    if (st.msg && st.msg.typed && !st.msg.typedDone) {
+      const elapsed = (st.now | 0) - (st.msgSince | 0);
+      const count = Math.floor(elapsed / (st.msg.typed.charMs || 60));
+      const prev = st.msg.typedCount | 0;
+      st.msg.typedCount = Math.min(count, st.msg.typed.text.length);
+      if (st.msg.typedCount > prev) playTypeBeep();
+      if (st.msg.typedCount >= st.msg.typed.text.length) st.msg.typedDone = true;
+    }
 
     if (st.msg && (st.msg.autoMs | 0) > 0) {
       if (((st.now | 0) - (st.msgSince | 0)) >= (st.msg.autoMs | 0)) closeMsg();
@@ -795,6 +958,8 @@ export function createBattleSystem(cfg) {
 
       c.action = { type: "item", itemId: id };
       st.phase = "choose";
+      st.invAnimOpen = false;
+      st.invAnimSince = st.now | 0;
 
       if (allChosenOrDead()) requestBeginResolve(true);
       else seekNextChooserDisplay((st.activeDispIdx + 1) % DISPLAY_ORDER.length);
@@ -825,6 +990,8 @@ export function createBattleSystem(cfg) {
 
     if (cmd === "もちもの") {
       st.phase = "items";
+      st.invAnimOpen = true;
+      st.invAnimSince = st.now | 0;
       st.invCursor = Math.max(0, Math.min(st.invCursor | 0, st.invItems.length - 1));
       if (input) input.clear();
       return;
@@ -845,6 +1012,8 @@ export function createBattleSystem(cfg) {
 
     if (st.phase === "items") {
       st.phase = "choose";
+      st.invAnimOpen = false;
+      st.invAnimSince = st.now | 0;
       st.commandPhaseSince = st.now | 0;
       if (input) input.clear();
       return;

@@ -26,4 +26,13 @@ export const STATE = {
 
   // ---- Persistent field state ----
   collectedItems: new Set(), // item IDs collected across map transitions
+  money: 0,
+  headwear: null, // null | "helmet" | "afro" | "kingyobachi"
+  leaderIdx: 0,   // 0..3 which party member is the leader
+
+  // ---- Persistent game flags ----
+  flags: {},
+
+  // ---- Quest achievements ----
+  achievedQuests: new Set(), // quest id strings e.g. "01", "03"
 };

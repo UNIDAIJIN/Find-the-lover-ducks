@@ -56,6 +56,210 @@ export function createBgm({
     window.addEventListener(ev, unlock, { once: true });
   });
 
+  // ---- Web Audio underwater filter ----
+  let audioCtx = null;
+  let filter   = null;
+
+  function ensureAudioGraph() {
+    if (audioCtx) return true;
+    try {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const source = audioCtx.createMediaElementSource(bgm);
+      filter = audioCtx.createBiquadFilter();
+      filter.type = "lowpass";
+      filter.frequency.value = 20000;
+      filter.Q.value = 2.0;
+      source.connect(filter);
+      filter.connect(audioCtx.destination);
+      return true;
+    } catch (_e) { return false; }
+  }
+
+  function setUnderwater(enabled) {
+    if (!enabled && !audioCtx) return; // グラフ未初期化なら何もしない
+    if (!ensureAudioGraph()) return;
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    const target = enabled ? 1200 : 20000;
+    filter.frequency.setTargetAtTime(target, audioCtx.currentTime, 0.25);
+  }
+
+  // ---- トリップ中ピッチ揺れ ----
+  let _tripTimer  = null;
+  let _tripStart  = null;
+  const TRIP_TOTAL = 60;
+  const TRIP_RAMP  = 4;
+
+  function startTripPitch() {
+    stopTripPitch();
+    _tripStart = performance.now();
+    _tripTimer = setInterval(() => {
+      const elapsed = (performance.now() - _tripStart) / 1000;
+      if (elapsed >= TRIP_TOTAL) { stopTripPitch(); return; }
+      const fadeIn  = Math.min(elapsed / TRIP_RAMP, 1);
+      const fadeOut = Math.min((TRIP_TOTAL - elapsed) / TRIP_RAMP, 1);
+      const ramp    = Math.min(fadeIn, fadeOut);
+      const eased   = ramp * ramp * (3 - 2 * ramp);
+      // ゆっくりうねる（1.0 ± 0.04）
+      bgm.playbackRate = 1 + Math.sin(elapsed * 0.8) * 0.04 * eased;
+    }, 50);
+  }
+
+  function stopTripPitch() {
+    if (_tripTimer) { clearInterval(_tripTimer); _tripTimer = null; }
+    bgm.playbackRate = 1;
+  }
+
+  // ---- グッドトリップ: ピッチ上げ＋ディレイ ----
+  let _goodTripTimer = null;
+  let _goodTripStart = null;
+  let _delayNode     = null;
+  let _delayFeedback = null;
+  let _delayWet      = null;
+
+  function ensureDelayGraph() {
+    if (_delayNode) return true;
+    if (!ensureAudioGraph()) return false;
+    try {
+      _delayNode     = audioCtx.createDelay(1.0);
+      _delayFeedback = audioCtx.createGain();
+      _delayWet      = audioCtx.createGain();
+
+      _delayNode.delayTime.value = 0.28;
+      _delayFeedback.gain.value  = 0;
+      _delayWet.gain.value       = 0;
+
+      // filter → delayNode → delayWet → destination
+      filter.connect(_delayNode);
+      _delayNode.connect(_delayWet);
+      _delayWet.connect(audioCtx.destination);
+      // フィードバックループ
+      _delayWet.connect(_delayFeedback);
+      _delayFeedback.connect(_delayNode);
+      return true;
+    } catch (_e) { return false; }
+  }
+
+  function startGoodTripPitch() {
+    stopGoodTripPitch();
+    if (!ensureDelayGraph()) return;
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    _goodTripStart = performance.now();
+
+    const ATTACK_SEC   = 0.8;  // この秒数でぐいっと上げる
+    const TARGET_PITCH = 1.06; // +6%
+
+    // ディレイを即派手に立ち上げる
+    const t = audioCtx.currentTime;
+    _delayNode.delayTime.value = 0.38;
+    _delayWet.gain.setTargetAtTime(0.70, t, 0.25);
+    _delayFeedback.gain.setTargetAtTime(0.58, t, 0.25);
+
+    _goodTripTimer = setInterval(() => {
+      const elapsed = (performance.now() - _goodTripStart) / 1000;
+      if (elapsed >= TRIP_TOTAL) { stopGoodTripPitch(); return; }
+
+      let pitch;
+      if (elapsed < ATTACK_SEC) {
+        // ぐいっと上げる
+        const r = elapsed / ATTACK_SEC;
+        const e = r * r * (3 - 2 * r);
+        pitch = 1 + (TARGET_PITCH - 1) * e;
+      } else if (elapsed < TRIP_TOTAL - TRIP_RAMP) {
+        // ホールド
+        pitch = TARGET_PITCH;
+      } else {
+        // 終わり際だけ戻す
+        const r = (TRIP_TOTAL - elapsed) / TRIP_RAMP;
+        const e = r * r * (3 - 2 * r);
+        pitch = 1 + (TARGET_PITCH - 1) * e;
+      }
+      bgm.playbackRate = pitch;
+    }, 50);
+  }
+
+  function stopGoodTripPitch() {
+    if (_goodTripTimer) { clearInterval(_goodTripTimer); _goodTripTimer = null; }
+    bgm.playbackRate = 1;
+    if (_delayWet && audioCtx) {
+      const t = audioCtx.currentTime;
+      _delayWet.gain.setTargetAtTime(0, t, 0.3);
+      _delayFeedback.gain.setTargetAtTime(0, t, 0.3);
+    }
+  }
+
+  // ---- チェンバーリバーブ ----
+  let _reverbPreDelay = null;
+  let _convolver      = null;
+  let _reverbEq       = null;
+  let _reverbWet      = null;
+
+  function _makeImpulse(duration, decay) {
+    const sr  = audioCtx.sampleRate;
+    const len = (sr * duration) | 0;
+    const buf = audioCtx.createBuffer(2, len, sr);
+    for (let c = 0; c < 2; c++) {
+      const d = buf.getChannelData(c);
+      for (let i = 0; i < len; i++) {
+        d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay);
+      }
+    }
+    return buf;
+  }
+
+  function ensureReverbGraph() {
+    if (_convolver) return true;
+    if (!ensureAudioGraph()) return false;
+    try {
+      _reverbPreDelay = audioCtx.createDelay(0.1);
+      _reverbPreDelay.delayTime.value = 0;
+      _convolver = audioCtx.createConvolver();
+      _reverbEq  = audioCtx.createBiquadFilter();
+      _reverbEq.frequency.value = 3000;
+      _reverbEq.gain.value = 0;
+      _reverbWet = audioCtx.createGain();
+      _reverbWet.gain.value = 0;
+      filter.connect(_reverbPreDelay);
+      _reverbPreDelay.connect(_convolver);
+      _convolver.connect(_reverbEq);
+      _reverbEq.connect(_reverbWet);
+      _reverbWet.connect(audioCtx.destination);
+      return true;
+    } catch (_e) { return false; }
+  }
+
+  const REVERB_PRESETS = {
+    pool: {
+      duration: 1.5, decay: 4.0,
+      preDelay: 0,
+      eqType: "highshelf", eqFreq: 3000, eqGain: 3,
+      wet: 0.40,
+    },
+    charch: {
+      duration: 4.0, decay: 1.5,
+      preDelay: 0.02,
+      eqType: "lowshelf", eqFreq: 400, eqGain: 4,
+      wet: 0.65,
+    },
+  };
+
+  function setReverb(mapId) {
+    const preset = REVERB_PRESETS[mapId];
+    if (!preset && !_convolver) return;
+    if (!ensureReverbGraph()) return;
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    const t = audioCtx.currentTime;
+    if (!preset) {
+      _reverbWet.gain.setTargetAtTime(0, t, 0.4);
+      return;
+    }
+    _convolver.buffer = _makeImpulse(preset.duration, preset.decay);
+    _reverbPreDelay.delayTime.setTargetAtTime(preset.preDelay, t, 0.05);
+    _reverbEq.type            = preset.eqType;
+    _reverbEq.frequency.value = preset.eqFreq;
+    _reverbEq.gain.value      = preset.eqGain;
+    _reverbWet.gain.setTargetAtTime(preset.wet, t, 0.4);
+  }
+
   function setMap(src) {
     mapSrc = src || mapSrc;
     overrideSrc = null;
@@ -76,5 +280,11 @@ export function createBgm({
     getMapSrc: () => mapSrc,
     getOverrideSrc: () => overrideSrc,
     getCurrentSrc: () => currentSrc,
+    setUnderwater,
+    setReverb,
+    startTripPitch,
+    stopTripPitch,
+    startGoodTripPitch,
+    stopGoodTripPitch,
   };
 }

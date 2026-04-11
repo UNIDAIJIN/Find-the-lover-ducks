@@ -13,6 +13,11 @@ export const SPRITES = {
   p3: loadSprite("assets/sprites/p3.png"),
   p4: loadSprite("assets/sprites/p4.png"),
 
+  p1_t1: loadSprite("assets/sprites/p1_t1.png"),
+  p2_t1: loadSprite("assets/sprites/p2_t1.png"),
+  p3_t1: loadSprite("assets/sprites/p3_t1.png"),
+  p4_t1: loadSprite("assets/sprites/p4_t1.png"),
+
   p1_t2: loadSprite("assets/sprites/p1_t2.png"),
   p2_t2: loadSprite("assets/sprites/p2_t2.png"),
   p3_t2: loadSprite("assets/sprites/p3_t2.png"),
@@ -20,13 +25,25 @@ export const SPRITES = {
   
   // npc
   natsumi:   loadSprite("assets/sprites/natsumi_play.png"),
+  mizugi_m:  loadSprite("assets/sprites/mizugi_m.png"),
+  mizugi_f:  loadSprite("assets/sprites/mizugi_f.png"),
+  npc1:      loadSprite("assets/sprites/npc1.png"),
+  pepper:    loadSprite("assets/sprites/pepper.png"),
+  skull_a:   loadSprite("assets/sprites/skull_a.png"),
+  skull_b:   loadSprite("assets/sprites/skull_b.png"),
+  skull_r:   loadSprite("assets/sprites/skull_r.png"),
   riku_play: loadSprite("assets/sprites/riku_play.png"),
   maki_play: loadSprite("assets/sprites/maki_play.png"),
   nino_play: loadSprite("assets/sprites/nino_play.png"),
   ricky: loadSprite("assets/sprites/ricky.png"),
   ohara: loadSprite("assets/sprites/ohara.png"),
   minami: loadSprite("assets/sprites/minami.png"),
-  hisaro: loadSprite("assets/sprites/hisaro.png"),
+  pbd:    loadSprite("assets/sprites/pbd.png"),
+  shaman: loadSprite("assets/sprites/Shaman.png"),
+  ponydeadyouth: loadSprite("assets/sprites/ponydeadyouth.png"),
+  hisaro:       loadSprite("assets/sprites/hisaro.png"),
+  workmangirl:  loadSprite("assets/sprites/workmangirl.png"),
+  workman:      loadSprite("assets/sprites/workman.png"),
 
   // duck
   duck: loadSprite("assets/sprites/duck.png"),
@@ -37,9 +54,48 @@ export const SPRITES = {
   fan_flower: loadSprite("assets/sprites/fan_flower.png"),
   cat1: loadSprite("assets/sprites/cat_g.png"),
   seats: loadSprite("assets/sprites/seats.png"),
-  sabo_hat: loadSprite("assets/sprites/sabo_hat.png"),
-  sabo: loadSprite("assets/sprites/sabo.png"),
 
   // 戦闘グラフィック
-boss: loadSprite("assets/sprites/boss.png"),
+  boss: loadSprite("assets/sprites/boss.png"),
+
+  // hole マップ
+  nidhogg:  loadSprite("assets/sprites/nidhogg.png"),
+  nidhogg2: loadSprite("assets/sprites/nidhogg2.png"),
+
+  // ura_ketchupug マップ
+  ura_yahhy: loadSprite("assets/sprites/ura_yahhy.png"),
+  yahhy:     loadSprite("assets/sprites/yahhy.png"),
+  moriGirl:  loadSprite("assets/sprites/mori-girl.png"),
+  met:         loadSprite("assets/sprites/met.png"),
+  aflo_p1:     loadSprite("assets/sprites/aflo_p1.png"),
+  aflo_p2:     loadSprite("assets/sprites/aflo_p2.png"),
+  aflo_p3:     loadSprite("assets/sprites/aflo_p3.png"),
+  aflo_p4:     loadSprite("assets/sprites/aflo_p4.png"),
+  kingyobachi: loadSprite("assets/sprites/kingyobachi.png"),
+  s_hat:       loadSprite("assets/sprites/s_hat.png"),
+
+  // cactus
+  cactus:        loadSprite("assets/sprites/cactus.png"),
+  cactus_hat:    loadSprite("assets/sprites/cactus_hat.png"),
+  cactus_shadow:     loadSprite("assets/sprites/cactus_shadow.png"),
+  cactus_hat_shadow: loadSprite("assets/sprites/cactus_hat_shadow.png"),
+
+  d_sword_on:  loadSprite("assets/sprites/d-sword-on.png"),
+  d_sword_off: loadSprite("assets/sprites/d-sword-off.png"),
+
+  keeper: loadSprite("assets/sprites/keeper.png"),
+
+  gate:  loadSprite("assets/sprites/gate.png"),
+  lucha: loadSprite("assets/sprites/lucha.png"),
+
+  // outdoor オブジェクト
+  balloondog:      loadSprite("assets/sprites/balloondog.png"),
+  balloondog_half: loadSprite("assets/sprites/balloondog_half.png"),
+  chinanago_off:  loadSprite("assets/sprites/chinanago_off.png"),
+  chinanago_half: loadSprite("assets/sprites/chinanago_half.png"),
+  chinanago_on:   loadSprite("assets/sprites/chinanago_on.png"),
+  careful: loadSprite("assets/sprites/careful.png"),
+  orca3:   loadSprite("assets/sprites/orca3.png"),
+  orca2:   loadSprite("assets/sprites/orca2.png"),
+  orca:    loadSprite("assets/sprites/orca.png"),
 };

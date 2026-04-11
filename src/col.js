@@ -31,22 +31,27 @@ export function makeColStore() {
       const i = ((py | 0) * this.w + (px | 0)) * 4;
       return { r: this.data[i] | 0, g: this.data[i+1] | 0, b: this.data[i+2] | 0, a: this.data[i+3] | 0 };
     },
-    isWallAt(px, py) {
+    isWallAt(px, py, heightLevel = "ground") {
       if (!this.ready || !this.data) return false;
       if (px < 0 || py < 0 || px >= this.w || py >= this.h) return true;
       const i = ((py | 0) * this.w + (px | 0)) * 4;
-      if ((this.data[i + 3] | 0) === 0) return false; // transparent = walkable
-      // red (255,0,0) = zone marker = walkable
-      if ((this.data[i] | 0) > 200 && (this.data[i+1] | 0) < 50 && (this.data[i+2] | 0) < 50) return false;
-      return true;
+      const r = this.data[i] | 0, g = this.data[i+1] | 0, b = this.data[i+2] | 0, a = this.data[i+3] | 0;
+      if (a === 0)                          return false; // 透明 = 歩ける
+      if (r===255 && g===0   && b===0  )  return false;                      // 赤 = 神社（歩ける）
+      if (r===0   && g===0   && b===255)  return heightLevel === "upper";    // 青 = upperのみ壁
+      if (r===255 && g===255 && b===0  )  return heightLevel === "ground";   // 黄 = groundのみ壁
+      if (r===0   && g===255 && b===0  )  return false;                      // 緑 = 階段（歩ける）
+      return true; // それ以外 = 壁
     },
     // Returns zone id at pixel, or null
     getZone(px, py) {
       if (!this.ready || !this.data) return null;
       if (px < 0 || py < 0 || px >= this.w || py >= this.h) return null;
       const i = ((py | 0) * this.w + (px | 0)) * 4;
-      if ((this.data[i + 3] | 0) === 0) return null;
-      if ((this.data[i] | 0) > 200 && (this.data[i+1] | 0) < 50 && (this.data[i+2] | 0) < 50) return "shrine";
+      const r = this.data[i] | 0, g = this.data[i+1] | 0, b = this.data[i+2] | 0, a = this.data[i+3] | 0;
+      if (a === 0)                         return null;
+      if (r===255 && g===0   && b===0  )  return "shrine";
+      if (r===0   && g===255 && b===0  )  return "stair";
       return null;
     },
   };

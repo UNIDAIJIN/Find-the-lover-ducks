@@ -70,8 +70,13 @@ export function drawBattleScreen(ctx, st, opt) {
   function drawBox(x, y, w, h) {
     ctx.fillStyle = THEME.bg;
     ctx.fillRect(x, y, w, h);
+    ctx.fillRect(x - 1, y - 1, w + 2, 1);
+    ctx.fillRect(x - 1, y + h, w + 2, 1);
+    ctx.fillRect(x - 1, y - 1, 1, h + 2);
+    ctx.fillRect(x + w, y - 1, 1, h + 2);
     ctx.strokeStyle = THEME.line;
-    ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
   }
   function drawText(str, x, y, color = THEME.text) {
     ctx.fillStyle = color;
@@ -110,9 +115,9 @@ export function drawBattleScreen(ctx, st, opt) {
   const cmdW = 88;
 
   // items window（表示中のみ）
-  const invX = 160;
-  const invW = 88;
+  const invW = 104;
   const invH = 68;
+  const invX = BASE_W - 8 - invW;
   const invY = cmdY - invH - 4;
 
   // --- BOSS position ---
@@ -130,9 +135,18 @@ export function drawBattleScreen(ctx, st, opt) {
 
   // ---- LOG CONTENT ----
   if (st.msg && (st.msg.lines || []).length) {
+    // タイプライター：lines[0] を typed で差し替え
+    let displayLines = (st.msg.lines || []).slice();
+    if (st.msg.typed) {
+      const { prefix = "", text = "", suffix = "" } = st.msg.typed;
+      const shown = text.slice(0, st.msg.typedCount | 0);
+      const done  = st.msg.typedDone;
+      displayLines[0] = prefix + shown + (done ? suffix : "");
+    }
+
     // 通常ログ（\n は明示改行）
     const rawLines = [];
-    for (const s of st.msg.lines || []) {
+    for (const s of displayLines) {
       const parts = String(s ?? "").split("\n");
       for (const p of parts) rawLines.push(p);
     }
@@ -343,14 +357,26 @@ export function drawBattleScreen(ctx, st, opt) {
   // command list
   const cmdList = st.cmds;
 
+  const showInv = st.phase === "items";
+
   if (st.phase === "items") {
     // 親コマンドはカーソル無し
     for (let i = 0; i < cmdList.length; i++) {
-      const yy = cmdY + 8 + i * 14;
+      const yy = cmdY + 8 + i * 16;
       drawText(cmdList[i], cmdX + 18, yy, THEME.text);
     }
+  } else {
+    for (let i = 0; i < cmdList.length; i++) {
+      const yy = cmdY + 8 + i * 16;
+      const sel = st.phase === "choose" && i === (st.menuIdx | 0) && !st.msg;
+      if (sel) drawText("▶", cmdX + 6, yy, THEME.text);
+      drawText(cmdList[i], cmdX + 18, yy, THEME.text);
+    }
+  }
 
-    // items window
+  if (showInv) {
+    ctx.save();
+    ctx.save();
     drawBox(invX, invY, invW, invH);
 
     const n = st.invItems.length | 0;
@@ -358,28 +384,18 @@ export function drawBattleScreen(ctx, st, opt) {
       drawText("(なし)", invX + 8, invY + 8, THEME.text);
     } else {
       const visible = 4;
-      const start = Math.max(
-        0,
-        Math.min((st.invCursor | 0) - ((visible / 2) | 0), Math.max(0, n - visible))
-      );
-
+      const start = Math.max(0, Math.min((st.invCursor | 0) - ((visible / 2) | 0), Math.max(0, n - visible)));
       for (let k = 0; k < Math.min(visible, n - start); k++) {
         const idx = start + k;
         const yy = invY + 8 + k * 14;
         if (idx === (st.invCursor | 0)) drawText("▶", invX + 6, yy, THEME.text);
-
         const id = st.invItems[idx];
         const label = typeof itemName === "function" ? itemName(id) : String(id ?? "");
         drawText(label, invX + 18, yy, THEME.text);
       }
     }
-  } else {
-    for (let i = 0; i < cmdList.length; i++) {
-      const yy = cmdY + 8 + i * 14;
-      const sel = st.phase === "choose" && i === (st.menuIdx | 0) && !st.msg;
-      if (sel) drawText("▶", cmdX + 6, yy, THEME.text);
-      drawText(cmdList[i], cmdX + 18, yy, THEME.text);
-    }
+    ctx.restore();
+    ctx.restore();
   }
 
   ctx.restore();

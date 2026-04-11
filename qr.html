@@ -93,6 +93,18 @@
     <input type="color" id="qr-color" value="#000000">
   </div>
 
+  <div class="color-row">
+    <label for="qr-size">Size</label>
+    <input type="range" id="qr-size" min="100" max="600" step="10" value="200">
+    <span id="qr-size-val">200px</span>
+  </div>
+
+  <div class="color-row">
+    <label for="qr-dot">Dot size</label>
+    <input type="range" id="qr-dot" min="1" max="8" step="1" value="1">
+    <span id="qr-dot-val">1×</span>
+  </div>
+
   <div class="cards">
     <div class="card pc">
       <div class="label">PC</div>
@@ -116,15 +128,23 @@
     document.getElementById("url-mob").textContent = urls.mob;
 
     function renderOne(canvasId, text) {
-      const color = document.getElementById("qr-color").value;
+      const color   = document.getElementById("qr-color").value;
+      const size    = parseInt(document.getElementById("qr-size").value);
+      const dotMult = parseInt(document.getElementById("qr-dot").value);
+      const canvas  = document.getElementById(canvasId);
+      // render at size/dotMult, then CSS-scale up pixelated
+      const renderSize = Math.max(20, Math.round(size / dotMult));
       QrCreator.render({
         text,
         radius: 0,
         ecLevel: "H",
         fill: color,
         background: null,
-        size: 200,
-      }, document.getElementById(canvasId));
+        size: renderSize,
+      }, canvas);
+      canvas.style.width  = size + "px";
+      canvas.style.height = size + "px";
+      canvas.style.imageRendering = dotMult > 1 ? "pixelated" : "auto";
     }
 
     function renderAll() {
@@ -140,6 +160,16 @@
     }
 
     document.getElementById("qr-color").addEventListener("input", renderAll);
+    document.getElementById("qr-size").addEventListener("input", () => {
+      document.getElementById("qr-size-val").textContent =
+        document.getElementById("qr-size").value + "px";
+      renderAll();
+    });
+    document.getElementById("qr-dot").addEventListener("input", () => {
+      document.getElementById("qr-dot-val").textContent =
+        document.getElementById("qr-dot").value + "×";
+      renderAll();
+    });
     renderAll();
   </script>
 </body>

@@ -1,5 +1,5 @@
 // ui_inventory.js
-import { playCursor, playConfirm } from "./se.js";
+import { playCursor, playConfirm, playItemJingle } from "./se.js";
 
 export function createInventory({
   BASE_W,
@@ -7,9 +7,10 @@ export function createInventory({
   input,
   itemName,
   itemBgmSrc,
+  stopBgm,
   unlockBgm,
   setOverrideBgm,
-  dialog, // dialog.open を使う
+  toast,
   startItems = [],
   visibleRows = 10,
 } = {}) {
@@ -86,13 +87,20 @@ export function createInventory({
     const name = itemName(id);
 
     const src = itemBgmSrc(id);
-    if (src) {
-      unlockBgm();
-      setOverrideBgm(src);
-    }
 
     closeInv();
-    if (dialog) dialog.open([[`${name} をつかった。`]], null, "sign");
+    if (typeof stopBgm === "function") stopBgm();
+    playItemJingle();
+    if (toast) toast.show(`${name} をつかった。`);
+
+    setTimeout(() => {
+      if (src) {
+        unlockBgm();
+        setOverrideBgm(src);
+      } else {
+        setOverrideBgm(null);
+      }
+    }, 670);
   }
 
   function update() {
@@ -127,6 +135,12 @@ export function createInventory({
     clampScroll();
   }
 
+  function removeItem(id) {
+    const idx = inv.items.indexOf(id);
+    if (idx !== -1) inv.items.splice(idx, 1);
+    clampScroll();
+  }
+
   function getSnapshot() {
     return inv.items.slice();
   }
@@ -156,8 +170,13 @@ export function createInventory({
 
     ctx.fillStyle = "#000";
     ctx.fillRect(x, y, w, h);
+    ctx.fillRect(x - 1, y - 1, w + 2, 1);
+    ctx.fillRect(x - 1, y + h, w + 2, 1);
+    ctx.fillRect(x - 1, y - 1, 1, h + 2);
+    ctx.fillRect(x + w, y - 1, 1, h + 2);
     ctx.strokeStyle = "#fff";
-    ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
 
     ctx.fillStyle = "#fff";
     ctx.font = "10px PixelMplus10";
@@ -196,6 +215,7 @@ export function createInventory({
     update,
     draw,
     addItem,
+    removeItem,
     getSnapshot,
     resetItems,
   };

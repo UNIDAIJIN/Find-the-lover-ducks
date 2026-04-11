@@ -1,5 +1,5 @@
 // ui_dialog.js
-import { playConfirm } from "./se.js";
+import { playConfirm, playTypingVoice } from "./se.js";
 
 export function createDialog({ BASE_W, BASE_H, input } = {}) {
   let active = false;
@@ -15,24 +15,41 @@ export function createDialog({ BASE_W, BASE_H, input } = {}) {
   // typewriter state
   let charIndex  = 0;
   let lastCharMs = 0;
-  const CHAR_MS  = 40; // ms per character
+  const CHAR_MS  = 60; // ms per character
 
   // ★ページ遷移通知（npc_events 側で choice を出す用）
-  let onPageChangeCb = null;
+  let onPageChangeCb  = null;
+  // ★タイプ完了通知
+  let onTypingDoneCb  = null;
+  let typingDoneFired = false;
+  // ★タイプライター音声
+  let voice = "default";
 
   // 画面下のメッセージ窓
   const rect = {
     x: 8,
-    y: (BASE_H - 70 - 8) | 0,
+    y: (BASE_H - 55 - 8) | 0,
     w: (BASE_W - 16) | 0,
-    h: 70,
+    h: 55,
   };
+
+  const textCanvas = null; // 未使用
+  const textCtx   = null; // 未使用
 
   function isActive() { return active; }
   function getRect()  { return { ...rect }; }
 
   function onPageChange(fn) {
     onPageChangeCb = typeof fn === "function" ? fn : null;
+  }
+
+  function onTypingDone(fn) {
+    onTypingDoneCb  = typeof fn === "function" ? fn : null;
+    typingDoneFired = false;
+  }
+
+  function setVoice(v) {
+    voice = v || "default";
   }
 
   // ---- typewriter helpers ----
@@ -52,11 +69,16 @@ export function createDialog({ BASE_W, BASE_H, input } = {}) {
 
   function completeTyping() {
     charIndex = pageCharTotal(currentLines());
+    if (!typingDoneFired && onTypingDoneCb) {
+      typingDoneFired = true;
+      onTypingDoneCb();
+    }
   }
 
   function resetTyping() {
-    charIndex  = 0;
-    lastCharMs = Date.now();
+    charIndex       = 0;
+    lastCharMs      = Date.now();
+    typingDoneFired = false;
   }
 
   // ---- public API ----
@@ -110,6 +132,11 @@ export function createDialog({ BASE_W, BASE_H, input } = {}) {
         lastCharMs += add * CHAR_MS;
         const total = pageCharTotal(currentLines());
         if (charIndex > total) charIndex = total;
+        if (!isTypingDone()) playTypingVoice(voice);
+      }
+      if (isTypingDone() && !typingDoneFired && onTypingDoneCb) {
+        typingDoneFired = true;
+        onTypingDoneCb();
       }
     }
 
@@ -162,20 +189,31 @@ export function createDialog({ BASE_W, BASE_H, input } = {}) {
   }
 
   function drawBox(ctx, lines, instant) {
+    ctx.save();
     const pad   = 10;
     const maxW  = rect.w - pad * 2;
 
-    ctx.fillStyle = "rgba(0,0,0,1)";
+    // 影
+    ctx.fillStyle = "rgba(0,0,0,0.45)";
+    ctx.fillRect(rect.x + 3, rect.y + 3, rect.w, rect.h);
+
+    ctx.fillStyle = "#000";
     ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
 
-    ctx.strokeStyle = "rgba(255,255,255,1)";
-    ctx.strokeRect(rect.x + 0.5, rect.y + 0.5, rect.w - 1, rect.h - 1);
+    ctx.fillStyle = "#000";
+    ctx.fillRect(rect.x - 1, rect.y - 1, rect.w + 2, 1);
+    ctx.fillRect(rect.x - 1, rect.y + rect.h, rect.w + 2, 1);
+    ctx.fillRect(rect.x - 1, rect.y - 1, 1, rect.h + 2);
+    ctx.fillRect(rect.x + rect.w, rect.y - 1, 1, rect.h + 2);
+
+    ctx.strokeStyle = "#fff";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(rect.x + 1, rect.y + 1, rect.w - 2, rect.h - 2);
 
     ctx.fillStyle = "#fff";
     ctx.font = "normal 10px PixelMplus10";
     ctx.textBaseline = "top";
 
-    // 全行を先にラップ確定させる
     const wrappedLines = [];
     for (const line of lines) {
       for (const wl of wrapText(ctx, String(line ?? ""), maxW)) {
@@ -185,27 +223,38 @@ export function createDialog({ BASE_W, BASE_H, input } = {}) {
 
     let row = 0;
     if (instant) {
-      // sign: 全文即時
       for (const wl of wrappedLines) {
-        ctx.fillText(wl, rect.x + pad, rect.y + pad + row * 16);
+        ctx.fillText(wl, rect.x + pad, rect.y + 8 + row * 16);
         row++;
       }
     } else {
-      // talk: typewriter（折り返し位置は固定済み）
       let remaining = charIndex;
       for (const wl of wrappedLines) {
         if (remaining <= 0) break;
-        ctx.fillText(wl.slice(0, remaining), rect.x + pad, rect.y + pad + row * 16);
+        const visible = wl.slice(0, remaining);
+        ctx.fillText(visible, rect.x + pad, rect.y + 8 + row * 16);
         remaining -= wl.length;
         row++;
       }
     }
 
-    // カーソル：タイプ完了時のみ表示（auto-advance 時は非表示）
+    // カーソル（右下三角）
     if (autoAdvanceMs <= 0 && (instant || isTypingDone())) {
-      const cursor = index < pages.length - 1 ? "▶" : "▼";
-      ctx.fillText(cursor, rect.x + rect.w - 18, rect.y + rect.h - 20);
+      const tx = rect.x + rect.w - 10;
+      const ty = rect.y + rect.h - 10;
+      ctx.beginPath();
+      ctx.moveTo(tx - 4, ty);
+      ctx.lineTo(tx + 4, ty);
+      ctx.lineTo(tx, ty + 5);
+      ctx.closePath();
+      ctx.strokeStyle = "#000";
+      ctx.lineWidth   = 2;
+      ctx.lineJoin    = "round";
+      ctx.stroke();
+      ctx.fillStyle = "#fff";
+      ctx.fill();
     }
+    ctx.restore();
   }
 
   function draw(ctx) {
@@ -221,5 +270,8 @@ export function createDialog({ BASE_W, BASE_H, input } = {}) {
     draw,
     getRect,
     onPageChange,
+    onTypingDone,
+    completeTyping,
+    setVoice,
   };
 }

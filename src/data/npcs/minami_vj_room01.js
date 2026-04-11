@@ -5,19 +5,20 @@ export const vjRoom01MinamiNpc = {
   x:            66,
   y:            121,
   talkHit:      { x: 0, y: 0, w: 16, h: 14 },
-  talkPages: [
-    ["アルバムのせいさくひをよこせ だって？"],
-    ["ほしければ ちからづくで ・・・うばってみろ！！"],
-  ],
+  battleConfirmQuestion: "アルバムの制作費をよこせだって？",
+  battleConfirmPrompt: "ほしければ ちからづくで ・・・うばってみろ！！",
   solid:        true,
   battleTrigger:   true,
+  battleConfirm:   true,
   battleWinEnding: true,
   battleWinPages: [
     ["ハァ、ハァ、"],
-    ["いいだろう。やくそくどおり せいさくひをよういしてやる。"],
-    ["さっそく おくのへやで れんしゅうでもしてこい！ "],
+    ["いいだろう。制作費を用意してやる。"],
+    ["それじゃあさっそく、奥の部屋で練習でもしてこい！"],
   ],
-  battleLosePages: [
-    ["でなおしてこい クソガキども。"],
+  battlePayPages: [
+    ["なんでそんなことしたんだ？"],
+    ["まあいいか。"],
+    ["それじゃあ、さっそく奥の部屋で練習でもしてくれば？"],
   ],
 };
