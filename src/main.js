@@ -107,6 +107,9 @@ const bgMidImg      = new Image();
 const bgShrineImg    = new Image();
 const bgShrineTopImg = new Image();
 const col = makeColStore();
+const MOBILE_MAP_CHUNK = 512;
+const MOBILE_MAP_CACHE_LIMIT = 12;
+let mapChunkCache = new WeakMap();
 
 // ---- Mobile device detection ----
 const IS_MOBILE_DEVICE = navigator.maxTouchPoints > 0 || /Mobi|Android/i.test(navigator.userAgent);
@@ -179,6 +182,44 @@ function buildWaterMask(img, color) {
   }
   mx.putImageData(id, 0, 0);
   waterMaskCanvas = mc;
+}
+
+function getMapChunkEntry(img) {
+  let entry = mapChunkCache.get(img);
+  const src = img.currentSrc || img.src;
+  if (!entry || entry.src !== src) {
+    entry = { src, chunks: new Map(), order: [] };
+    mapChunkCache.set(img, entry);
+  }
+  return entry;
+}
+
+function getMapChunk(img, cx, cy) {
+  const entry = getMapChunkEntry(img);
+  const key = `${cx},${cy}`;
+  const cached = entry.chunks.get(key);
+  if (cached) return cached;
+
+  const sx = cx * MOBILE_MAP_CHUNK;
+  const sy = cy * MOBILE_MAP_CHUNK;
+  const sw = Math.min(MOBILE_MAP_CHUNK, img.naturalWidth - sx);
+  const sh = Math.min(MOBILE_MAP_CHUNK, img.naturalHeight - sy);
+  if (sw <= 0 || sh <= 0) return null;
+
+  const chunk = document.createElement("canvas");
+  chunk.width = sw;
+  chunk.height = sh;
+  const cctx = chunk.getContext("2d");
+  cctx.imageSmoothingEnabled = false;
+  cctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+
+  entry.chunks.set(key, chunk);
+  entry.order.push(key);
+  while (entry.order.length > MOBILE_MAP_CACHE_LIMIT) {
+    const oldKey = entry.order.shift();
+    entry.chunks.delete(oldKey);
+  }
+  return chunk;
 }
 
 function drawWaterSea(ctx) {
@@ -1119,6 +1160,7 @@ function loadMap(id, opt = null) {
   mapReady = false;
   const prevMapId = current.id;
   current.id = id;
+  mapChunkCache = new WeakMap();
 
   if (id === "outdoor") delete STATE.flags.carefulActive;
 
@@ -1226,6 +1268,37 @@ function loadMap(id, opt = null) {
 // カメラが映している範囲だけ描画（巨大マップのGPU負荷削減）
 function drawMapImg(img, alpha) {
   if (!img.complete || img.naturalWidth <= 0) return;
+  if (IS_MOBILE_DEVICE && current.id === "outdoor" && img.naturalWidth > 2048) {
+    const startCx = Math.max(0, (cam.x / MOBILE_MAP_CHUNK) | 0);
+    const startCy = Math.max(0, (cam.y / MOBILE_MAP_CHUNK) | 0);
+    const endCx = Math.min(((img.naturalWidth - 1) / MOBILE_MAP_CHUNK) | 0, ((cam.x + canvas.width) / MOBILE_MAP_CHUNK) | 0);
+    const endCy = Math.min(((img.naturalHeight - 1) / MOBILE_MAP_CHUNK) | 0, ((cam.y + canvas.height) / MOBILE_MAP_CHUNK) | 0);
+    if (alpha !== undefined && alpha < 1) {
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      for (let cy = startCy; cy <= endCy; cy++) {
+        for (let cx = startCx; cx <= endCx; cx++) {
+          const chunk = getMapChunk(img, cx, cy);
+          if (!chunk) continue;
+          const dx = cx * MOBILE_MAP_CHUNK - cam.x;
+          const dy = cy * MOBILE_MAP_CHUNK - cam.y;
+          ctx.drawImage(chunk, dx | 0, dy | 0);
+        }
+      }
+      ctx.restore();
+    } else {
+      for (let cy = startCy; cy <= endCy; cy++) {
+        for (let cx = startCx; cx <= endCx; cx++) {
+          const chunk = getMapChunk(img, cx, cy);
+          if (!chunk) continue;
+          const dx = cx * MOBILE_MAP_CHUNK - cam.x;
+          const dy = cy * MOBILE_MAP_CHUNK - cam.y;
+          ctx.drawImage(chunk, dx | 0, dy | 0);
+        }
+      }
+    }
+    return;
+  }
   const sx = cam.x | 0;
   const sy = cam.y | 0;
   const sw = Math.min(canvas.width,  img.naturalWidth  - sx);
