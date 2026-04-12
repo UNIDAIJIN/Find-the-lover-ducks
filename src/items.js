@@ -18,6 +18,7 @@ export const START_INVENTORY_DEBUG = [
   ...ALL_ITEMS.flatMap((d) => d.id === "gunter" ? Array(10).fill(d.id) : [d.id]),
   ...TEMP_ITEMS.map((d) => d.id),
 ];
+export const START_INVENTORY_NORMAL = ["kingyobachi"];
 export const START_INVENTORY_EMPTY = [];
 
 export function itemName(id)     { return ITEM_MAP.get(id)?.name    ?? id;   }

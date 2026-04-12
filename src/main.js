@@ -3,7 +3,7 @@ import { CONFIG } from "./config.js";
 import { SPRITES } from "./sprites.js";
 import { MAPS } from "./maps.js";
 import { makeColStore } from "./col.js";
-import { START_INVENTORY_EMPTY, itemName, itemBgmSrc, itemThrowDmg } from "./items.js";
+import { START_INVENTORY_NORMAL, itemName, itemBgmSrc, itemThrowDmg } from "./items.js";
 import { PICKUPS_BY_MAP } from "./pickups.js";
 import { NPCS_BY_MAP } from "./npcs.js";
 import { REGISTRY } from "./registry.js";
@@ -852,7 +852,7 @@ const inventory = createInventory({
     }
   },
   toast,
-  startItems: START_INVENTORY_EMPTY,
+  startItems: START_INVENTORY_NORMAL,
   visibleRows: 10,
 });
 
@@ -1166,7 +1166,7 @@ function startNewGameFlow() {
     setupParty(leaderIdx);
     setGameResolution(BASE_W, BASE_H);
     resetProgress();
-    inventory.resetItems(START_INVENTORY_EMPTY);
+    inventory.resetItems(START_INVENTORY_NORMAL);
     fade.startCutFade(nowMs(), {
       outMs:  1,
       holdMs: 80,
@@ -3116,7 +3116,7 @@ function update(t) {
       bgmCtl.setOverride(null);
       partyVisible = true;
       resetProgress();
-      inventory.resetItems(START_INVENTORY_EMPTY);
+      inventory.resetItems(START_INVENTORY_NORMAL);
       loadMap("outdoor");
       setGameResolution(CONFIG.BASE_W, CONFIG.BASE_H);
       title.start({
