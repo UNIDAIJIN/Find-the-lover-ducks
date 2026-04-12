@@ -107,6 +107,96 @@ export function playConfirm() {
   });
 }
 
+// ---- クリック音: カチッ ----
+export function playClickOn() {
+  const ctx = getCtx();
+  if (ctx.state !== "running") return;
+  const t = ctx.currentTime;
+
+  const osc = ctx.createOscillator();
+  const g = ctx.createGain();
+  const hp = ctx.createBiquadFilter();
+  hp.type = "highpass";
+  hp.frequency.value = 1800;
+
+  osc.connect(hp);
+  hp.connect(g);
+  g.connect(ctx.destination);
+
+  osc.type = "square";
+  osc.frequency.setValueAtTime(980, t);
+  osc.frequency.exponentialRampToValueAtTime(420, t + 0.03);
+  g.gain.setValueAtTime(0.16, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.035);
+
+  osc.start(t);
+  osc.stop(t + 0.04);
+}
+
+// ---- 勝利音: 短い上昇ファンファーレ ----
+export function playVictory() {
+  const ctx = getCtx();
+  if (ctx.state !== "running") return;
+  const t = ctx.currentTime;
+
+  [
+    [523.25, 0.00, 0.12],
+    [659.25, 0.08, 0.14],
+    [783.99, 0.16, 0.16],
+    [1046.5, 0.28, 0.28],
+  ].forEach(([freq, delay, dur]) => {
+    const st = t + delay;
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.connect(g); g.connect(ctx.destination);
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(freq, st);
+    g.gain.setValueAtTime(0.16, st);
+    g.gain.exponentialRampToValueAtTime(0.001, st + dur);
+    osc.start(st);
+    osc.stop(st + dur + 0.01);
+  });
+}
+
+// ---- ミナミ戦勝利音と同じジングル ----
+let _battleWinCtx = null;
+export function playBattleWinJingle() {
+  try {
+    if (!_battleWinCtx) _battleWinCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const ac = _battleWinCtx;
+    const now = ac.currentTime;
+
+    function tone(freq, start, dur, vol, type = "sine", attack = 0.01, release = 0.15) {
+      const osc = ac.createOscillator();
+      const g = ac.createGain();
+      osc.connect(g); g.connect(ac.destination);
+      osc.type = type;
+      osc.frequency.value = freq;
+      g.gain.setValueAtTime(0, now + start);
+      g.gain.linearRampToValueAtTime(vol, now + start + attack);
+      g.gain.setValueAtTime(vol, now + start + dur - release);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + start + dur);
+      osc.start(now + start);
+      osc.stop(now + start + dur + 0.05);
+    }
+
+    function organ(freq, start, dur, vol) {
+      tone(freq,       start, dur, vol,        "triangle", 0.03, 0.5);
+      tone(freq * 2,   start, dur, vol * 0.55, "sawtooth", 0.03, 0.5);
+      tone(freq * 3,   start, dur, vol * 0.30, "sawtooth", 0.03, 0.5);
+      tone(freq * 4,   start, dur, vol * 0.15, "sawtooth", 0.03, 0.5);
+      tone(freq * 0.5, start, dur, vol * 0.25, "triangle", 0.03, 0.5);
+    }
+
+    function buildChord(notes, step, hold, vol) {
+      const total = hold + notes.length * step;
+      notes.forEach((f, i) => organ(f, i * step, total - i * step, vol / notes.length));
+    }
+
+    buildChord([174.61, 261.63, 349.23, 523.25], 0.28, 1.6, 0.32);
+  } catch (_) {}
+}
+
 // ---- ブザー音: 短い下降2音 ----
 export function playBuzzer() {
   const ctx = getCtx();
@@ -832,6 +922,8 @@ export function playCooking(durationMs = 2400) {
 // ---- INFIERNO TRIP テクノBGM ----
 let _shootingScheduler = null;
 let _shootingGain = null;
+let _afloClubScheduler = null;
+let _afloClubKickAt = 0;
 
 const BPM        = 138;
 const STEP_DUR   = (60 / BPM) / 4;   // 16分音符の長さ
@@ -959,4 +1051,77 @@ export function stopShootingBgm() {
     clearInterval(_shootingScheduler);
     _shootingScheduler = null;
   }
+}
+
+const AFLO_BASS_NOTES = [55.0, 65.41, 73.42, 82.41];
+const AFLO_BASS_PAT   = [0,-1,0,-1, 1,-1,0,-1, 2,-1,1,-1, 3,-1,1,-1];
+
+function schedAfloKick(t) {
+  _afloClubKickAt = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+  const ctx = getCtx();
+  const osc = ctx.createOscillator();
+  const g = ctx.createGain();
+  osc.connect(g); g.connect(ctx.destination);
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(110, t);
+  osc.frequency.exponentialRampToValueAtTime(28, t + 0.09);
+  g.gain.setValueAtTime(0.9, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.34);
+  osc.start(t); osc.stop(t + 0.36);
+}
+
+function schedAfloBass(t, freq) {
+  const ctx = getCtx();
+  const osc = ctx.createOscillator();
+  const lp = ctx.createBiquadFilter();
+  const g = ctx.createGain();
+  osc.type = "square";
+  osc.frequency.value = freq;
+  lp.type = "lowpass";
+  lp.frequency.setValueAtTime(320, t);
+  lp.frequency.exponentialRampToValueAtTime(120, t + STEP_DUR * 1.8);
+  lp.Q.value = 10;
+  g.gain.setValueAtTime(0.22, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + STEP_DUR * 1.9);
+  osc.connect(lp); lp.connect(g); g.connect(ctx.destination);
+  osc.start(t); osc.stop(t + STEP_DUR * 2);
+}
+
+export function startAfloClubBgm() {
+  stopAfloClubBgm();
+  const ctx = getCtx();
+  if (ctx.state !== "running") return;
+
+  let nextStepTime = ctx.currentTime + 0.05;
+  let stepIdx = 0;
+
+  _afloClubScheduler = setInterval(() => {
+    const ctx2 = getCtx();
+    while (nextStepTime < ctx2.currentTime + LOOKAHEAD) {
+      const s = stepIdx % 16;
+
+      if (s % 4 === 0) schedAfloKick(nextStepTime);
+      if (s % 4 === 0) schedHihat(nextStepTime, false);
+      if (s % 4 === 2) schedHihat(nextStepTime, true);
+
+      const bi = AFLO_BASS_PAT[s];
+      if (bi >= 0) schedAfloBass(nextStepTime, AFLO_BASS_NOTES[bi]);
+
+      nextStepTime += STEP_DUR;
+      stepIdx++;
+    }
+  }, SCHED_INT);
+}
+
+export function stopAfloClubBgm() {
+  if (_afloClubScheduler !== null) {
+    clearInterval(_afloClubScheduler);
+    _afloClubScheduler = null;
+  }
+}
+
+export function getAfloClubKickPulseMs() {
+  if (!_afloClubKickAt) return 999999;
+  const now = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+  return now - _afloClubKickAt;
 }

@@ -2,8 +2,8 @@ export const koriNpc = {
   kind:      "npc",
   name:      "kori",
   spriteKey: "kori",
-  x:         2862,
-  y:         1924,
+  x:         2324,
+  y:         1123,
   talkHit:   { x: 0, y: 0, w: 16, h: 16 },
   talkPages: [
     ["ここにたってると、なんだか心がもんにょりしてくるの。"],

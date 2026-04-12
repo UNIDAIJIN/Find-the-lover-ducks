@@ -1,5 +1,5 @@
 // data/npcs/cactus_group.js
-// (1780, 1567) 周辺に cactus 20体 + cactus_hat 1体（No.7）
+// (1242, 766) 周辺に cactus 20体 + cactus_hat 1体（No.7）
 
 const base = {
   kind:    "npc",
@@ -8,7 +8,7 @@ const base = {
   animMs:  Infinity,                     // デフォルトは静止（frame 0 = 左向き）
 };
 
-// 中心 (1780, 1567) から広めに散らす
+// 中心 (1242, 766) から広めに散らす
 const offsets = [
   [ -150,  -80 ], [  -90,  -60 ], [  -30, -100 ], [   40,  -70 ], [  110,  -90 ],
   [  160,  -40 ], [  -60,  200 ], [  -10,  -40 ], [   70,  -10 ], [  130,   30 ],
@@ -20,8 +20,8 @@ const offsets = [
   [  151,    0 ], [ -100,  200 ], [   10,  220 ], [  110,  210 ], [  289,  -49 ],
 ];
 
-const CX = 1780;
-const CY = 1567;
+const CX = 1242;
+const CY = 766;
 
 // No.7 を cactus_hat に、No.14 はサボりイベント持ち
 export const cactusNpcs = offsets.map(([ dx, dy ], i) => {

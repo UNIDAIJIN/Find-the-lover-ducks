@@ -7,7 +7,7 @@ export const outdoorMap = {
   bgShrineTopSrc: "assets/maps/outdoor_shrine_top.png",
   colSrc:         "assets/maps/outdoor_col.png",
   bgmSrc:         "assets/audio/bgm0.mp3",
-  spawn:          { x: 2358, y: 3106 },
+  spawn:          { x: 1820, y: 2305 },
   doors: [
     {
       id:      1,
@@ -18,218 +18,218 @@ export const outdoorMap = {
     {
       id:        2,
       to:        "pool",
-      trigger:   { x: 1957, y: 3233, w: 16, h: 8 }, // 底辺中心 (1965,3237)
-      entryAt:   { x: 1955, y: 3230 },
+      trigger:   { x: 1419, y: 2432, w: 16, h: 8 },
+      entryAt:   { x: 1417, y: 2429 },
       entryWalk: { dx: 0, dy: 1, frames: 20 },
     },
     {
       id:        3,
       to:        "vj_room01",
-      trigger:   { x: 2411, y: 2155, w: 16, h: 8 }, // 中心 (2419,2159)
-      entryAt:   { x: 2412, y: 2144 },
+      trigger:   { x: 1873, y: 1354, w: 16, h: 8 },
+      entryAt:   { x: 1874, y: 1343 },
       entryWalk: { dx: 0, dy: 1, frames: 20 },
     },
     {
       id:        8,
       to:        "hole",
       trigger:   null, // hole 側からのみ使用
-      entryAt:   { x: 1449, y: 2126 }, // 穴7の上に出現
+      entryAt:   { x: 911, y: 1325 }, // 穴7の上に出現
       entryWalk: { dx: 0, dy: 1, frames: 20 },
     },
     {
       id:        5,
       to:        "inn",
-      trigger:   { x: 1700, y: 1581, w: 16, h: 8 }, // 底辺中心 (1708,1585)
-      entryAt:   { x: 1700, y: 1573 },
+      trigger:   { x: 1162, y: 780, w: 16, h: 8 },
+      entryAt:   { x: 1162, y: 772 },
       entryWalk: { dx: -1, dy: 1, frames: 20 },
     },
     {
       id:        4,
       to:        "moritasaki_room",
-      trigger:   { x: 2641, y: 3355, w: 16, h: 8 }, // 底辺中心 (2649,3359)
-      entryAt:   { x: 2641, y: 3347 },
+      trigger:   { x: 2103, y: 2554, w: 16, h: 8 },
+      entryAt:   { x: 2103, y: 2546 },
       entryWalk: { dx: 0, dy: 1, frames: 20 },
     },
     {
       id:        6,
       to:        "ura_ketchupug",
-      trigger:   { x: 2562, y: 1877, w: 16, h: 8 }, // 底辺中心 (2570,1881)
-      entryAt:   { x: 2562, y: 1869 },
+      trigger:   { x: 2024, y: 1076, w: 16, h: 8 },
+      entryAt:   { x: 2024, y: 1068 },
       entryWalk: { dx: 0, dy: 1, frames: 20 },
     },
     {
       id:        9,
       to:        "charch",
-      trigger:   { x: 1035, y: 3247, w: 16, h: 8 }, // 底辺中心 (1043,3251)
-      entryAt:   { x: 1035, y: 3239 },
+      trigger:   { x: 497, y: 2446, w: 16, h: 8 },
+      entryAt:   { x: 497, y: 2438 },
       entryWalk: { dx: 0, dy: 1, frames: 20 },
     },
     {
       id:        10,
       to:        "stair1",
-      trigger:   { x: 2272, y: 1465, w: 16, h: 8 }, // 底辺中心 (2280,1469)
-      entryAt:   { x: 2272, y: 1457 },
+      trigger:   { x: 1734, y: 664, w: 16, h: 8 },
+      entryAt:   { x: 1734, y: 656 },
       entryWalk: { dx: 0, dy: 1, frames: 20 },
     },
     {
       id:        11,
       to:        "stair2",
-      trigger:   { x: 2795, y: 1461, w: 16, h: 8 }, // 底辺中心 (2803,1465)
-      entryAt:   { x: 2795, y: 1453 },
+      trigger:   { x: 2257, y: 660, w: 16, h: 8 },
+      entryAt:   { x: 2257, y: 652 },
       entryWalk: { dx: 0, dy: 1, frames: 20 },
     },
     {
       id:        12,
       to:        "stair3",
-      trigger:   { x: 2790, y: 1690, w: 16, h: 8 }, // 底辺中心 (2798,1694)
-      entryAt:   { x: 2790, y: 1682 },
+      trigger:   { x: 2252, y: 889, w: 16, h: 8 },
+      entryAt:   { x: 2252, y: 881 },
       entryWalk: { dx: 0, dy: 1, frames: 20 },
     },
     {
       id:        13,
       to:        "stair1",
-      trigger:   { x: 2600, y: 1424, w: 182, h: 8 }, // x: 2600〜2782, y中心 1428
-      entryAt:   { x: 2685, y: 1410 },
+      trigger:   { x: 2062, y: 623, w: 182, h: 8 },
+      entryAt:   { x: 2147, y: 609 },
       entryWalk: { dx: 1, dy: -1, frames: 20 },
     },
     {
       id:        14,
       to:        "stair2",
-      trigger:   { x: 2879, y: 1571, w: 8, h: 80 }, // x:2879, y:1571〜1651
-      entryAt:   { x: 2879, y: 1611 },
+      trigger:   { x: 2341, y: 770, w: 8, h: 80 },
+      entryAt:   { x: 2341, y: 810 },
       entryWalk: { dx: 1, dy: 0, frames: 20 },
     },
     {
       id:        15,
       to:        "stair3",
-      trigger:   { x: 3573, y: 1896, w: 16, h: 8 }, // 底辺中心 (3581,1900)
-      entryAt:   { x: 3573, y: 1890 },
+      trigger:   { x: 3035, y: 1095, w: 16, h: 8 },
+      entryAt:   { x: 3035, y: 1089 },
       entryWalk: { dx: 1, dy: 0, frames: 20 },
     },
     {
       id:        16,
       to:        "hisaro",
-      trigger:   { x: 2193, y: 2881, w: 16, h: 8 }, // 底辺中心 (2201,2885)
-      entryAt:   { x: 2193, y: 2873 },
+      trigger:   { x: 1655, y: 2080, w: 16, h: 8 },
+      entryAt:   { x: 1655, y: 2072 },
       entryWalk: { dx: 0, dy: 1, frames: 20 },
     },
     {
       id:        17,
       to:        "workmen",
-      trigger:   { x: 2072, y: 1665, w: 16, h: 8 }, // 底辺中心 (2080,1669)
-      entryAt:   { x: 2072, y: 1657 },
+      trigger:   { x: 1534, y: 864, w: 16, h: 8 },
+      entryAt:   { x: 1534, y: 856 },
       entryWalk: { dx: 0, dy: 1, frames: 20 },
     },
     {
       id:        18,
       to:        "house01",
-      trigger:   { x: 2989, y: 1720, w: 16, h: 8 }, // 底辺中心 (2997,1724)
-      entryAt:   { x: 2989, y: 1712 },
+      trigger:   { x: 2451, y: 919, w: 16, h: 8 },
+      entryAt:   { x: 2451, y: 911 },
       entryWalk: { dx: 0, dy: 1, frames: 20 },
     },
     {
       id:        19,
       to:        "house02",
-      trigger:   { x: 3059, y: 1720, w: 16, h: 8 }, // 底辺中心 (3067,1724)
-      entryAt:   { x: 3059, y: 1712 },
+      trigger:   { x: 2521, y: 919, w: 16, h: 8 },
+      entryAt:   { x: 2521, y: 911 },
       entryWalk: { dx: 0, dy: 1, frames: 20 },
     },
     {
       id:        20,
       to:        "house03",
-      trigger:   { x: 3219, y: 1720, w: 16, h: 8 }, // 底辺中心 (3227,1724)
-      entryAt:   { x: 3219, y: 1712 },
+      trigger:   { x: 2681, y: 919, w: 16, h: 8 },
+      entryAt:   { x: 2681, y: 911 },
       entryWalk: { dx: 0, dy: 1, frames: 20 },
     },
     {
       id:        21,
       to:        "house04",
-      trigger:   { x: 3289, y: 1720, w: 16, h: 8 }, // 底辺中心 (3297,1724)
-      entryAt:   { x: 3289, y: 1712 },
+      trigger:   { x: 2751, y: 919, w: 16, h: 8 },
+      entryAt:   { x: 2751, y: 911 },
       entryWalk: { dx: 0, dy: 1, frames: 20 },
     },
     {
       id:        22,
       to:        "house05",
-      trigger:   { x: 3359, y: 1720, w: 16, h: 8 }, // 底辺中心 (3367,1724)
-      entryAt:   { x: 3359, y: 1712 },
+      trigger:   { x: 2821, y: 919, w: 16, h: 8 },
+      entryAt:   { x: 2821, y: 911 },
       entryWalk: { dx: 0, dy: 1, frames: 20 },
     },
     {
       id:        23,
       to:        "house06",
-      trigger:   { x: 3119, y: 1820, w: 16, h: 8 }, // 底辺中心 (3127,1824)
-      entryAt:   { x: 3119, y: 1812 },
+      trigger:   { x: 2581, y: 1019, w: 16, h: 8 },
+      entryAt:   { x: 2581, y: 1011 },
       entryWalk: { dx: 0, dy: 1, frames: 20 },
     },
     {
       id:        24,
       to:        "house07",
-      trigger:   { x: 3189, y: 1820, w: 16, h: 8 }, // 底辺中心 (3197,1824)
-      entryAt:   { x: 3189, y: 1812 },
+      trigger:   { x: 2651, y: 1019, w: 16, h: 8 },
+      entryAt:   { x: 2651, y: 1011 },
       entryWalk: { dx: 0, dy: 1, frames: 20 },
     },
     {
       id:        25,
       to:        "house08",
-      trigger:   { x: 3259, y: 1820, w: 16, h: 8 }, // 底辺中心 (3267,1824)
-      entryAt:   { x: 3259, y: 1812 },
+      trigger:   { x: 2721, y: 1019, w: 16, h: 8 },
+      entryAt:   { x: 2721, y: 1011 },
       entryWalk: { dx: 0, dy: 1, frames: 20 },
     },
     {
       id:        26,
       to:        "house09",
-      trigger:   { x: 3019, y: 1920, w: 16, h: 8 }, // 底辺中心 (3027,1924)
-      entryAt:   { x: 3019, y: 1912 },
+      trigger:   { x: 2481, y: 1119, w: 16, h: 8 },
+      entryAt:   { x: 2481, y: 1111 },
       entryWalk: { dx: 0, dy: 1, frames: 20 },
     },
     {
       id:        27,
       to:        "house10",
-      trigger:   { x: 3089, y: 1920, w: 16, h: 8 }, // 底辺中心 (3097,1924)
-      entryAt:   { x: 3089, y: 1912 },
+      trigger:   { x: 2551, y: 1119, w: 16, h: 8 },
+      entryAt:   { x: 2551, y: 1111 },
       entryWalk: { dx: 0, dy: 1, frames: 20 },
     },
     {
       id:        28,
       to:        "house11",
-      trigger:   { x: 3159, y: 1920, w: 16, h: 8 }, // 底辺中心 (3167,1924)
-      entryAt:   { x: 3159, y: 1912 },
+      trigger:   { x: 2621, y: 1119, w: 16, h: 8 },
+      entryAt:   { x: 2621, y: 1111 },
       entryWalk: { dx: 0, dy: 1, frames: 20 },
     },
     {
       id:        29,
       to:        "umi_house1",
-      trigger:   { x: 1377, y: 1783, w: 16, h: 8 }, // 底辺中心 (1385,1787)
-      entryAt:   { x: 1377, y: 1775 },
+      trigger:   { x: 839, y: 982, w: 16, h: 8 },
+      entryAt:   { x: 839, y: 974 },
       entryWalk: { dx: 0, dy: 1, frames: 20 },
     },
     {
       id:        30,
       to:        "umi_house2",
-      trigger:   { x: 1448, y: 1844, w: 16, h: 8 }, // 底辺中心 (1456,1848)
-      entryAt:   { x: 1448, y: 1836 },
+      trigger:   { x: 910, y: 1043, w: 16, h: 8 },
+      entryAt:   { x: 910, y: 1035 },
       entryWalk: { dx: 0, dy: 1, frames: 20 },
     },
     {
       id:        31,
       to:        "umi_house3",
-      trigger:   { x: 1518, y: 1914, w: 16, h: 8 }, // 底辺中心 (1526,1918)
-      entryAt:   { x: 1518, y: 1906 },
+      trigger:   { x: 980, y: 1113, w: 16, h: 8 },
+      entryAt:   { x: 980, y: 1105 },
       entryWalk: { dx: 0, dy: 1, frames: 20 },
     },
     {
       id:        32,
       to:        "d_hole",
-      trigger:   { x: 1593, y: 2731, w: 16, h: 8 }, //
-      entryAt:   { x: 1598, y: 2726 },
+      trigger:   { x: 1055, y: 1930, w: 16, h: 8 },
+      entryAt:   { x: 1060, y: 1925 },
       entryWalk: { dx: 1, dy: 0, frames: 20 },
     },
     {
       id:        33,
       to:        "inugoya",
-      trigger:   { x: 2987, y: 1925, w: 16, h: 8 }, // 底辺中心 (2995,1929)
-      entryAt:   { x: 2987, y: 1917 },
+      trigger:   { x: 2449, y: 1124, w: 16, h: 8 },
+      entryAt:   { x: 2449, y: 1116 },
       entryWalk: { dx: 0, dy: 1, frames: 20 },
     },
   ],
@@ -240,50 +240,50 @@ export const outdoorMap = {
   holes: [
     // 赤ペア  waypoints = カメラ中心が通る中継点（行き順）、帰りは逆順を使う
     { id: 1, to: 2, helmetRequired: true,
-      trigger: { x: 1198, y: 2091, w: 20, h: 20 }, exitAt: { x: 1208, y: 2101 },
+      trigger: { x: 660, y: 1290, w: 20, h: 20 }, exitAt: { x: 670, y: 1300 },
       waypoints: [
-        { x: 1050, y: 2000 }, { x: 1750, y: 1980 },
-        { x: 1820, y: 2280 }, { x: 1500, y: 2400 },
-        { x: 1447, y: 2299 },
+        { x: 512, y: 1199 }, { x: 1212, y: 1179 },
+        { x: 1282, y: 1479 }, { x: 962, y: 1599 },
+        { x: 909, y: 1498 },
       ] },
     { id: 2, to: 1, helmetRequired: true,
-      trigger: { x: 1437, y: 2289, w: 20, h: 20 }, exitAt: { x: 1447, y: 2299 },
+      trigger: { x: 899, y: 1488, w: 20, h: 20 }, exitAt: { x: 909, y: 1498 },
       waypoints: [
-        { x: 1500, y: 2400 }, { x: 1820, y: 2280 },
-        { x: 1750, y: 1980 }, { x: 1050, y: 2000 },
-        { x: 1208, y: 2101 },
+        { x: 962, y: 1599 }, { x: 1282, y: 1479 },
+        { x: 1212, y: 1179 }, { x: 512, y: 1199 },
+        { x: 670, y: 1300 },
       ] },
     // 青ペア
     { id: 3, to: 4, helmetRequired: true,
-      trigger: { x: 1768, y: 2151, w: 20, h: 20 }, exitAt: { x: 1778, y: 2161 },
+      trigger: { x: 1230, y: 1350, w: 20, h: 20 }, exitAt: { x: 1240, y: 1360 },
       waypoints: [
-        { x: 1900, y: 2000 }, { x: 1000, y: 2050 },
-        { x: 950,  y: 2420 }, { x: 1200, y: 2380 },
-        { x: 1306, y: 2324 },
+        { x: 1362, y: 1199 }, { x: 462, y: 1249 },
+        { x: 412,  y: 1619 }, { x: 662, y: 1579 },
+        { x: 768, y: 1523 },
       ] },
     { id: 4, to: 3, helmetRequired: true,
-      trigger: { x: 1296, y: 2314, w: 20, h: 20 }, exitAt: { x: 1306, y: 2324 },
+      trigger: { x: 758, y: 1513, w: 20, h: 20 }, exitAt: { x: 768, y: 1523 },
       waypoints: [
-        { x: 1200, y: 2380 }, { x: 950,  y: 2420 },
-        { x: 1000, y: 2050 }, { x: 1900, y: 2000 },
-        { x: 1778, y: 2161 },
+        { x: 662, y: 1579 }, { x: 412,  y: 1619 },
+        { x: 462, y: 1249 }, { x: 1362, y: 1199 },
+        { x: 1240, y: 1360 },
       ] },
     // 緑ペア
     { id: 5, to: 6, helmetRequired: true,
-      trigger: { x: 1580, y: 2303, w: 20, h: 20 }, exitAt: { x: 1590, y: 2313 },
+      trigger: { x: 1042, y: 1502, w: 20, h: 20 }, exitAt: { x: 1052, y: 1512 },
       waypoints: [
-        { x: 1700, y: 2500 }, { x: 1950, y: 2380 },
-        { x: 1850, y: 2100 }, { x: 1100, y: 2180 },
-        { x: 1134, y: 2409 },
+        { x: 1162, y: 1699 }, { x: 1412, y: 1579 },
+        { x: 1312, y: 1299 }, { x: 562, y: 1379 },
+        { x: 596, y: 1608 },
       ] },
     { id: 6, to: 5, helmetRequired: true,
-      trigger: { x: 1124, y: 2399, w: 20, h: 20 }, exitAt: { x: 1134, y: 2409 },
+      trigger: { x: 586, y: 1598, w: 20, h: 20 }, exitAt: { x: 596, y: 1608 },
       waypoints: [
-        { x: 1100, y: 2180 }, { x: 1850, y: 2100 },
-        { x: 1950, y: 2380 }, { x: 1700, y: 2500 },
-        { x: 1590, y: 2313 },
+        { x: 562, y: 1379 }, { x: 1312, y: 1299 },
+        { x: 1412, y: 1579 }, { x: 1162, y: 1699 },
+        { x: 1052, y: 1512 },
       ] },
     // 別マップへ
-    { id: 7, to: null, destMap: 'hole', trigger: { x: 1445, y: 2132, w: 20, h: 20 }, exitAt: { x: 1455, y: 2142 }, helmetRequired: true },
+    { id: 7, to: null, destMap: 'hole', trigger: { x: 907, y: 1331, w: 20, h: 20 }, exitAt: { x: 917, y: 1341 }, helmetRequired: true },
   ],
 };

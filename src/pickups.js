@@ -4,10 +4,10 @@
 export const PICKUPS_BY_MAP = {
   outdoor: [
     // 10体を横一列で並べる例（座標は後で微調整）
-    { itemId: "rubber_duck_A", x: 2567,  y: 3258 },
-    { itemId: "rubber_duck_E", x: 2156, y: 2077 },
-    { itemId: "rubber_duck_H", x: 2960, y: 1460 },
-    { itemId: "rubber_duck_J", x: 3132, y:  987 },
+    { itemId: "rubber_duck_A", x: 2029, y: 2457 },
+    { itemId: "rubber_duck_E", x: 1618, y: 1276 },
+    { itemId: "rubber_duck_H", x: 2422, y: 659 },
+    { itemId: "rubber_duck_J", x: 2594, y: 186 },
   ],
   inn: [
     { itemId: "rubber_duck_D", x: 133, y: 123, requireFlag: "innDuckSpawned" },

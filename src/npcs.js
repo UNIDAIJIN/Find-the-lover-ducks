@@ -4,6 +4,7 @@ import { SPRITES } from "./sprites.js";
 
 import { boardNpc }         from "./data/npcs/board.js";
 import { fanNpc }           from "./data/npcs/fan.js";
+import { ac1Npc }           from "./data/npcs/ac_1.js";
 import { koriNpc }          from "./data/npcs/kori.js";
 import { seatsNpc }         from "./data/npcs/seats.js";
 import { cat1Npc }          from "./data/npcs/cat1.js";
@@ -22,6 +23,7 @@ import { carefulNpc }     from "./data/npcs/careful.js";
 import { orca3Npc }       from "./data/npcs/orca3.js";
 import { chinanagoOffNpc, chinanagoOffNpc2, chinanagoOffNpc3 } from "./data/npcs/chinanago.js";
 import { balloondogNpc }    from "./data/npcs/balloondog.js";
+import { balloonNpc }       from "./data/npcs/balloon.js";
 import { workmangirlNpc }  from "./data/npcs/workmangirl.js";
 import { workmanNpc }      from "./data/npcs/workman.js";
 import { yahhyNpc }        from "./data/npcs/yahhy.js";
@@ -56,20 +58,21 @@ export const NPCS_BY_MAP = {
     resolve(chinanagoOffNpc2),
     resolve(chinanagoOffNpc3),
     resolve(balloondogNpc),
+    resolve(balloonNpc),
     resolve(yahhyNpc),
     resolve(yashiNpc),
-    resolve({ ...yashiNpc, name: "yashi2_1", spriteKey: "yashi2", x: 2393, y: 2938 }),
-    resolve({ ...yashiNpc, name: "yashi_2", x: 2419, y: 2914 }),
-    resolve({ ...yashiNpc, name: "yashi_3", x: 2446, y: 2891 }),
-    resolve({ ...yashiNpc, name: "yashi_4", x: 2477, y: 2855 }),
-    resolve({ ...yashiNpc, name: "yashi_5", x: 2503, y: 2831 }),
-    resolve({ ...yashiNpc, name: "yashi_6", x: 2530, y: 2808 }),
-    resolve({ ...yashiNpc, name: "yashi_7", x: 2717, y: 1806, solid: false }),
-    resolve({ ...yashiNpc, name: "yashi_8", x: 2411, y: 1475, solid: false }),
-    resolve({ ...yashiNpc, name: "yashi3_1", spriteKey: "yashi3", x: 2638, y: 1343, solid: false }),
-    resolve({ ...yashiNpc, name: "yashi3_2", spriteKey: "yashi3", x: 2944, y: 1675, solid: false }),
+    resolve({ ...yashiNpc, name: "yashi2_1", spriteKey: "yashi2", x: 1855, y: 2137 }),
+    resolve({ ...yashiNpc, name: "yashi_2", x: 1881, y: 2113 }),
+    resolve({ ...yashiNpc, name: "yashi_3", x: 1908, y: 2090 }),
+    resolve({ ...yashiNpc, name: "yashi_4", x: 1939, y: 2054 }),
+    resolve({ ...yashiNpc, name: "yashi_5", x: 1965, y: 2030 }),
+    resolve({ ...yashiNpc, name: "yashi_6", x: 1992, y: 2007 }),
+    resolve({ ...yashiNpc, name: "yashi_7", x: 2179, y: 1005, solid: false }),
+    resolve({ ...yashiNpc, name: "yashi_8", x: 1873, y: 674, solid: false }),
+    resolve({ ...yashiNpc, name: "yashi3_1", spriteKey: "yashi3", x: 2100, y: 542, solid: false }),
+    resolve({ ...yashiNpc, name: "yashi3_2", spriteKey: "yashi3", x: 2406, y: 874, solid: false }),
     resolve(fanNpc),
-    resolve({ ...fanNpc, name: "fan_2", x: 2837, y: 1934 }),
+    resolve({ ...fanNpc, name: "fan_2", x: 2299, y: 1133 }),
     resolve(koriNpc),
     resolve(moriGirlNpc),
     resolve(mizugiMNpc),
@@ -78,7 +81,7 @@ export const NPCS_BY_MAP = {
     resolve(luchaNpc),
     resolve(keeperNpc),
     ...cactusNpcs.map(resolve),
-  ],
+  ].map((npc) => ({ ...npc, y: typeof npc.y === "number" ? npc.y + 1 : npc.y })),
 
   hisaro: [
     resolve(hisaroNpc),
@@ -119,12 +122,66 @@ export const NPCS_BY_MAP = {
     resolve(indoorMinamiNpc),
   ],
 
+  shooting_lobby: [
+    resolve({
+      ...luchaNpc,
+      name: "lucha_shooting",
+      x: 120,
+      y: 134,
+      talkPages: [
+        ["おまえ、あの世ってしってるか？"],
+        ["あの世ってやつは、本当に最高なんだ。"],
+        ["そう！"],
+        ["ここが！ジ・ゴ・ク！"],
+        ["サイコーーーーーー！！"],
+      ],
+    }),
+    resolve({ kind: "npc", name: "door_4", spriteKey: "door4", x: 120, y: 40,  spr: 16, sprH: 32, frame: 0, animMs: Infinity, hitW: 12, hitH: 6, talkHit: { x: 0, y: 0, w: 0, h: 0 }, solid: false }),
+    resolve({ kind: "npc", name: "door_3", spriteKey: "door3", x: 174, y: 62,  spr: 16, sprH: 32, frame: 0, animMs: Infinity, hitW: 12, hitH: 6, talkHit: { x: 0, y: 0, w: 0, h: 0 }, solid: false }),
+    resolve({ kind: "npc", name: "door_2", spriteKey: "door2", x: 196, y: 116, spr: 16, sprH: 32, frame: 0, animMs: Infinity, hitW: 12, hitH: 6, talkHit: { x: 0, y: 0, w: 0, h: 0 }, solid: false }),
+    resolve({ kind: "npc", name: "door_1", spriteKey: "door",  x: 174, y: 170, spr: 16, sprH: 32, frame: 0, animMs: Infinity, hitW: 12, hitH: 6, talkHit: { x: 0, y: 0, w: 0, h: 0 }, solid: false }),
+    resolve({ kind: "npc", name: "door_0", spriteKey: "door0", x: 120, y: 192, spr: 16, sprH: 32, frame: 0, animMs: Infinity, hitW: 12, hitH: 6, talkHit: { x: 0, y: 0, w: 0, h: 0 }, solid: false }),
+    resolve({ kind: "npc", name: "door_7", spriteKey: "door7", x: 66,  y: 170, spr: 16, sprH: 32, frame: 0, animMs: Infinity, hitW: 12, hitH: 6, talkHit: { x: 0, y: 0, w: 0, h: 0 }, solid: false }),
+    resolve({ kind: "npc", name: "door_6", spriteKey: "door6", x: 44,  y: 116, spr: 16, sprH: 32, frame: 0, animMs: Infinity, hitW: 12, hitH: 6, talkHit: { x: 0, y: 0, w: 0, h: 0 }, solid: false }),
+    resolve({ kind: "npc", name: "door_5", spriteKey: "door5", x: 66,  y: 62,  spr: 16, sprH: 32, frame: 0, animMs: Infinity, hitW: 12, hitH: 6, talkHit: { x: 0, y: 0, w: 0, h: 0 }, solid: false }),
+  ],
+
   inugoya: [
     resolve(pbdNpc),
   ],
 
   house01: [
     resolve(shamanNpc),
+  ],
+
+  house07: [
+    resolve(ac1Npc),
+  ],
+
+  afloclub: [
+    resolve({ ...ac1Npc, x: 159, y: 124, talkHit: { x: 0, y: 3, w: 16, h: 12 }, event: { type: "afro_club_inside" } }),
+    resolve({ ...ac1Npc, name: "ac_2", spriteKey: "ac_2", x: 80, y: 160, talkHit: { x: 0, y: 3, w: 16, h: 12 }, event: { type: "afro_club_inside_2" } }),
+    resolve({ ...ac1Npc, name: "ac_3", spriteKey: "ac_3", x: 64, y: 139, talkHit: { x: 0, y: 3, w: 16, h: 12 }, event: { type: "afro_club_inside_3" } }),
+    resolve({ ...ac1Npc, name: "ac_4", spriteKey: "ac_4", x: 123, y: 151, talkHit: { x: 0, y: 3, w: 16, h: 12 }, event: { type: "afro_club_inside_5" } }),
+    resolve({ ...ac1Npc, name: "ac_5", spriteKey: "ac_5", x: 40, y: 166, talkHit: { x: 0, y: 3, w: 16, h: 12 }, event: { type: "afro_club_inside_4" } }),
+    resolve({
+      ...ac1Npc,
+      name: "ac_6",
+      spriteKey: "ac_6",
+      x: 95,
+      y: 123,
+      talkHit: { x: 0, y: 3, w: 16, h: 15 },
+      event: {
+        type: "item_shop",
+        shopName: "バーカン",
+        greeting: [["うっふーん。"]],
+        byeDialog: [["うふふーん。"]],
+        items: [
+          { id: "vodka", name: "ウォッカ", price: 300, comment: "ウゲー！" },
+        ],
+        closeLabel: "やめる",
+      },
+    }),
   ],
 
   inn: [

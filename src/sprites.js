@@ -22,6 +22,7 @@ export const SPRITES = {
   p2_t2: loadSprite("assets/sprites/p2_t2.png"),
   p3_t2: loadSprite("assets/sprites/p3_t2.png"),
   p4_t2: loadSprite("assets/sprites/p4_t2.png"),
+  mecha_natsumi: loadSprite("assets/sprites/mecha-natsumi.png"),
   
   // npc
   natsumi:   loadSprite("assets/sprites/natsumi_play.png"),
@@ -29,6 +30,7 @@ export const SPRITES = {
   mizugi_f:  loadSprite("assets/sprites/mizugi_f.png"),
   npc1:      loadSprite("assets/sprites/npc1.png"),
   pepper:    loadSprite("assets/sprites/pepper.png"),
+  pepper_off: loadSprite("assets/sprites/pepper_off.png"),
   skull_a:   loadSprite("assets/sprites/skull_a.png"),
   skull_b:   loadSprite("assets/sprites/skull_b.png"),
   skull_r:   loadSprite("assets/sprites/skull_r.png"),
@@ -52,6 +54,13 @@ export const SPRITES = {
   // other
   board: loadSprite("assets/sprites/board.png"),
   fan: loadSprite("assets/sprites/fan.png"),
+  ac_1: loadSprite("assets/sprites/ac_1.png"),
+  ac_2: loadSprite("assets/sprites/ac_2.png"),
+  ac_3: loadSprite("assets/sprites/ac_3.png"),
+  ac_4: loadSprite("assets/sprites/ac_4.png"),
+  ac_5: loadSprite("assets/sprites/ac_5.png"),
+  ac_6: loadSprite("assets/sprites/ac_6.png"),
+  afloclub_off: loadSprite("assets/maps/afloclub_off.png"),
   fan_flower: loadSprite("assets/sprites/fan_flower.png"),
   kori: loadSprite("assets/sprites/kori.png"),
   cat1: loadSprite("assets/sprites/cat_g.png"),
@@ -84,12 +93,23 @@ export const SPRITES = {
 
   keeper: loadSprite("assets/sprites/keeper.png"),
 
+  door0: loadSprite("assets/sprites/door0.png"),
+  door:  loadSprite("assets/sprites/door.png"),
+  door2: loadSprite("assets/sprites/door2.png"),
+  door3: loadSprite("assets/sprites/door3.png"),
+  door4: loadSprite("assets/sprites/door4.png"),
+  door5: loadSprite("assets/sprites/door5.png"),
+  door6: loadSprite("assets/sprites/door6.png"),
+  door7: loadSprite("assets/sprites/door7.png"),
+  door_clear: loadSprite("assets/sprites/door_clear.png"),
+  door_noclear: loadSprite("assets/sprites/door_noclear.png"),
   gate:  loadSprite("assets/sprites/gate.png"),
   lucha: loadSprite("assets/sprites/lucha.png"),
 
   // outdoor オブジェクト
   balloondog:      loadSprite("assets/sprites/balloondog.png"),
   balloondog_half: loadSprite("assets/sprites/balloondog_half.png"),
+  balloon:         loadSprite("assets/sprites/balloon.png"),
   chinanago_off:  loadSprite("assets/sprites/chinanago_off.png"),
   chinanago_half: loadSprite("assets/sprites/chinanago_half.png"),
   chinanago_on:   loadSprite("assets/sprites/chinanago_on.png"),

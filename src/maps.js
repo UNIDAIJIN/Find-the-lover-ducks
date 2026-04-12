@@ -27,11 +27,13 @@ import { house08Map }         from "./data/maps/house08.js";
 import { house09Map }         from "./data/maps/house09.js";
 import { house10Map }         from "./data/maps/house10.js";
 import { house11Map }         from "./data/maps/house11.js";
+import { afloclubMap }        from "./data/maps/afloclub.js";
 import { umiHouse1Map }       from "./data/maps/umi_house1.js";
 import { umiHouse2Map }       from "./data/maps/umi_house2.js";
 import { umiHouse3Map }       from "./data/maps/umi_house3.js";
 import { dHoleMap }           from "./data/maps/d_hole.js";
 import { inugoyaMap }         from "./data/maps/inugoya.js";
+import { shootingLobbyMap }   from "./data/maps/shooting_lobby.js";
 
 // ---- util: ダミー画像（1px） ----
 const BLACK_1PX =
@@ -68,6 +70,7 @@ export const MAPS = {
   house09:   house09Map,
   house10:   house10Map,
   house11:   house11Map,
+  afloclub:  afloclubMap,
   umi_house1: umiHouse1Map,
   umi_house2: umiHouse2Map,
   umi_house3: umiHouse3Map,
@@ -77,6 +80,17 @@ export const MAPS = {
   pool:      poolMap,
   vj_room01: vjRoom01Map,
   vj_room02: vjRoom02Map,
+  shooting_lobby: shootingLobbyMap,
+  orca_ride: {
+    bgSrc: BLACK_1PX,
+    colSrc: CLEAR_1PX,
+    bgmSrc: null,
+    bgW: 4200,
+    bgH: 480,
+    fullWater: true,
+    spawn: { x: 3824, y: 402 },
+    doors: [],
+  },
 
   // ===== 戦闘（黒画面） =====
   // ・当たり判定なし
@@ -87,4 +101,3 @@ export const MAPS = {
     bgmSrc: "assets/audio/bgm0.mp3", // とりあえず共通
   },
 };
-

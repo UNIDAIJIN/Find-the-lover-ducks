@@ -14,18 +14,19 @@ import { createTitle  }     from "./title.js";
 import { createCharSelect } from "./char_select.js";
 import { createLoading }    from "./loading.js";
 import { setupMobileController } from "./mobile_controller.js";
-import { playSuzu, playDoor, playZazza, playHoleFall, playHoleRoll, playConfirm, playWave, startHeartbeat, stopHeartbeat, playQuestJingleB, playPunch, startShootingBgm, stopShootingBgm, stopJaws } from "./se.js";
+import { playSuzu, playDoor, playZazza, playHoleFall, playHoleRoll, playConfirm, playClickOn, playWave, startHeartbeat, stopHeartbeat, playQuestJingleB, playPunch, startShootingBgm, stopShootingBgm, startAfloClubBgm, stopAfloClubBgm, stopJaws, playBattleWinJingle, getAfloClubKickPulseMs } from "./se.js";
 import { createMenu } from "./ui_menu.js";
 import { createTripEffect }     from "./trip_effect.js";
 import { createGoodTripEffect } from "./trip_effect_good.js";
 import * as letterbox           from "./letterbox.js";
 import { createQuestAlert }     from "./ui_quest_alert.js";
 import { QUESTS }               from "./data/quests.js";
-import { createShooting }       from "./ui_shooting.js";
+import { createShooting, drawShootingBackdrop } from "./ui_shooting.js";
+import { gateNpc } from "./data/npcs/gate.js";
 
 const DEBUG  = true;
 if (DEBUG) STATE.money = 100000;
-const DEBUG_ITEMS = DEBUG ? ["rubber_duck_A","rubber_duck_B","rubber_duck_C","rubber_duck_D","rubber_duck_E","rubber_duck_F","rubber_duck_G","rubber_duck_H","rubber_duck_I","rubber_duck_J","afro","kingyobachi","s_hat"] : [];
+const DEBUG_ITEMS = DEBUG ? ["rubber_duck_A","rubber_duck_B","rubber_duck_C","rubber_duck_D","rubber_duck_E","rubber_duck_F","rubber_duck_G","rubber_duck_H","rubber_duck_I","rubber_duck_J","afro","kingyobachi","s_hat","iron_heart"] : [];
 const MOBILE = new URLSearchParams(location.search).has('m');
 
 const canvas = document.getElementById("c");
@@ -110,6 +111,14 @@ const col = makeColStore();
 const MOBILE_MAP_CHUNK = 512;
 const MOBILE_MAP_CACHE_LIMIT = 12;
 let mapChunkCache = new WeakMap();
+const afloFxSceneCanvas = document.createElement("canvas");
+afloFxSceneCanvas.width = CONFIG.BASE_W;
+afloFxSceneCanvas.height = CONFIG.BASE_H;
+const afloFxSceneCtx = afloFxSceneCanvas.getContext("2d");
+const afloFxTintCanvas = document.createElement("canvas");
+afloFxTintCanvas.width = CONFIG.BASE_W;
+afloFxTintCanvas.height = CONFIG.BASE_H;
+const afloFxTintCtx = afloFxTintCanvas.getContext("2d");
 
 // ---- Mobile device detection ----
 const IS_MOBILE_DEVICE = navigator.maxTouchPoints > 0 || /Mobi|Android/i.test(navigator.userAgent);
@@ -126,11 +135,177 @@ let redScreenOnEnd = null;
 const RED_TO_BLACK_MS = 4000;
 const SHADOW_W = 130;
 let seaholeCutscene = { active: false, shadowX: BASE_W, charOffsetX: 0 };
-let orcaRide = { active: false, startMs: 0 };
+let orcaRide = { active: false, startMs: 0, durationMs: 15000, ending: false };
+let mechaEvolution = { active: false, phase: "idle", startMs: 0, fromImg: null, toImg: null };
+
+function drawCenteredChar(img, x, y, scale = 4, frame = 0) {
+  if (!img?.naturalWidth) return;
+  const spr = 16;
+  const w = spr * scale;
+  const h = spr * scale;
+  ctx.drawImage(img, frame * spr, 0, spr, spr, (x - w / 2) | 0, (y - h / 2) | 0, w | 0, h | 0);
+}
+
+function startMechaEvolutionScene() {
+  const skinLevel = STATE.flags.skinLevel | 0;
+  const fromImg = skinLevel === 2 ? SPRITES.p1_t2 : skinLevel === 1 ? SPRITES.p1_t1 : SPRITES.p1;
+  setBgmOverrideSafe("assets/audio/bgm_select.mp3");
+  mechaEvolution = {
+    active: true,
+    phase: "queued",
+    startMs: nowMs(),
+    fromImg,
+    toImg: SPRITES.mecha_natsumi,
+  };
+}
+
+function drawMechaEvolutionScene(tt) {
+  ctx.fillStyle = "#000";
+  ctx.fillRect(0, 0, BASE_W, BASE_H);
+
+  const cx = BASE_W >> 1;
+  const cy = 92;
+  const fromImg = mechaEvolution.fromImg || SPRITES.p1;
+  const toImg = mechaEvolution.toImg || SPRITES.mecha_natsumi;
+
+  if (mechaEvolution.phase === "queued") {
+    // 黒背景だけ。フェード明け後にメッセージへ進む。
+  } else if (mechaEvolution.phase === "message") {
+    const bob = Math.sin(tt / 220) * 1.5;
+    drawCenteredChar(fromImg, cx, cy + bob, 4);
+  } else if (mechaEvolution.phase === "result" || mechaEvolution.phase === "done") {
+    drawCenteredChar(toImg, cx, cy, 4.55, 0);
+  } else {
+    const elapsed = tt - mechaEvolution.startMs;
+    const p = Math.min(1, elapsed / 2200);
+    const flash = Math.max(0, Math.sin(elapsed / 45)) * (1 - p * 0.4);
+    const ringR = 20 + p * 34 + Math.sin(elapsed / 80) * 2;
+    const scale = 4 + Math.sin(elapsed / 70) * 0.35 + p * 0.55;
+    const useMecha = elapsed > 1300 || (Math.floor(elapsed / 90) % 2 === 1);
+    const img = useMecha ? toImg : fromImg;
+
+    ctx.save();
+    ctx.strokeStyle = `rgba(255,255,255,${0.25 + flash * 0.35})`;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(cx, cy, ringR, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(cx, cy, ringR + 9, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+
+    drawCenteredChar(img, cx, cy, scale, 0);
+
+    if (flash > 0.15) {
+      ctx.save();
+      ctx.globalAlpha = Math.min(0.75, flash * 0.7);
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(0, 0, BASE_W, BASE_H);
+      ctx.restore();
+    }
+  }
+
+  dialog.draw(ctx);
+}
+
+function drawAfloClubFx(tt) {
+  const pulse = ((tt / 220) | 0) % 2;
+  const color = pulse === 0 ? "rgba(178, 70, 255, 0.22)" : "rgba(80, 255, 120, 0.22)";
+  const t = tt * 0.00028;
+
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.fillRect(0, 0, BASE_W, BASE_H);
+  ctx.restore();
+
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+  const cx = ((current.bgW / 2) - cam.x) | 0;
+  const cy = (((current.bgH / 2) - 100) - cam.y) | 0;
+  const diskRx = BASE_W * 1.12 + 100;
+  const diskRy = BASE_H * 1.08 + 100;
+  for (let ring = 0; ring < 8; ring++) {
+    const count = 16 + ring * 6;
+    const rrX = diskRx * (0.22 + ring * 0.10);
+    const rrY = diskRy * (0.20 + ring * 0.10);
+    for (let i = 0; i < count; i++) {
+      const a0 = (Math.PI * 2 * i) / count + t * (1 + ring * 0.04) + ring * 0.2;
+      const wobble = Math.sin(t * 2.1 + i * 0.7 + ring) * 1.5;
+      const x = cx + Math.cos(a0) * (rrX + wobble);
+      const y = cy + Math.sin(a0) * (rrY + wobble * 0.6);
+      ctx.fillStyle = pulse === 0 ? "rgba(255,230,255,0.28)" : "rgba(230,255,240,0.28)";
+      ctx.beginPath();
+      ctx.arc(x, y, ring < 2 ? 2.2 : 1.8, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  ctx.restore();
+
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+  for (let i = 0; i < 4; i++) {
+    const hue = pulse === 0 ? 290 : 130;
+    const x = ((current.bgW / 2) - cam.x) + Math.sin(t * (1.3 + i * 0.18) + i * 1.7) * (70 + i * 24);
+    const y = (((current.bgH / 2) - 140) - cam.y) + Math.cos(t * (1.1 + i * 0.14) + i) * 14;
+    const beamW = 26 + i * 8;
+    const beamH = 120 + i * 24;
+    const g = ctx.createRadialGradient(x, y, 0, x, y, beamH);
+    g.addColorStop(0, `hsla(${hue}, 100%, 80%, 0.12)`);
+    g.addColorStop(0.35, `hsla(${hue + 30}, 100%, 70%, 0.08)`);
+    g.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = g;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(Math.sin(t * 0.9 + i) * 0.18);
+    ctx.fillRect(-beamW / 2, -beamH / 2, beamW, beamH);
+    ctx.restore();
+  }
+  ctx.restore();
+
+  ctx.save();
+  ctx.globalAlpha = 0.08;
+  ctx.fillStyle = "#fff";
+  for (let y = ((tt / 45) | 0) % 5; y < BASE_H; y += 5) {
+    ctx.fillRect(0, y, BASE_W, 1);
+  }
+  ctx.restore();
+}
+
+function applyAfloClubRgbShift() {
+  const kickMs = getAfloClubKickPulseMs();
+  const kickAmt = Math.max(0, 1 - kickMs / 120);
+  if (kickAmt <= 0) return;
+
+  const off = Math.max(1, Math.ceil(kickAmt * 2));
+  afloFxSceneCtx.clearRect(0, 0, BASE_W, BASE_H);
+  afloFxSceneCtx.drawImage(canvas, 0, 0, BASE_W, BASE_H);
+
+  function drawShift(dx, color, alpha) {
+    afloFxTintCtx.clearRect(0, 0, BASE_W, BASE_H);
+    afloFxTintCtx.globalCompositeOperation = "source-over";
+    afloFxTintCtx.drawImage(afloFxSceneCanvas, 0, 0);
+    afloFxTintCtx.globalCompositeOperation = "source-atop";
+    afloFxTintCtx.fillStyle = color;
+    afloFxTintCtx.fillRect(0, 0, BASE_W, BASE_H);
+    afloFxTintCtx.globalCompositeOperation = "source-over";
+    ctx.save();
+    ctx.globalCompositeOperation = "screen";
+    ctx.globalAlpha = alpha;
+    ctx.drawImage(afloFxTintCanvas, dx, 0);
+    ctx.restore();
+  }
+
+  drawShift(-off, "rgba(255,60,160,1)", 0.16 * kickAmt);
+  drawShift( off, "rgba(80,255,255,1)", 0.16 * kickAmt);
+}
+let shootingDoorCooldown = 0;
+let shootingKnockback = null;
 
 // ---- ベンチ・噴水トリガー ----
-const BENCH_TRIGGER    = { x: 940,  y: 3244, w: 40, h: 32 }; // 教会ベンチ (960,3260)
-const FOUNTAIN_TRIGGER = { x: 2510, y: 2248, w: 160, h: 64 }; // 噴水 (2590,2280)
+const BENCH_TRIGGER    = { x: 402,  y: 2443, w: 40, h: 32 }; // 教会ベンチ (422,2459)
+const FOUNTAIN_TRIGGER = { x: 1972, y: 1447, w: 160, h: 64 }; // 噴水 (2052,1479)
 let benchEnterMs    = 0; // プレイヤーが入った時刻（0=外）
 let fountainEnterMs = 0;
 let heightLevel = "ground"; // "ground" | "upper"
@@ -152,6 +327,16 @@ seaSparkleCanvas.width  = CONFIG.BASE_W;
 seaSparkleCanvas.height = CONFIG.BASE_H;
 const seaSparkleCtx = seaSparkleCanvas.getContext("2d");
 let seaSparkleFrame = 0;
+
+function buildFullWaterMask(w, h) {
+  const mc = document.createElement("canvas");
+  mc.width = w;
+  mc.height = h;
+  const mx = mc.getContext("2d");
+  mx.fillStyle = "#fff";
+  mx.fillRect(0, 0, w, h);
+  waterMaskCanvas = mc;
+}
 
 // Resize canvas (and seaTempCanvas) when switching between title and gameplay
 function setGameResolution(w, h) {
@@ -240,31 +425,29 @@ function drawWaterSea(ctx) {
 
 const { current, cam, leader, p2, p3, p4, collectedItems } = STATE;
 
+function getPartySprite(charNo) {
+  const n = charNo | 0;
+  if (n === 1 && STATE.flags.mechaNatsumi) return SPRITES.mecha_natsumi;
+  const lv = STATE.flags.skinLevel | 0;
+  const suffix = lv === 1 ? "_t1" : lv === 2 ? "_t2" : "";
+  return SPRITES[`p${n}${suffix}`];
+}
+
 function setupParty(leaderIdx) {
   STATE.leaderIdx = leaderIdx;
-  const all = [SPRITES.p1, SPRITES.p2, SPRITES.p3, SPRITES.p4];
-  leader.img = all[leaderIdx];
-  const rest = all.filter((_, i) => i !== leaderIdx);
-  p2.img = rest[0];
-  p3.img = rest[1];
-  p4.img = rest[2];
+  const all = [1, 2, 3, 4];
+  const leaderNo = all[leaderIdx];
+  leader.img = getPartySprite(leaderNo);
+  const rest = all.filter((n) => n !== leaderNo);
+  p2.img = getPartySprite(rest[0]);
+  p3.img = getPartySprite(rest[1]);
+  p4.img = getPartySprite(rest[2]);
 }
 setupParty(0); // デフォルト: P1 がリーダー
 
 function applySkinLevel(level) {
-  const lv = level | 0;
-  const suffix = lv === 1 ? "_t1" : lv === 2 ? "_t2" : "";
-  for (const m of [leader, p2, p3, p4]) {
-    for (let i = 1; i <= 4; i++) {
-      const base = SPRITES[`p${i}`];
-      const t1   = SPRITES[`p${i}_t1`];
-      const t2   = SPRITES[`p${i}_t2`];
-      if (m.img === base || m.img === t1 || m.img === t2) {
-        m.img = SPRITES[`p${i}${suffix}`];
-        break;
-      }
-    }
-  }
+  STATE.flags.skinLevel = level | 0;
+  setupParty(STATE.leaderIdx | 0);
 }
 
 let mapReady = false;
@@ -283,16 +466,31 @@ let actors = [];
 // 描画ソート用リスト（毎フレームクリアして再利用）
 const _groundList = [];
 const _upperList  = [];
-const _npcList    = [];
 // 描画アイテムプール（毎フレームのオブジェクト生成ゼロ）
 const _POOL_SIZE  = 100;
 const _renderPool = Array.from({ length: _POOL_SIZE }, () => ({}));
 let   _poolIdx    = 0;
 function _poolItem() {
-  if (_poolIdx < _POOL_SIZE) return _renderPool[_poolIdx++];
+  if (_poolIdx < _POOL_SIZE) {
+    const item = _renderPool[_poolIdx++];
+    item.markImg = undefined;
+    item.markFromImg = undefined;
+    item.markAnimStart = undefined;
+    item.markAnimUntil = undefined;
+    item.shadowImg = undefined;
+    item.shadowOff = undefined;
+    item.metImg = undefined;
+    item.alpha = undefined;
+    item.scale = undefined;
+    item.filter = undefined;
+    item.tint = undefined;
+    return item;
+  }
   return {}; // フォールバック（超えることはほぼない）
 }
 const _cactusShadowOff = { x: 9, y: 1 }; // 毎フレーム生成しない
+const tintCanvas = document.createElement("canvas");
+const tintCtx = tintCanvas.getContext("2d");
 
 function talkBoxLeader() {
   return { x: leader.x, y: leader.y, w: SPR, h: SPR };
@@ -312,6 +510,25 @@ function spawnActorsForMap(mapId) {
 
   const npcs = NPCS_BY_MAP?.[mapId] || [];
   for (const def of npcs) actors.push({ ...def, frame: 0, last: 0 });
+  if (mapId === "shooting_lobby") {
+    for (const a of actors) {
+      if (!a.name?.startsWith("door_")) continue;
+      if (a.name === "door_0") {
+        a.markImg = null;
+        continue;
+      }
+      a.markImg = STATE.flags[`shootingCleared_${a.name}`] ? SPRITES.door_clear : SPRITES.door_noclear;
+      if (STATE.flags[`shootingCleared_${a.name}`]) a.alpha = 0.82;
+    }
+  }
+  if (mapId === "house07" && STATE.flags.ac1Gone) {
+    const a = actors.find((a) => a.name === "ac_1");
+    if (a) {
+      a.hidden = true;
+      a.solid = false;
+      a.talkHit = { x: 0, y: 0, w: 0, h: 0 };
+    }
+  }
 
   // 永続フラグによるスプライト上書き
   if (STATE.flags.nidhoggGave) {
@@ -394,6 +611,67 @@ function spawnPickup(itemId, x, y) {
 // ---- Toast (item use message) ----
 const toast       = createToast({ BASE_W, BASE_H });
 const questAlert  = createQuestAlert({ BASE_W });
+let afloBlackout = { active: false, phase: "idle", phaseStart: 0 };
+function isAfloClubBgmLocked() {
+  return current.id === "afloclub";
+}
+function setBgmOverrideSafe(src) {
+  if (isAfloClubBgmLocked()) return;
+  bgmCtl.setOverride(src);
+}
+function setBgmMapSafe(src) {
+  if (isAfloClubBgmLocked()) return;
+  stopShootingBgm();
+  stopAfloClubBgm();
+  bgmCtl.setMap(src);
+}
+function startAfloClubBlackout(t) {
+  const ts = typeof t === "number"
+    ? t
+    : (typeof performance !== "undefined" && performance.now ? performance.now() : Date.now());
+  input.lock();
+  playClickOn();
+  stopAfloClubBgm();
+  afloBlackout = { active: true, phase: "blackout", phaseStart: ts };
+}
+function updateAfloClubBlackout(t) {
+  if (!afloBlackout.active) return false;
+  const elapsed = t - afloBlackout.phaseStart;
+  if (afloBlackout.phase === "blackout" && elapsed >= 5000) {
+    afloBlackout.phase = "restore";
+    afloBlackout.phaseStart = t;
+    return true;
+  }
+  if (afloBlackout.phase === "restore" && elapsed >= 650) {
+    afloBlackout.phase = "silent_gap";
+    afloBlackout.phaseStart = t;
+    return true;
+  }
+  if (afloBlackout.phase === "silent_gap" && elapsed >= 220) {
+    afloBlackout.phase = "cooldown";
+    afloBlackout.phaseStart = t;
+    if (current.id === "afloclub") startAfloClubBgm();
+    return true;
+  }
+  if (afloBlackout.phase === "cooldown" && elapsed >= 1000) {
+    afloBlackout = { active: false, phase: "idle", phaseStart: 0 };
+    input.unlock();
+    return true;
+  }
+  return true;
+}
+function drawAfloClubBlackout(tt) {
+  if (!afloBlackout.active) return;
+  let visible = true;
+  if (afloBlackout.phase === "silent_gap" || afloBlackout.phase === "cooldown") {
+    visible = false;
+  } else if (afloBlackout.phase === "restore") {
+    const p = tt - afloBlackout.phaseStart;
+    visible = ((p / 70) | 0) % 2 === 0;
+  }
+  if (!visible) return;
+  drawMapImg(SPRITES.afloclub_off);
+}
 
 // ---- Inventory (externalized) ----
 const inventory = createInventory({
@@ -402,10 +680,10 @@ const inventory = createInventory({
   input,
   itemName,
   itemBgmSrc,
-  stopBgm: () => bgmCtl.setOverride("about:blank"),
+  stopBgm: () => setBgmOverrideSafe("about:blank"),
   unlockBgm: () => bgmCtl.unlock(),
   setOverrideBgm: (src) => {
-    bgmCtl.setOverride(src);
+    setBgmOverrideSafe(src);
     if (src === "assets/audio/duckF.mp3" && current.id === "seahole") {
       input.lock();
       setTimeout(() => { input.unlock(); startSeaholeCutscene(); }, 2000);
@@ -424,10 +702,10 @@ const menu = createMenu({
   inventory,
   itemName,
   itemBgmSrc,
-  stopBgm:        () => bgmCtl.setOverride("about:blank"),
+  stopBgm:        () => setBgmOverrideSafe("about:blank"),
   unlockBgm:      () => bgmCtl.unlock(),
   setOverrideBgm: (src) => {
-    bgmCtl.setOverride(src);
+    setBgmOverrideSafe(src);
     if (src === "assets/audio/duckF.mp3" && current.id === "seahole") {
       input.lock();
       setTimeout(() => { input.unlock(); startSeaholeCutscene(); }, 2000);
@@ -438,7 +716,7 @@ const menu = createMenu({
     if (id === "gunter") {
       inventory.removeItem("gunter");
       input.lock();
-      setTimeout(() => bgmCtl.setOverride(null), 670);
+      setTimeout(() => setBgmOverrideSafe(null), 670);
       setTimeout(() => {
         STATE.flags.eatCount = (STATE.flags.eatCount || 0) + 1;
         if (STATE.flags.eatCount >= 10) achieveQuest("26");
@@ -453,7 +731,7 @@ const menu = createMenu({
     if (id === "hone") {
       inventory.removeItem("hone");
       input.lock();
-      setTimeout(() => bgmCtl.setOverride(null), 670);
+      setTimeout(() => setBgmOverrideSafe(null), 670);
       setTimeout(() => {
         STATE.flags.eatCount = (STATE.flags.eatCount || 0) + 1;
         if (STATE.flags.eatCount >= 10) achieveQuest("26");
@@ -468,7 +746,7 @@ const menu = createMenu({
     if (id === "tacos") {
       inventory.removeItem("tacos");
       input.lock();
-      setTimeout(() => bgmCtl.setOverride(null), 670);
+      setTimeout(() => setBgmOverrideSafe(null), 670);
       setTimeout(() => {
         STATE.flags.eatCount = (STATE.flags.eatCount || 0) + 1;
         if (STATE.flags.eatCount >= 10) achieveQuest("26");
@@ -480,10 +758,53 @@ const menu = createMenu({
       }, 700);
       return true;
     }
+    if (id === "vodka") {
+      inventory.removeItem("vodka");
+      input.lock();
+      setTimeout(() => setBgmOverrideSafe(null), 670);
+      setTimeout(() => {
+        STATE.flags.eatCount = (STATE.flags.eatCount || 0) + 1;
+        if (STATE.flags.eatCount >= 10) achieveQuest("26");
+        input.unlock();
+        dialog.open([
+          ["ナツミはウォッカをたべてみた！"],
+          ["ウゲー！"],
+        ], null, "sign");
+      }, 700);
+      return true;
+    }
+    if (id === "iron_heart") {
+      inventory.removeItem("iron_heart");
+      input.lock();
+      setTimeout(() => setBgmOverrideSafe(null), 670);
+      setTimeout(() => {
+        STATE.flags.eatCount = (STATE.flags.eatCount || 0) + 1;
+        if (STATE.flags.eatCount >= 10) achieveQuest("26");
+        input.unlock();
+        dialog.open([
+          ["ナツミは鉄の心臓をたべてみた！"],
+          ["ムムム・・・。"],
+        ], () => {
+          input.lock();
+          fade.startCutFade(nowMs(), {
+            outMs: 280,
+            holdMs: 0,
+            inMs: 280,
+            onBlack: () => {
+              stopShootingBgm();
+              setBgmOverrideSafe("about:blank");
+              input.unlock();
+              startMechaEvolutionScene();
+            },
+          });
+        }, "sign");
+      }, 700);
+      return true;
+    }
     if (id === "densetsu_no_ken") {
       inventory.removeItem("densetsu_no_ken");
       input.lock();
-      setTimeout(() => bgmCtl.setOverride(null), 670);
+      setTimeout(() => setBgmOverrideSafe(null), 670);
       setTimeout(() => {
         STATE.flags.eatCount = (STATE.flags.eatCount || 0) + 1;
         if (STATE.flags.eatCount >= 10) achieveQuest("26");
@@ -497,7 +818,7 @@ const menu = createMenu({
     }
     if (id === "temp_item_1") {
       input.lock();
-      setTimeout(() => bgmCtl.setOverride(null), 670);
+      setTimeout(() => setBgmOverrideSafe(null), 670);
       setTimeout(() => {
         input.unlock();
         dialog.open([["仮アイテム１をつかった！"]], null, "sign");
@@ -506,7 +827,7 @@ const menu = createMenu({
     }
     if (id === "temp_item_2") {
       input.lock();
-      setTimeout(() => bgmCtl.setOverride(null), 670);
+      setTimeout(() => setBgmOverrideSafe(null), 670);
       setTimeout(() => {
         input.unlock();
         dialog.open([["仮アイテム２をつかった！"]], null, "sign");
@@ -518,7 +839,7 @@ const menu = createMenu({
       const quest = QUESTS.find(q => q.id === String(n).padStart(2, "0"));
       const cond = quest?.cond ?? "？？？";
       input.lock();
-      setTimeout(() => bgmCtl.setOverride(null), 670);
+      setTimeout(() => setBgmOverrideSafe(null), 670);
       setTimeout(() => {
         input.unlock();
         dialog.open([
@@ -537,7 +858,7 @@ const menu = createMenu({
     if (HEADWEAR_DEFS[id]) {
       const def = HEADWEAR_DEFS[id];
       input.lock();
-      setTimeout(() => bgmCtl.setOverride(null), 670);
+      setTimeout(() => setBgmOverrideSafe(null), 670);
       if (STATE.headwear === def.key) {
         STATE.headwear = null;
         setTimeout(() => { input.unlock(); dialog.open([[def.off]], null, "sign"); }, 700);
@@ -903,6 +1224,7 @@ function hitRect(a, b) {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 }
 function hitBg(nx, ny) {
+  if (current.id === "shooting_lobby") return false;
   const f = footBox(nx, ny);
   for (let y = f.y; y < f.y + f.h; y++) {
     for (let x = f.x; x < f.x + f.w; x++) {
@@ -1133,16 +1455,28 @@ function startSeaholeCutscene() {
             onBlack: () => {
               seaholeCutscene = { active: false, shadowX: BASE_W, charOffsetX: 0 };
               partyVisible = true;
-              loadMap("outdoor", {
+              loadMap("orca_ride", {
                 spawnAt: { x: 3824, y: 402 },
                 skipBgm: true,
                 onReady: () => {
-                  const orca = actors.find(a => a.kind === "npc" && a.name === "orca3");
-                  if (orca) { orca.x = 3780; orca.y = 392; orca.img = SPRITES.orca; }
+                  actors.push({
+                    kind: "npc",
+                    name: "orca3",
+                    x: 3780,
+                    y: 392,
+                    img: SPRITES.orca,
+                    spr: 64,
+                    sprH: 32,
+                    frame: 0,
+                    last: 0,
+                    talkHit: { x: 0, y: 0, w: 0, h: 0 },
+                    solid: false,
+                    animMs: NPC_FRAME_MS,
+                  });
                   p2.x = p3.x = p4.x = -2000;
                   playWave();
                   setTimeout(() => {
-                    orcaRide = { active: true, startMs: nowMs() };
+                    orcaRide = { active: true, startMs: nowMs(), durationMs: 15000, ending: false };
                     achieveQuest("08");
                     fade.startCutFade(nowMs(), { outMs: 0, holdMs: 0, inMs: 700, onEnd: () => input.unlock() });
                   }, 2000);
@@ -1160,9 +1494,13 @@ function loadMap(id, opt = null) {
   mapReady = false;
   const prevMapId = current.id;
   current.id = id;
+  afloBlackout = { active: false, phase: "idle", phaseStart: 0 };
   mapChunkCache = new WeakMap();
 
-  if (id === "outdoor") delete STATE.flags.carefulActive;
+  if (id === "outdoor") {
+    delete STATE.flags.carefulActive;
+    delete STATE.flags.ac1Gone;
+  }
 
   menu.close();
 
@@ -1178,8 +1516,8 @@ function loadMap(id, opt = null) {
     // クエスト11: チキンカレーのエフェクト中にプールに入る
     if (id === "pool" && goodTrip.isActive()) achieveQuest("11");
 
-    current.bgW = bgImg.naturalWidth | 0;
-    current.bgH = bgImg.naturalHeight | 0;
+    current.bgW = (def.bgW || bgImg.naturalWidth) | 0;
+    current.bgH = (def.bgH || bgImg.naturalHeight) | 0;
 
     let sx = current.bgW >> 1,
       sy = current.bgH >> 1;
@@ -1205,7 +1543,8 @@ function loadMap(id, opt = null) {
     const entryDoor = (def.doors || []).find(d => d.id === opt?.doorId);
     autoWalk = entryDoor?.entryWalk ? { ...entryDoor.entryWalk } : null;
 
-    if (def.waterColor) buildWaterMask(bgImg, def.waterColor);
+    if (def.fullWater) buildFullWaterMask(current.bgW, current.bgH);
+    else if (def.waterColor) buildWaterMask(bgImg, def.waterColor);
     else waterMaskCanvas = null;
 
     spawnActorsForMap(current.id);
@@ -1213,15 +1552,35 @@ function loadMap(id, opt = null) {
 
     if (opt?.isEnding || opt?.skipBgm) {
       // BGM は呼び出し元が管理
+      if (current.id === "shooting_lobby") {
+        bgmCtl.setOverride("about:blank");
+        startShootingBgm();
+      } else {
+        stopShootingBgm();
+      }
     } else if (current.id === "charch" && !STATE.flags.duckBCollected) {
+      stopShootingBgm();
       bgmCtl.setMap("assets/audio/duckB.mp3");
     } else if (current.id === "pool" && !STATE.flags.duckICollected) {
+      stopShootingBgm();
       bgmCtl.setMap("assets/audio/duckI.mp3");
     } else if (
       (prevMapId === "charch" && !STATE.flags.duckBCollected) ||
       (prevMapId === "pool"   && !STATE.flags.duckICollected)
     ) {
+      stopShootingBgm();
       bgmCtl.setMap("assets/audio/bgm0.mp3");
+    } else if (current.id === "shooting_lobby") {
+      bgmCtl.setOverride("about:blank");
+      stopAfloClubBgm();
+      startShootingBgm();
+    } else if (current.id === "afloclub") {
+      bgmCtl.setOverride("about:blank");
+      stopShootingBgm();
+      startAfloClubBgm();
+    } else {
+      stopShootingBgm();
+      stopAfloClubBgm();
     }
 
     seaholeCutscene = { active: false, shadowX: BASE_W, charOffsetX: 0 };
@@ -1327,11 +1686,29 @@ function drawSprite(img, f, x, y, spr = SPR, sprH = spr) {
   ctx.drawImage(img, (f * spr) | 0, 0, spr, sprH, (x - cam.x) | 0, (y - cam.y) | 0, spr, sprH);
 }
 
+function drawTintedSprite(img, f, x, y, tint, spr = SPR, sprH = spr) {
+  if (!img || img.naturalWidth <= 0) return;
+  tintCanvas.width = spr;
+  tintCanvas.height = sprH;
+  tintCtx.clearRect(0, 0, spr, sprH);
+  tintCtx.globalCompositeOperation = "source-over";
+  tintCtx.drawImage(img, (f * spr) | 0, 0, spr, sprH, 0, 0, spr, sprH);
+  tintCtx.globalCompositeOperation = "multiply";
+  tintCtx.fillStyle = tint;
+  tintCtx.fillRect(0, 0, spr, sprH);
+  tintCtx.globalCompositeOperation = "destination-in";
+  tintCtx.drawImage(img, (f * spr) | 0, 0, spr, sprH, 0, 0, spr, sprH);
+  tintCtx.globalCompositeOperation = "source-over";
+  ctx.drawImage(tintCanvas, (x - cam.x) | 0, (y - cam.y) | 0);
+}
+
 
 function drawEntry(o) {
   if (o.alpha !== undefined && o.alpha <= 0) return;
   const hasAlpha = o.alpha !== undefined && o.alpha < 1;
   const hasScale = o.scale !== undefined && o.scale !== 1;
+  const hasFilter = !!o.filter;
+  const hasTint = !!o.tint;
   const sprSize  = o.spr  ?? SPR;
   const sprSizeH = o.sprH ?? sprSize;
 
@@ -1347,9 +1724,10 @@ function drawEntry(o) {
     return;
   }
 
-  if (hasAlpha || hasScale) {
+  if (hasAlpha || hasScale || hasFilter || hasTint) {
     ctx.save();
     if (hasAlpha) ctx.globalAlpha = Math.max(0, o.alpha);
+    if (hasFilter) ctx.filter = o.filter;
     if (hasScale) {
       const sx = ((o.x - cam.x) | 0) + sprSize / 2;
       const sy = ((o.y - cam.y) | 0) + sprSizeH / 2;
@@ -1358,13 +1736,42 @@ function drawEntry(o) {
       ctx.translate(-sx, -sy);
     }
     if (o.shadowImg) drawSprite(o.shadowImg, 0, o.x + (o.shadowOff?.x ?? 0), o.y + (o.shadowOff?.y ?? 0), sprSize, sprSizeH);
-    drawSprite(o.img, o.frame, o.x, o.y, sprSize, sprSizeH);
+    if (hasTint) drawTintedSprite(o.img, o.frame, o.x, o.y, o.tint, sprSize, sprSizeH);
+    else drawSprite(o.img, o.frame, o.x, o.y, sprSize, sprSizeH);
     if (o.metImg) drawSprite(o.metImg, 0, o.x, o.y, sprSize, sprSizeH);
     ctx.restore();
   } else {
     if (o.shadowImg) drawSprite(o.shadowImg, 0, o.x + (o.shadowOff?.x ?? 0), o.y + (o.shadowOff?.y ?? 0), sprSize, sprSizeH);
     drawSprite(o.img, o.frame, o.x, o.y, sprSize, sprSizeH);
     if (o.metImg) drawSprite(o.metImg, 0, o.x, o.y, sprSize, sprSizeH);
+  }
+
+  if (o.markImg?.naturalWidth > 0) {
+    const now = nowMs();
+    const ix = ((o.x - cam.x) | 0) + ((sprSize - 16) >> 1);
+    const bob = Math.sin(nowMs() / 180) > 0 ? 1 : 0;
+    const iy = ((o.y - cam.y) | 0) - 3 + bob;
+    if (o.markAnimStart && o.markAnimUntil && now < o.markAnimUntil && o.markFromImg?.naturalWidth > 0) {
+      const dur = Math.max(1, o.markAnimUntil - o.markAnimStart);
+      const p = Math.min(1, Math.max(0, (now - o.markAnimStart) / dur));
+      if (p < 0.5) {
+        const s = 1 - p * 0.7;
+        ctx.save();
+        ctx.translate(ix + 8, iy + 8);
+        ctx.scale(s, s);
+        ctx.drawImage(o.markFromImg, -8, -8, 16, 16);
+        ctx.restore();
+      } else {
+        const s = 0.65 + ((p - 0.5) / 0.5) * 0.35;
+        ctx.save();
+        ctx.translate(ix + 8, iy + 8);
+        ctx.scale(s, s);
+        ctx.drawImage(o.markImg, -8, -8, 16, 16);
+        ctx.restore();
+      }
+    } else {
+      ctx.drawImage(o.markImg, ix, iy, 16, 16);
+    }
   }
 }
 
@@ -1393,6 +1800,13 @@ function draw() {
   if (charSelect.isActive()) {
     const tt = typeof performance !== "undefined" ? performance.now() : Date.now();
     charSelect.draw(ctx, tt);
+    return;
+  }
+
+  if (mechaEvolution.active) {
+    const tt = typeof performance !== "undefined" ? performance.now() : Date.now();
+    drawMechaEvolutionScene(tt);
+    fade.draw(ctx);
     return;
   }
 
@@ -1462,7 +1876,13 @@ function draw() {
   if (shouldDrawSea) ctx.drawImage(seaSparkleCanvas, 0, 0);
 
   // ベースレイヤー：shrine完全移行後はbgImgを省略して描画コスト削減
-  if (shrineFade >= 1) {
+  if (current.id === "shooting_lobby") {
+    drawShootingBackdrop(ctx, BASE_W, BASE_H, tt);
+  } else if (current.id === "orca_ride") {
+    ctx.fillStyle = "#3dc5ce";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    drawWaterSea(ctx);
+  } else if (shrineFade >= 1) {
     ctx.fillStyle = "#fff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     drawMapImg(bgShrineImg);
@@ -1474,12 +1894,11 @@ function draw() {
 
   _groundList.length = 0;
   _upperList.length  = 0;
-  _npcList.length    = 0;
   _poolIdx = 0;
   const groundList = _groundList;
   const upperList  = _upperList;
-  const npcList    = _npcList;
   if (partyVisible) {
+    const singleLeaderOnly = current.id === "shooting_lobby";
     const followerAlpha = 1 - shrineFade;
     const emerging = holeTransition?.phase === 'emerging';
     const fx = emerging && playerHoleDrawX !== null ? playerHoleDrawX : null;
@@ -1508,7 +1927,7 @@ function draw() {
       return null;
     }
     const pushParty = (name, o) => (charHeight[name] === "upper" ? upperList : groundList).push(o);
-    if (!orcaRide.active) {
+    if (!orcaRide.active && !singleLeaderOnly) {
       const ip4 = _poolItem(); ip4.img = p4.img; ip4.x = (fx ?? p4.x) + cOff; ip4.y = fy ?? p4.y; ip4.frame = emerging ? 0 : p4.frame; ip4.alpha = followerAlpha; ip4.scale = fs; ip4.metImg = _hwImg(p4.img); ip4.spr = undefined; ip4.sprH = undefined; ip4.shadowImg = undefined;
       const ip3 = _poolItem(); ip3.img = p3.img; ip3.x = (fx ?? p3.x) + cOff; ip3.y = fy ?? p3.y; ip3.frame = emerging ? 0 : p3.frame; ip3.alpha = followerAlpha; ip3.scale = fs; ip3.metImg = _hwImg(p3.img); ip3.spr = undefined; ip3.sprH = undefined; ip3.shadowImg = undefined;
       const ip2 = _poolItem(); ip2.img = p2.img; ip2.x = (fx ?? p2.x) + cOff; ip2.y = fy ?? p2.y; ip2.frame = emerging ? 0 : p2.frame; ip2.alpha = followerAlpha; ip2.scale = fs; ip2.metImg = _hwImg(p2.img); ip2.spr = undefined; ip2.sprH = undefined; ip2.shadowImg = undefined;
@@ -1529,9 +1948,14 @@ function draw() {
     const ia = _poolItem();
     ia.img = act.img; ia.x = act.x; ia.y = act.y; ia.frame = act.frame;
     ia.spr = act.spr; ia.sprH = act.sprH; ia.alpha = act.alpha; ia.scale = undefined; ia.metImg = undefined;
+    ia.markImg = act.markImg;
+    ia.markFromImg = act.markFromImg;
+    ia.markAnimStart = act.markAnimStart;
+    ia.markAnimUntil = act.markAnimUntil;
     ia.shadowImg = undefined; // 影は outdoor.png に合成済み
     ia.shadowOff = isCactus ? _cactusShadowOff : undefined;
-    npcList.push(ia);
+    if (charHeight.leader === "upper") upperList.push(ia);
+    else                               groundList.push(ia);
   }
 
   const sortFn = (a, b) => {
@@ -1543,12 +1967,9 @@ function draw() {
   };
   groundList.sort(sortFn);
   upperList.sort(sortFn);
-  npcList.sort(sortFn);
   for (let i = 0; i < groundList.length; i++) drawEntry(groundList[i]);
   drawMapImg(bgMidImg);
-  const upperAndNpc = upperList.concat(npcList);
-  upperAndNpc.sort(sortFn);
-  for (let i = 0; i < upperAndNpc.length; i++) drawEntry(upperAndNpc[i]);
+  for (let i = 0; i < upperList.length; i++) drawEntry(upperList[i]);
 
 // seahole 魚の描画（スプライットの上）
   if (current.id === "seahole") {
@@ -1609,6 +2030,12 @@ function draw() {
   } else {
     drawMapImg(bgTopImg);
     if (shrineFade > 0) drawMapImg(bgShrineTopImg, shrineFade);
+  }
+
+  if (current.id === "afloclub") {
+    drawAfloClubFx(tt);
+    applyAfloClubRgbShift();
+    drawAfloClubBlackout(tt);
   }
 
   // モバイル：神社切替用の白フラッシュオーバーレイ
@@ -1885,6 +2312,67 @@ function updateNpcAnim(t) {
   }
 }
 
+function activateShootingLobbyDoor(act, t) {
+  if (t < shootingDoorCooldown) return true;
+  shootingDoorCooldown = t + 500;
+
+  if (act.name === "door_0") {
+    fade.startCutFade(t, {
+      outMs: 150,
+      holdMs: 80,
+      inMs: 300,
+      onBlack: () => loadMap("outdoor", { spawnAt: { x: gateNpc.x, y: gateNpc.y + 20 } }),
+    });
+    return true;
+  }
+
+  const returnPos = { x: act.x, y: act.y + 26 };
+  bgmCtl.setOverride("about:blank");
+  startShootingBgm();
+  shooting.start((earnedEN, result) => {
+    stopShootingBgm();
+    bgmCtl.setOverride("about:blank");
+    STATE.money = Math.min(STATE.money + earnedEN, 999999);
+    if (earnedEN > 0) toast.show(`${earnedEN} EN ゲット！`);
+    if (result?.cleared) {
+      input.lock();
+      playVictory();
+      setTimeout(() => {
+        STATE.flags[`shootingCleared_${act.name}`] = true;
+        const allHellDoorsCleared = Array.from({ length: 7 }, (_, i) =>
+          STATE.flags[`shootingCleared_door_${i + 1}`]
+        ).every(Boolean);
+        if (allHellDoorsCleared) achieveQuest("15");
+        act.alpha = 0.82;
+        act.markFromImg = act.markImg || SPRITES.door_noclear;
+        act.markImg = SPRITES.door_clear;
+        act.markAnimStart = nowMs();
+        act.markAnimUntil = act.markAnimStart + 500;
+        leader.x = returnPos.x;
+        leader.y = returnPos.y;
+        followers.reset({ leader, p2, p3, p4 });
+        startShootingBgm();
+        shootingDoorCooldown = nowMs() + 800;
+        input.unlock();
+      }, 1000);
+      return;
+    }
+    leader.x = returnPos.x;
+    leader.y = returnPos.y;
+    followers.reset({ leader, p2, p3, p4 });
+    startShootingBgm();
+    if (!result?.cleared) {
+      shootingKnockback = {
+        vx: 0,
+        vy: 4.6,
+        until: nowMs() + 420,
+      };
+    }
+    shootingDoorCooldown = nowMs() + 800;
+  }, { autoEndOnClear: true });
+  return true;
+}
+
 // ★ここを t を受け取る形にする
 function tryInteract(t) {
   if (dialog.isActive()) return;
@@ -1896,10 +2384,17 @@ function tryInteract(t) {
 
   for (let i = 0; i < actors.length; i++) {
     const act = actors[i];
-    const b = talkRectActor(act);
+    const b = (current.id === "shooting_lobby" && act.name?.startsWith("door_"))
+      ? npcFootBox(act)
+      : talkRectActor(act);
     if (!hitRect(a, b)) continue;
 
     if (act.kind === "npc") {
+      if (current.id === "shooting_lobby" && act.name?.startsWith("door_")) {
+        if (!STATE.flags.shootingLobbyLuchaTalked) return;
+        activateShootingLobbyDoor(act, t);
+        return;
+      }
       if (act.showWhenBgm && bgmCtl.getOverrideSrc() !== act.showWhenBgm) continue;
       dialog.setVoice(act.voice || "default");
       const handled = runNpcEvent(act, {
@@ -1911,7 +2406,10 @@ function tryInteract(t) {
         inventory,
         sprites: SPRITES,
         party: { leader, p2, p3, p4 },
+        lockInput: () => input.lock(),
+        unlockInput: () => input.unlock(),
         stopBgm:      () => bgmCtl.setOverride("about:blank"),
+        startAfloClubBlackout: () => startAfloClubBlackout(t),
         startTrip: () => {
           STATE.flags.tripCount = (STATE.flags.tripCount | 0) + 1;
           if (STATE.flags.tripCount >= 10) achieveQuest("09");
@@ -1995,14 +2493,11 @@ function tryInteract(t) {
 
       if (act.shootingTrigger) {
         if (!shooting.isActive()) {
-          bgmCtl.setOverride("about:blank");
-          startShootingBgm();
-          achieveQuest("12");
-          shooting.start((earnedEN) => {
-            stopShootingBgm();
-            bgmCtl.setOverride(null);
-            STATE.money = Math.min(STATE.money + earnedEN, 999999);
-            if (earnedEN > 0) toast.show(`${earnedEN} EN ゲット！`);
+          fade.startCutFade(nowMs(), {
+            outMs: 150,
+            holdMs: 80,
+            inMs: 300,
+            onBlack: () => loadMap("shooting_lobby"),
           });
         }
         return;
@@ -2072,7 +2567,22 @@ function tryInteract(t) {
           }, act.talkType ?? "talk");
         }
       } else {
-        dialog.open(act.talkPages || [["……"]], null, act.talkType ?? "talk");
+        if (act.name === "lucha_shooting") {
+          const pages = STATE.flags.shootingLobbyLuchaTalked
+            ? [["ここが！ジ・ゴ・ク！"], ["サイコーーーーーー！！"]]
+            : (act.talkPages || [["……"]]);
+          const onClose = STATE.flags.shootingLobbyLuchaTalked
+            ? null
+            : () => {
+                STATE.flags.shootingLobbyLuchaTalked = true;
+                achieveQuest("12");
+                input.lock();
+                setTimeout(() => input.unlock(), 1000);
+              };
+          dialog.open(pages, onClose, act.talkType ?? "talk");
+        } else {
+          dialog.open(act.talkPages || [["……"]], null, act.talkType ?? "talk");
+        }
       }
       return;
     }
@@ -2128,6 +2638,63 @@ function update(t) {
   if (charSelect.isActive()) {
     charSelect.update();
     return;
+  }
+
+  if (mechaEvolution.active) {
+    if (mechaEvolution.phase === "queued") {
+      if (fade.isActive()) {
+        fade.update(t, () => mapReady);
+      } else {
+        mechaEvolution.phase = "message";
+        dialog.open([["おや？ナツミのようすが"]], () => {
+          mechaEvolution.phase = "evolving";
+          mechaEvolution.startMs = nowMs();
+        }, "sign");
+      }
+      updateCam();
+      return;
+    }
+    if (dialog.isActive()) {
+      dialog.update();
+      updateCam();
+      return;
+    }
+    if (mechaEvolution.phase === "evolving") {
+      if (t - mechaEvolution.startMs >= 2200) {
+        STATE.flags.mechaNatsumi = true;
+        setupParty(STATE.leaderIdx | 0);
+        playBattleWinJingle();
+        mechaEvolution.phase = "result";
+        mechaEvolution.startMs = t;
+      }
+      updateCam();
+      return;
+    }
+    if (mechaEvolution.phase === "result") {
+      if (t - mechaEvolution.startMs >= 500) {
+        dialog.open([["ナツミはメカナツミに進化した！"]], () => {
+          mechaEvolution.phase = "done";
+          mechaEvolution.startMs = nowMs();
+        }, "sign");
+      }
+      updateCam();
+      return;
+    }
+    if (mechaEvolution.phase === "done") {
+      if (t - mechaEvolution.startMs >= 150) {
+        if (current.id === "shooting_lobby") startShootingBgm();
+        else if (current.id === "afloclub") startAfloClubBgm();
+        else bgmCtl.setOverride(null);
+        input.lock();
+        mechaEvolution.active = false;
+        setTimeout(() => {
+          achieveQuest("23");
+          input.unlock();
+        }, 300);
+      }
+      updateCam();
+      return;
+    }
   }
 
   // fade 最優先
@@ -2249,17 +2816,48 @@ function update(t) {
   }
 
   // field
+  if (current.id === "afloclub" && afloBlackout.active) {
+    updateAfloClubBlackout(t);
+    leader.frame = 0;
+    p2.frame = p3.frame = p4.frame = 0;
+    for (const act of actors) act.frame = 0;
+    updateCam();
+    return;
+  }
+
   if (input.consume("x")) menu.toggle();
   if (input.consume("z")) tryInteract(t); // ★tを渡す
 
   // セーブ / ロード
   if (input.consume("s")) { saveGame(); return; }
   if (input.consume("l")) { loadGame(); return; }
-  if (input.consume("v")) { bgmCtl.setOverride(null); bgmCtl.setMap("assets/audio/bgm0.mp3"); return; }
+  if (input.consume("v")) { setBgmOverrideSafe(null); setBgmMapSafe("assets/audio/bgm0.mp3"); return; }
 
-  // DEBUG: D で vj_room01 にワープ
+  // DEBUG: D で afloclub へワープ
   if (DEBUG && input.consume("d")) {
-    fade.startCutFade(t, { outMs: 150, holdMs: 80, inMs: 300, onBlack: () => loadMap("vj_room01") });
+    fade.startCutFade(t, {
+      outMs: 150,
+      holdMs: 80,
+      inMs: 300,
+      onBlack: () => loadMap("afloclub", { spawnAt: { x: 128, y: 160 } }),
+    });
+  }
+
+  if (shootingKnockback && current.id === "shooting_lobby") {
+    const nx = leader.x + shootingKnockback.vx;
+    const ny = leader.y + shootingKnockback.vy;
+    leader.x = Math.max(0, Math.min(current.bgW - SPR, nx));
+    leader.y = Math.max(0, Math.min(current.bgH - SPR, ny));
+    followers.reset({ leader, p2, p3, p4 });
+    leader.frame = 1;
+    shootingKnockback.vx *= 0.88;
+    shootingKnockback.vy = shootingKnockback.vy * 0.9 + 0.12;
+    if (t >= shootingKnockback.until || (Math.abs(shootingKnockback.vx) < 0.2 && Math.abs(shootingKnockback.vy) < 0.2)) {
+      shootingKnockback = null;
+      leader.frame = 0;
+    }
+    updateCam();
+    return;
   }
 
   // ---- クエスト29・30: 噴水/ベンチ付近で静止 ----
@@ -2402,15 +3000,20 @@ function update(t) {
       fade.startCutFade(nowMs(), {
         outMs: 500, holdMs: 9999999, inMs: 0,
         onBlack: () => {
-          orcaRide = { active: false, startMs: 0 };
-          leader.x = 2758; leader.y = 3380;
-          followers.reset({ leader, p2, p3, p4 });
-          partyVisible = true;
-          updateCam();
-          playWave();
-          setTimeout(() => {
-            fade.startCutFade(nowMs(), { outMs: 0, holdMs: 0, inMs: 700, onEnd: () => input.unlock() });
-          }, 2000);
+          orcaRide = { active: false, startMs: 0, durationMs: 15000, ending: false };
+          loadMap("outdoor", {
+            spawnAt: { x: 2220, y: 2579 },
+            skipBgm: true,
+            onReady: () => {
+              followers.reset({ leader, p2, p3, p4 });
+              partyVisible = true;
+              updateCam();
+              playWave();
+              setTimeout(() => {
+                fade.startCutFade(nowMs(), { outMs: 0, holdMs: 0, inMs: 700, onEnd: () => input.unlock() });
+              }, 2000);
+            },
+          });
         },
       });
     }

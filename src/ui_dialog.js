@@ -16,6 +16,7 @@ export function createDialog({ BASE_W, BASE_H, input } = {}) {
   let charIndex  = 0;
   let lastCharMs = 0;
   const CHAR_MS  = 60; // ms per character
+  const PUNCT_MS = 360;
 
   // ★ページ遷移通知（npc_events 側で choice を出す用）
   let onPageChangeCb  = null;
@@ -55,6 +56,14 @@ export function createDialog({ BASE_W, BASE_H, input } = {}) {
   // ---- typewriter helpers ----
   function pageCharTotal(lines) {
     return lines.reduce((s, l) => s + String(l ?? "").length, 0);
+  }
+
+  function currentPageText() {
+    return currentLines().map((l) => String(l ?? "")).join("");
+  }
+
+  function charDelay(ch) {
+    return ch === "、" || ch === "。" || ch === "？" || ch === "！" ? PUNCT_MS : CHAR_MS;
   }
 
   function currentLines() {
@@ -124,14 +133,18 @@ export function createDialog({ BASE_W, BASE_H, input } = {}) {
 
     // typewriter: advance charIndex over time
     if (type === "talk" && !isTypingDone()) {
-      const now     = Date.now();
-      const elapsed = now - lastCharMs;
-      const add     = Math.floor(elapsed / CHAR_MS);
-      if (add > 0) {
-        charIndex  += add;
-        lastCharMs += add * CHAR_MS;
-        const total = pageCharTotal(currentLines());
-        if (charIndex > total) charIndex = total;
+      const now = Date.now();
+      const text = currentPageText();
+      let added = 0;
+      while (charIndex < text.length) {
+        const prevCh = charIndex > 0 ? text[charIndex - 1] : "";
+        const delay = charDelay(prevCh);
+        if (now - lastCharMs < delay) break;
+        charIndex++;
+        lastCharMs += delay;
+        added++;
+      }
+      if (added > 0) {
         if (!isTypingDone()) playTypingVoice(voice);
       }
       if (isTypingDone() && !typingDoneFired && onTypingDoneCb) {

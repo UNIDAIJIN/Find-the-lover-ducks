@@ -13,6 +13,50 @@ const BOSS_EVERY    = 3;   // N wave ごとにボス
 
 const POPS = ["CALIENTE!!", "VIVA!!", "あつい", "MUERTO!", "INFIERNO!", "ヤバい!!"];
 
+export function drawShootingBackdrop(ctx, BASE_W, BASE_H, tt = 0) {
+  const hue = ((tt || 0) * 0.024) % 360;
+  const wobblePhase = (tt || 0) * 0.0024;
+
+  const grad = ctx.createLinearGradient(0, 0, 0, BASE_H);
+  grad.addColorStop(0,    `hsl(${hue % 360},100%,55%)`);
+  grad.addColorStop(0.25, `hsl(${(hue + 60) % 360},100%,60%)`);
+  grad.addColorStop(0.5,  `hsl(${(hue + 120) % 360},100%,58%)`);
+  grad.addColorStop(0.75, `hsl(${(hue + 200) % 360},100%,55%)`);
+  grad.addColorStop(1,    `hsl(${(hue + 280) % 360},100%,52%)`);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, BASE_W, BASE_H);
+
+  ctx.save();
+  ctx.globalAlpha = 0.22;
+  for (let y = 0; y < BASE_H; y += 6) {
+    const offset = Math.sin(wobblePhase * 2 + y * 0.08) * 10;
+    ctx.fillStyle = `hsl(${(hue + y * 1.2) % 360},100%,80%)`;
+    ctx.fillRect(offset, y, BASE_W, 3);
+  }
+  ctx.restore();
+
+  ctx.save();
+  ctx.globalAlpha = 0.15;
+  const cx = BASE_W / 2 + Math.sin(wobblePhase * 0.5) * 20;
+  const cy = BASE_H / 2 + Math.cos(wobblePhase * 0.3) * 15;
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2 + wobblePhase * 0.2;
+    ctx.strokeStyle = `hsl(${(hue + i * 30) % 360},100%,90%)`;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + Math.cos(a) * 200, cy + Math.sin(a) * 200);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  ctx.save();
+  ctx.globalAlpha = 0.30;
+  ctx.fillStyle = "#000";
+  ctx.fillRect(0, 0, BASE_W, BASE_H);
+  ctx.restore();
+}
+
 export function createShooting({ BASE_W, BASE_H, input, sprites, getLeaderImg } = {}) {
 
   let phase = "idle"; // idle | countdown | playing | result
@@ -28,6 +72,8 @@ export function createShooting({ BASE_W, BASE_H, input, sprites, getLeaderImg } 
   let hue, wobblePhase, wobbleAmp;
   let slowTimer, slowCooldown;
   let resultTimer;
+  let autoEndOnClear = false;
+  let cleared = false;
   let playerFrame, playerFrameTimer;
   let enemyFrame, enemyFrameTimer;
 
@@ -98,9 +144,10 @@ export function createShooting({ BASE_W, BASE_H, input, sprites, getLeaderImg } 
 
   function isSlow() { return slowTimer > 0; }
   function dt() { return isSlow() ? 0.35 : 1; }
+  function isShielding() { return input.down("c"); }
 
   // ---- public ----
-  function start(cb) {
+  function start(cb, opt = {}) {
     onEnd   = cb;
     phase   = "countdown";
     countdownTimer = COUNTDOWN_FRAMES * 3;
@@ -112,6 +159,8 @@ export function createShooting({ BASE_W, BASE_H, input, sprites, getLeaderImg } 
     hue = 0; wobblePhase = 0; wobbleAmp = 2;
     slowTimer = 0; slowCooldown = SLOW_INTERVAL;
     resultTimer = 0;
+    autoEndOnClear = !!opt.autoEndOnClear;
+    cleared = false;
     playerFrame = 0; playerFrameTimer = 0;
     enemyFrame  = 0; enemyFrameTimer  = 0;
   }
@@ -131,9 +180,14 @@ export function createShooting({ BASE_W, BASE_H, input, sprites, getLeaderImg } 
 
     if (phase === "result") {
       resultTimer++;
+      if (cleared && autoEndOnClear && resultTimer > 45) {
+        phase = "idle";
+        if (typeof onEnd === "function") onEnd(Math.floor(score / 10), { cleared: true });
+        return;
+      }
       if (resultTimer > 60 && input.consume("z")) {
         phase = "idle";
-        if (typeof onEnd === "function") onEnd(Math.floor(score / 10));
+        if (typeof onEnd === "function") onEnd(Math.floor(score / 10), { cleared: false });
       }
       return;
     }
@@ -217,7 +271,7 @@ export function createShooting({ BASE_W, BASE_H, input, sprites, getLeaderImg } 
       }
 
       // 自機との衝突
-      if (player.invTimer <= 0) {
+      if (player.invTimer <= 0 && !isShielding()) {
         const dx = player.x - e.x, dy = player.y - e.y;
         if (dx*dx + dy*dy < 10*10) { playerHit(); }
       }
@@ -243,7 +297,7 @@ export function createShooting({ BASE_W, BASE_H, input, sprites, getLeaderImg } 
       }
 
       // ボス×自機衝突
-      if (player.invTimer <= 0) {
+      if (player.invTimer <= 0 && !isShielding()) {
         const dx = player.x - boss.x, dy = player.y - boss.y;
         if (dx*dx + dy*dy < 18*18) playerHit();
       }
@@ -280,7 +334,15 @@ export function createShooting({ BASE_W, BASE_H, input, sprites, getLeaderImg } 
             spawnPop(boss.x, boss.y - 20);
             boss = null;
             hitFlash = 20;
-            spawnWave();
+            if (autoEndOnClear) {
+              cleared = true;
+              enemies = [];
+              enemyBullets = [];
+              phase = "result";
+              resultTimer = 0;
+            } else {
+              spawnWave();
+            }
           }
         }
       }
@@ -289,7 +351,7 @@ export function createShooting({ BASE_W, BASE_H, input, sprites, getLeaderImg } 
     enemies      = enemies.filter(e => !e.dead);
 
     // ---- 敵弾×自機 ----
-    if (player.invTimer <= 0) {
+    if (player.invTimer <= 0 && !isShielding()) {
       for (const b of enemyBullets) {
         const dx = player.x - b.x, dy = player.y - b.y;
         if (dx*dx + dy*dy < 7*7) { b.dead = true; playerHit(); break; }
@@ -311,48 +373,7 @@ export function createShooting({ BASE_W, BASE_H, input, sprites, getLeaderImg } 
 
   // ---- draw ----
   function drawBackground(ctx) {
-    // ベース：明るい虹グラデ
-    const grad = ctx.createLinearGradient(0, 0, 0, BASE_H);
-    grad.addColorStop(0,    `hsl(${hue % 360},100%,55%)`);
-    grad.addColorStop(0.25, `hsl(${(hue + 60) % 360},100%,60%)`);
-    grad.addColorStop(0.5,  `hsl(${(hue + 120) % 360},100%,58%)`);
-    grad.addColorStop(0.75, `hsl(${(hue + 200) % 360},100%,55%)`);
-    grad.addColorStop(1,    `hsl(${(hue + 280) % 360},100%,52%)`);
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, BASE_W, BASE_H);
-
-    // 横縞パターン（うねうね）
-    ctx.save();
-    ctx.globalAlpha = 0.22;
-    for (let y = 0; y < BASE_H; y += 6) {
-      const offset = Math.sin(wobblePhase * 2 + y * 0.08) * 10;
-      ctx.fillStyle = `hsl(${(hue + y * 1.2) % 360},100%,80%)`;
-      ctx.fillRect(offset, y, BASE_W, 3);
-    }
-    ctx.restore();
-
-    // 放射状の光線
-    ctx.save();
-    ctx.globalAlpha = 0.15;
-    const cx = BASE_W / 2 + Math.sin(wobblePhase * 0.5) * 20;
-    const cy = BASE_H / 2 + Math.cos(wobblePhase * 0.3) * 15;
-    for (let i = 0; i < 12; i++) {
-      const a = (i / 12) * Math.PI * 2 + wobblePhase * 0.2;
-      ctx.strokeStyle = `hsl(${(hue + i * 30) % 360},100%,90%)`;
-      ctx.lineWidth = 4;
-      ctx.beginPath();
-      ctx.moveTo(cx, cy);
-      ctx.lineTo(cx + Math.cos(a) * 200, cy + Math.sin(a) * 200);
-      ctx.stroke();
-    }
-    ctx.restore();
-
-    // 暗めのオーバーレイで前景を見やすく
-    ctx.save();
-    ctx.globalAlpha = 0.30;
-    ctx.fillStyle = "#000";
-    ctx.fillRect(0, 0, BASE_W, BASE_H);
-    ctx.restore();
+    drawShootingBackdrop(ctx, BASE_W, BASE_H, hue / 0.024);
   }
 
   function drawEnemies(ctx) {
@@ -406,6 +427,16 @@ export function createShooting({ BASE_W, BASE_H, input, sprites, getLeaderImg } 
     if (player.invTimer > 0 && Math.floor(player.invTimer / 5) % 2) return;
     const img = typeof getLeaderImg === "function" ? getLeaderImg() : sprites?.p1;
     const sx = (player.x - SPR / 2) | 0, sy = (player.y - SPR / 2) | 0;
+    if (isShielding()) {
+      ctx.save();
+      ctx.strokeStyle = "#8ef";
+      ctx.lineWidth = 2;
+      ctx.globalAlpha = 0.8;
+      ctx.beginPath();
+      ctx.arc(player.x, player.y, 11, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
     if (img && img.naturalWidth > 0) {
       ctx.drawImage(img, playerFrame * SPR, 0, SPR, SPR, sx, sy, SPR, SPR);
     } else {
@@ -460,11 +491,9 @@ export function createShooting({ BASE_W, BASE_H, input, sprites, getLeaderImg } 
     const pepperSize = 12;
     for (let i = 0; i < PLAYER_LIVES; i++) {
       const px = 4 + i * (pepperSize + 2);
-      if (sprites?.pepper && sprites.pepper.naturalWidth > 0) {
-        ctx.save();
-        ctx.globalAlpha = i < lives ? 1.0 : 0.25;
-        ctx.drawImage(sprites.pepper, px, 3, pepperSize, pepperSize);
-        ctx.restore();
+      const pepperImg = i < lives ? sprites?.pepper : (sprites?.pepper_off || sprites?.pepper);
+      if (pepperImg && pepperImg.naturalWidth > 0) {
+        ctx.drawImage(pepperImg, px, 3, pepperSize, pepperSize);
       }
     }
     // スコア
@@ -480,6 +509,15 @@ export function createShooting({ BASE_W, BASE_H, input, sprites, getLeaderImg } 
       ctx.font = "normal 8px PixelMplus10";
       ctx.textAlign = "center";
       ctx.fillText("S  L  O  W", BASE_W / 2, BASE_H / 2);
+      ctx.textAlign = "left";
+      ctx.restore();
+    }
+    if (isShielding()) {
+      ctx.save();
+      ctx.fillStyle = "#8ef";
+      ctx.font = "normal 8px PixelMplus10";
+      ctx.textAlign = "center";
+      ctx.fillText("C SHIELD", BASE_W / 2, BASE_H - 12);
       ctx.textAlign = "left";
       ctx.restore();
     }

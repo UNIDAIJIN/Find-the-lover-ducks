@@ -1,7 +1,7 @@
 // npc_events.js
 import { STATE } from "./state.js";
 import { SPRITES } from "./sprites.js";
-import { playCooking, playIndianJingle, playItemJingle, playInnJingle, playJaws, stopJaws, playCrush, playConfirm, playCoin } from "./se.js";
+import { playCooking, playIndianJingle, playItemJingle, playInnJingle, playJaws, stopJaws, playCrush, playConfirm, playCoin, playDoor } from "./se.js";
 
 export function runNpcEvent(act, ctx) {
   const ev = act?.event;
@@ -314,7 +314,15 @@ export function runNpcEvent(act, ctx) {
   }
 
   if (ev.type === "item_shop") {
-    const { dialog, shop, inventory, toast } = ctx;
+    const { dialog, shop, inventory, toast, achieveQuest } = ctx;
+
+    function checkOtsugeQuest() {
+      const inv = typeof inventory?.getSnapshot === "function" ? inventory.getSnapshot() : [];
+      const hasAllOtsuge = Array.from({ length: 30 }, (_, i) =>
+        inv.includes(`otsuge_${String(i + 1).padStart(2, "0")}`)
+      ).every(Boolean);
+      if (hasAllOtsuge && typeof achieveQuest === "function") achieveQuest("21");
+    }
 
     function showShop(initialCursor = 0) {
       shop.open(ev.items, ev.closeLabel ?? "やめる", ev.shopName ?? "", (id, savedCursor) => {
@@ -324,6 +332,7 @@ export function runNpcEvent(act, ctx) {
         }
         const item = ev.items.find(i => i.id === id);
         inventory.addItem(id);
+        checkOtsugeQuest();
         playCoin();
         if (typeof toast?.showStack === "function") toast.showStack(item?.name ?? id);
         showShop(savedCursor ?? 0);
@@ -334,6 +343,95 @@ export function runNpcEvent(act, ctx) {
       showShop();
     });
 
+    return true;
+  }
+
+  if (ev.type === "afro_club") {
+    const { dialog, achieveQuest } = ctx;
+    if (STATE.headwear === "afro") {
+      dialog.open([
+        ["ワオ！君たちイケてるね！"],
+        ["ついてきなよ！"],
+      ], () => {
+        playDoor();
+        STATE.flags.ac1Gone = true;
+        act.hidden = true;
+        act.solid = false;
+        act.talkHit = { x: 0, y: 0, w: 0, h: 0 };
+      });
+    } else {
+      dialog.open([["ここはイケてるやつだけの秘密のクラブなのさ"]]);
+    }
+    return true;
+  }
+
+  if (ev.type === "afro_club_inside") {
+    const { dialog, achieveQuest } = ctx;
+    if (STATE.headwear === "afro") {
+      dialog.open([["アフロクラブへようこそ。きみたちも今日から会員さ。"]], () => {
+        if (!STATE.flags.afroClubJoined) {
+          STATE.flags.afroClubJoined = true;
+          if (typeof achieveQuest === "function") achieveQuest("19");
+        }
+      });
+    } else {
+      dialog.open([["・・・。"]], () => {
+        dialog.open([["（むしされた。）"]], null, "sign");
+      });
+    }
+    return true;
+  }
+
+  if (ev.type === "afro_club_inside_2") {
+    const { dialog } = ctx;
+    if (STATE.headwear === "afro") {
+      dialog.open([
+        ["いいねーキミタチ。こっちおいでキミタチ。"],
+        ["さぁ、レヴィ＝ストロースの話でもしようじゃないかキミタチ。"],
+      ]);
+    } else {
+      dialog.open([["フッ。"]], () => {
+        dialog.open([["（はなでわらわれた。）"]], null, "sign");
+      });
+    }
+    return true;
+  }
+
+  if (ev.type === "afro_club_inside_3") {
+    const { dialog } = ctx;
+    if (STATE.headwear === "afro") {
+      dialog.open([["ここはアフロヘアーでこむずかしい話をする、そういうクラヴなのサ。"]]);
+    } else {
+      dialog.open([["ケッ。"]], () => {
+        dialog.open([["（つばをはかれた。）"]], null, "sign");
+      });
+    }
+    return true;
+  }
+
+  if (ev.type === "afro_club_inside_4") {
+    const { dialog, startAfloClubBlackout } = ctx;
+    if (STATE.headwear === "afro") {
+      dialog.open([["ここの電気って、切ったらどうなっちゃうんだろう。"]], () => {
+        if (typeof startAfloClubBlackout === "function") startAfloClubBlackout();
+      });
+    } else {
+      dialog.open([["・・・。"]], () => {
+        dialog.open([["（こちらに気付かない。）"]], null, "sign");
+      });
+    }
+    return true;
+  }
+
+  if (ev.type === "afro_club_inside_5") {
+    const { dialog } = ctx;
+    if (STATE.headwear === "afro") {
+      dialog.open([["やぁ、新入りかい？ヨロシク！"]]);
+    } else {
+      dialog.open([["・・・。"]], () => {
+        dialog.open([["（ちらりとみられた。）"]], null, "sign");
+      });
+    }
     return true;
   }
 

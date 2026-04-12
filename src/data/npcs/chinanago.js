@@ -6,6 +6,6 @@ const base = {
   solid:   true,
 };
 
-export const chinanagoOffNpc  = { ...base, x: 2525, y: 3328 };
-export const chinanagoOffNpc2 = { ...base, x: 2509, y: 3328 };
-export const chinanagoOffNpc3 = { ...base, x: 2493, y: 3328 };
+export const chinanagoOffNpc  = { ...base, x: 1987, y: 2527 };
+export const chinanagoOffNpc2 = { ...base, x: 1971, y: 2527 };
+export const chinanagoOffNpc3 = { ...base, x: 1955, y: 2527 };

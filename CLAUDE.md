@@ -118,3 +118,13 @@ Both sides of a door must be updated together (source map and target map).
 - Don't add error handling for impossible cases (trust internal state).
 - Don't add features beyond what was asked.
 - Don't write new files when editing an existing one suffices.
+
+---
+
+## Future note
+
+- Next performance task candidate: split `outdoor` into multiple area maps for mobile.
+- Preferred workflow: user provides a same-size guide PNG for `outdoor` with area regions clearly marked.
+- Best format for the guide PNG: transparent background + solid color-filled regions per area, no antialiasing.
+- Goal: keep all gameplay coordinates in the current global `outdoor` world space, and treat each split map as a viewport/segment with its own cropped `bg` / `mid` / `top` / `shrine` / `shrine_top` / `col`.
+- Desired result: generate split assets and segment definitions without manually reauthoring every NPC / trigger / door coordinate.

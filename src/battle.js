@@ -1,6 +1,7 @@
 // battle.js
 import { drawBattleScreen } from "./battle_ui.js";
 import { playCursor, playConfirm } from "./se.js";
+import { STATE } from "./state.js";
 
 export function createBattleSystem(cfg) {
   const {
@@ -215,6 +216,16 @@ export function createBattleSystem(cfg) {
         { name: "MAKI", hp: 80, maxHp: 80, lv: 10, res: 0, atkMin: 1, atkMax: 7, status: "CHIBI" },
       ],
     ]);
+
+    if (STATE.flags.mechaNatsumi) {
+      const natsumi = byName.get("NATSUMI");
+      if (natsumi) {
+        natsumi.hp += 500;
+        natsumi.maxHp += 500;
+        natsumi.atkMin += 500;
+        natsumi.atkMax += 500;
+      }
+    }
 
     return ACTION_ORDER.map((n) => ({
       ...byName.get(n),

@@ -4,8 +4,8 @@ export const luchaNpc = {
   kind:      "npc",
   name:      "lucha",
   spriteKey: "lucha",
-  x:         2128,
-  y:         1490,
+  x:         1590,
+  y:         689,
   talkHit:   { x: 0, y: 0, w: 16, h: 16 },
   talkType:  "talk",
   talkPages: [
