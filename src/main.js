@@ -3,7 +3,7 @@ import { CONFIG } from "./config.js";
 import { SPRITES } from "./sprites.js";
 import { MAPS } from "./maps.js";
 import { makeColStore } from "./col.js";
-import { START_INVENTORY_DEBUG, START_INVENTORY_EMPTY, itemName, itemBgmSrc, itemThrowDmg } from "./items.js";
+import { START_INVENTORY_EMPTY, itemName, itemBgmSrc, itemThrowDmg } from "./items.js";
 import { PICKUPS_BY_MAP } from "./pickups.js";
 import { NPCS_BY_MAP } from "./npcs.js";
 import { REGISTRY } from "./registry.js";
@@ -14,7 +14,7 @@ import { createTitle  }     from "./title.js";
 import { createCharSelect } from "./char_select.js";
 import { createLoading }    from "./loading.js";
 import { setupMobileController } from "./mobile_controller.js";
-import { playSuzu, playDoor, playZazza, playHoleFall, playHoleRoll, playConfirm, playClickOn, playWave, startHeartbeat, stopHeartbeat, playQuestJingleB, playPunch, startShootingBgm, stopShootingBgm, startAfloClubBgm, stopAfloClubBgm, stopJaws, playBattleWinJingle, getAfloClubKickPulseMs } from "./se.js";
+import { playSuzu, playDoor, playZazza, playHoleFall, playHoleRoll, playConfirm, playClickOn, playTimeMachineShine, playWave, startHeartbeat, stopHeartbeat, playQuestJingleB, playPunch, startShootingBgm, stopShootingBgm, startAfloClubBgm, stopAfloClubBgm, stopJaws, playBattleWinJingle, getAfloClubKickPulseMs } from "./se.js";
 import { createMenu } from "./ui_menu.js";
 import { createTripEffect }     from "./trip_effect.js";
 import { createGoodTripEffect } from "./trip_effect_good.js";
@@ -25,8 +25,6 @@ import { createShooting, drawShootingBackdrop } from "./ui_shooting.js";
 import { gateNpc } from "./data/npcs/gate.js";
 
 const DEBUG  = true;
-if (DEBUG) STATE.money = 100000;
-const DEBUG_ITEMS = DEBUG ? ["rubber_duck_A","rubber_duck_B","rubber_duck_C","rubber_duck_D","rubber_duck_E","rubber_duck_F","rubber_duck_G","rubber_duck_H","rubber_duck_I","rubber_duck_J","afro","kingyobachi","s_hat","iron_heart"] : [];
 const MOBILE = new URLSearchParams(location.search).has('m');
 
 const canvas = document.getElementById("c");
@@ -119,6 +117,10 @@ const afloFxTintCanvas = document.createElement("canvas");
 afloFxTintCanvas.width = CONFIG.BASE_W;
 afloFxTintCanvas.height = CONFIG.BASE_H;
 const afloFxTintCtx = afloFxTintCanvas.getContext("2d");
+const pageTurnPrevCanvas = document.createElement("canvas");
+pageTurnPrevCanvas.width = CONFIG.BASE_W;
+pageTurnPrevCanvas.height = CONFIG.BASE_H;
+const pageTurnPrevCtx = pageTurnPrevCanvas.getContext("2d");
 
 // ---- Mobile device detection ----
 const IS_MOBILE_DEVICE = navigator.maxTouchPoints > 0 || /Mobi|Android/i.test(navigator.userAgent);
@@ -306,8 +308,13 @@ let shootingKnockback = null;
 // ---- ベンチ・噴水トリガー ----
 const BENCH_TRIGGER    = { x: 402,  y: 2443, w: 40, h: 32 }; // 教会ベンチ (422,2459)
 const FOUNTAIN_TRIGGER = { x: 1972, y: 1447, w: 160, h: 64 }; // 噴水 (2052,1479)
+const TIMEMACHINE_TALK_TRIGGER = { x: 2641, y: 121, w: 3, h: 5 };
+const TIMEMACHINE_WAIT_TRIGGER_A = { x: 2616, y: 116, w: 24, h: 12 };
+const TIMEMACHINE_WAIT_TRIGGER_B = { x: 2645, y: 116, w: 24, h: 12 };
 let benchEnterMs    = 0; // プレイヤーが入った時刻（0=外）
 let fountainEnterMs = 0;
+let timeMachineEnterMsA = 0;
+let timeMachineEnterMsB = 0;
 let heightLevel = "ground"; // "ground" | "upper"
 let exclamations = []; // { x, y, startMs, duration }
 let chinanagoActivated = false;
@@ -433,6 +440,21 @@ function getPartySprite(charNo) {
   return SPRITES[`p${n}${suffix}`];
 }
 
+function getHeadwearSpriteForImg(img) {
+  const hw = STATE.headwear;
+  if (!hw) return null;
+  if (hw === "helmet") return SPRITES.met;
+  if (hw === "kingyobachi") return SPRITES.kingyobachi;
+  if (hw === "s_hat") return SPRITES.s_hat;
+  if (hw === "afro") {
+    if (img === SPRITES.p1 || img === SPRITES.p1_t1 || img === SPRITES.p1_t2 || img === SPRITES.mecha_natsumi) return SPRITES.aflo_p1;
+    if (img === SPRITES.p2 || img === SPRITES.p2_t1 || img === SPRITES.p2_t2) return SPRITES.aflo_p2;
+    if (img === SPRITES.p3 || img === SPRITES.p3_t1 || img === SPRITES.p3_t2) return SPRITES.aflo_p3;
+    if (img === SPRITES.p4 || img === SPRITES.p4_t1 || img === SPRITES.p4_t2) return SPRITES.aflo_p4;
+  }
+  return null;
+}
+
 function setupParty(leaderIdx) {
   STATE.leaderIdx = leaderIdx;
   const all = [1, 2, 3, 4];
@@ -473,6 +495,8 @@ let   _poolIdx    = 0;
 function _poolItem() {
   if (_poolIdx < _POOL_SIZE) {
     const item = _renderPool[_poolIdx++];
+    item.sparkle = undefined;
+    item.sparklePhase = undefined;
     item.markImg = undefined;
     item.markFromImg = undefined;
     item.markAnimStart = undefined;
@@ -563,6 +587,8 @@ function spawnActorsForMap(mapId) {
       talkHit: { x: 0, y: 0, w: 16, h: 16 },
       solid: true,
       animMs: NPC_FRAME_MS,
+      sparkle: itemId === "moon_stone",
+      sparklePhase: Math.random() * Math.PI * 2,
     });
   }
 }
@@ -605,6 +631,8 @@ function spawnPickup(itemId, x, y) {
     talkHit: { x: 0, y: 0, w: 16, h: 16 },
     solid: true,
     animMs: NPC_FRAME_MS,
+    sparkle: itemId === "moon_stone",
+    sparklePhase: Math.random() * Math.PI * 2,
   });
 }
 
@@ -612,6 +640,35 @@ function spawnPickup(itemId, x, y) {
 const toast       = createToast({ BASE_W, BASE_H });
 const questAlert  = createQuestAlert({ BASE_W });
 let afloBlackout = { active: false, phase: "idle", phaseStart: 0 };
+let spaceStars = [];
+let spaceVel = { x: 0, y: 0 };
+const SPACE_MOON_ENABLED = true;
+const SPACE_MOON_SYSTEM_ENABLED = true;
+const SPACE_MOON = { x: 1820, y: 120, w: 140, h: 140, cx: 1820 + 70, cy: 120 + 70, surfaceR: 78 };
+let spaceMoonAttach = false;
+let spaceMoonAngle = 0;
+let spaceMoonRadius = SPACE_MOON.surfaceR;
+let spaceMoonCooldownUntil = 0;
+let timeMachineFx = { active: false, start: 0, until: 0, onDone: null };
+let pageTurnFx = {
+  active: false,
+  start: 0,
+  switched: false,
+  switchedAt: 0,
+  destMap: null,
+  spawnAt: null,
+  dir: "rtl",
+};
+const SPACE_O2_MAX = 12000;
+let spaceO2 = SPACE_O2_MAX;
+let spaceO2LastMs = 0;
+let spaceO2Depleted = false;
+function getSpaceO2Capacity() {
+  return STATE.headwear === "kingyobachi" ? SPACE_O2_MAX * 2 : SPACE_O2_MAX;
+}
+function getSpaceO2DrainRate() {
+  return STATE.headwear === "kingyobachi" ? 0.2 : 1;
+}
 function isAfloClubBgmLocked() {
   return current.id === "afloclub";
 }
@@ -624,6 +681,108 @@ function setBgmMapSafe(src) {
   stopShootingBgm();
   stopAfloClubBgm();
   bgmCtl.setMap(src);
+}
+function initSpaceStars() {
+  if (spaceStars.length) return;
+  const rand = (n) => Math.random() * n;
+  spaceStars = Array.from({ length: 440 }, () => ({
+    x: rand(2048),
+    y: rand(1536),
+    r: Math.random() < 0.15 ? 2 : 1,
+    a: 0.45 + Math.random() * 0.55,
+    speed: 0.0015 + Math.random() * 0.004,
+    phase: Math.random() * Math.PI * 2,
+  }));
+}
+function drawSpaceBackdrop(tt) {
+  ctx.save();
+  ctx.fillStyle = "#000";
+  ctx.fillRect(0, 0, BASE_W, BASE_H);
+  for (const s of spaceStars) {
+    const x = (s.x - cam.x) | 0;
+    const y = (s.y - cam.y) | 0;
+    if (x < -4 || y < -4 || x > BASE_W + 4 || y > BASE_H + 4) continue;
+    const tw = 0.5 + 0.5 * Math.sin(tt * s.speed + s.phase);
+    ctx.globalAlpha = s.a * (0.55 + tw * 0.45);
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(x, y, s.r, s.r);
+  }
+  if (SPACE_MOON_ENABLED) {
+    const mx = (SPACE_MOON.x - cam.x) | 0;
+    const my = (SPACE_MOON.y - cam.y) | 0;
+    if (SPRITES.moon && mx < BASE_W && my < BASE_H && mx + SPACE_MOON.w > 0 && my + SPACE_MOON.h > 0) {
+      ctx.globalAlpha = 1;
+      ctx.drawImage(SPRITES.moon, mx, my, SPACE_MOON.w, SPACE_MOON.h);
+    }
+  }
+  ctx.restore();
+  ctx.globalAlpha = 1;
+}
+function drawSpaceO2Meter() {
+  const ratio = Math.max(0, Math.min(1, spaceO2 / getSpaceO2Capacity()));
+  const danger = ratio <= 0.2;
+  const cx = BASE_W >> 1;
+  const cy = 24;
+  const lineW = STATE.headwear === "kingyobachi" ? 60 : 30;
+  const lineH = 2;
+  const lineX = cx - (lineW >> 1);
+  const lineY = cy + 7;
+  const fillW = Math.round(lineW * ratio);
+
+  ctx.save();
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = danger ? "rgba(255,80,80,0.35)" : "rgba(255,255,255,0.22)";
+  ctx.fillRect(lineX, lineY, lineW, lineH);
+  ctx.fillStyle = danger ? "#ff6060" : "#ffffff";
+  ctx.fillRect(lineX, lineY, fillW, lineH);
+
+  ctx.fillStyle = danger ? "#ff8080" : "#ffffff";
+  ctx.font = "normal 10px PixelMplus10";
+  ctx.textBaseline = "middle";
+  const label = "O2";
+  const tw = Math.round(ctx.measureText(label).width);
+  ctx.fillText(label, (cx - (tw >> 1)) | 0, cy);
+  ctx.restore();
+}
+function startTimemachineFx(onDone = null) {
+  input.lock();
+  const now = nowMs();
+  timeMachineFx = { active: true, start: now, until: now + 7000, onDone };
+  playTimeMachineShine();
+  try { navigator.vibrate?.([70, 40, 90, 40, 120, 40, 160]); } catch (_) {}
+}
+function startPageTurnTravel(destMap, spawnAt, dir = "rtl") {
+  input.lock();
+  pageTurnPrevCtx.clearRect(0, 0, BASE_W, BASE_H);
+  pageTurnPrevCtx.drawImage(canvas, 0, 0, BASE_W, BASE_H);
+  pageTurnFx = {
+    active: true,
+    start: nowMs(),
+    switched: false,
+    switchedAt: 0,
+    destMap,
+    spawnAt,
+    dir,
+  };
+  loadMap(destMap, { spawnAt });
+}
+function drawPageTurnFx(tt) {
+  if (!pageTurnFx.active) return;
+  const revealMs = 420;
+  const rtl = pageTurnFx.dir !== "ltr";
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+
+  if (!pageTurnFx.switched) {
+    ctx.drawImage(pageTurnPrevCanvas, 0, 0, BASE_W, BASE_H);
+  } else {
+    const p = !mapReady ? 0 : Math.max(0, Math.min(1, (tt - pageTurnFx.switchedAt) / revealMs));
+    const slide = Math.max(0, Math.min(BASE_W, Math.floor(BASE_W * p)));
+    const x = rtl ? -slide : slide;
+    ctx.drawImage(pageTurnPrevCanvas, x, 0, BASE_W, BASE_H);
+  }
+
+  ctx.restore();
 }
 function startAfloClubBlackout(t) {
   const ts = typeof t === "number"
@@ -690,7 +849,7 @@ const inventory = createInventory({
     }
   },
   toast,
-  startItems: DEBUG_ITEMS,
+  startItems: START_INVENTORY_EMPTY,
   visibleRows: 10,
 });
 
@@ -769,6 +928,19 @@ const menu = createMenu({
         dialog.open([
           ["ナツミはウォッカをたべてみた！"],
           ["ウゲー！"],
+        ], null, "sign");
+      }, 700);
+      return true;
+    }
+    if (id === "moon_stone") {
+      input.lock();
+      setTimeout(() => setBgmOverrideSafe(null), 670);
+      setTimeout(() => {
+        input.unlock();
+        dialog.open([
+          ["ナツミはつきのいしをたべてみた！"],
+          ["オエーーーーー！"],
+          ["たべれたものではない！"],
         ], null, "sign");
       }, 700);
       return true;
@@ -991,7 +1163,7 @@ function startNewGameFlow() {
     setupParty(leaderIdx);
     setGameResolution(BASE_W, BASE_H);
     resetProgress();
-    inventory.resetItems(DEBUG_ITEMS);
+    inventory.resetItems(START_INVENTORY_EMPTY);
     fade.startCutFade(nowMs(), {
       outMs:  1,
       holdMs: 80,
@@ -1039,7 +1211,7 @@ function clearFlags() {
 function resetProgress() {
   collectedItems.clear();
   clearFlags();
-  STATE.money    = DEBUG ? 100000 : 0;
+  STATE.money    = 0;
   STATE.headwear = null;
   STATE.achievedQuests.clear();
 }
@@ -1224,7 +1396,7 @@ function hitRect(a, b) {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 }
 function hitBg(nx, ny) {
-  if (current.id === "shooting_lobby") return false;
+  if (current.id === "shooting_lobby" || current.id === "space") return false;
   const f = footBox(nx, ny);
   for (let y = f.y; y < f.y + f.h; y++) {
     for (let x = f.x; x < f.x + f.w; x++) {
@@ -1495,6 +1667,20 @@ function loadMap(id, opt = null) {
   const prevMapId = current.id;
   current.id = id;
   afloBlackout = { active: false, phase: "idle", phaseStart: 0 };
+  timeMachineFx = { active: false, start: 0, until: 0, onDone: null };
+  timeMachineEnterMsA = 0;
+  timeMachineEnterMsB = 0;
+  if (id !== "space") {
+    spaceVel.x = 0;
+    spaceVel.y = 0;
+    spaceMoonAttach = false;
+    spaceMoonAngle = 0;
+    spaceMoonRadius = SPACE_MOON.surfaceR;
+    spaceMoonCooldownUntil = 0;
+    spaceO2 = getSpaceO2Capacity();
+    spaceO2LastMs = 0;
+    spaceO2Depleted = false;
+  }
   mapChunkCache = new WeakMap();
 
   if (id === "outdoor") {
@@ -1518,6 +1704,16 @@ function loadMap(id, opt = null) {
 
     current.bgW = (def.bgW || bgImg.naturalWidth) | 0;
     current.bgH = (def.bgH || bgImg.naturalHeight) | 0;
+    if (id === "space") {
+      initSpaceStars();
+      spaceMoonAttach = false;
+      spaceMoonAngle = 0;
+      spaceMoonRadius = SPACE_MOON.surfaceR;
+      spaceMoonCooldownUntil = 0;
+      spaceO2 = getSpaceO2Capacity();
+      spaceO2LastMs = nowMs();
+      spaceO2Depleted = false;
+    }
 
     let sx = current.bgW >> 1,
       sy = current.bgH >> 1;
@@ -1574,6 +1770,10 @@ function loadMap(id, opt = null) {
       bgmCtl.setOverride("about:blank");
       stopAfloClubBgm();
       startShootingBgm();
+    } else if (current.id === "space") {
+      bgmCtl.setOverride("about:blank");
+      stopShootingBgm();
+      stopAfloClubBgm();
     } else if (current.id === "afloclub") {
       bgmCtl.setOverride("about:blank");
       stopShootingBgm();
@@ -1704,11 +1904,27 @@ function drawTintedSprite(img, f, x, y, tint, spr = SPR, sprH = spr) {
 
 
 function drawEntry(o) {
+  if (o.sparkle) {
+    const sx = ((o.x - cam.x) | 0) + 8;
+    const sy = ((o.y - cam.y) | 0) + 8;
+    const t = nowMs() / 180 + (o.sparklePhase || 0);
+    const r = Math.sin(t) > 0 ? 3 : 2;
+    ctx.save();
+    ctx.globalAlpha = 0.95;
+    ctx.fillStyle = "#9dff9d";
+    ctx.fillRect(sx - r, sy, r * 2 + 1, 1);
+    ctx.fillRect(sx, sy - r, 1, r * 2 + 1);
+    ctx.fillStyle = "rgba(170,255,170,0.7)";
+    ctx.fillRect(sx - 1, sy - 1, 3, 3);
+    ctx.restore();
+    return;
+  }
   if (o.alpha !== undefined && o.alpha <= 0) return;
   const hasAlpha = o.alpha !== undefined && o.alpha < 1;
   const hasScale = o.scale !== undefined && o.scale !== 1;
   const hasFilter = !!o.filter;
   const hasTint = !!o.tint;
+  const hasRotation = typeof o.rotation === "number" && o.rotation !== 0;
   const sprSize  = o.spr  ?? SPR;
   const sprSizeH = o.sprH ?? sprSize;
 
@@ -1724,15 +1940,16 @@ function drawEntry(o) {
     return;
   }
 
-  if (hasAlpha || hasScale || hasFilter || hasTint) {
+  if (hasAlpha || hasScale || hasFilter || hasTint || hasRotation) {
     ctx.save();
     if (hasAlpha) ctx.globalAlpha = Math.max(0, o.alpha);
     if (hasFilter) ctx.filter = o.filter;
-    if (hasScale) {
+    if (hasScale || hasRotation) {
       const sx = ((o.x - cam.x) | 0) + sprSize / 2;
-      const sy = ((o.y - cam.y) | 0) + sprSizeH / 2;
+      const sy = ((o.y - cam.y) | 0) + sprSizeH - 3;
       ctx.translate(sx, sy);
       ctx.scale(o.scale, o.scale);
+      if (hasRotation) ctx.rotate(o.rotation);
       ctx.translate(-sx, -sy);
     }
     if (o.shadowImg) drawSprite(o.shadowImg, 0, o.x + (o.shadowOff?.x ?? 0), o.y + (o.shadowOff?.y ?? 0), sprSize, sprSizeH);
@@ -1772,6 +1989,24 @@ function drawEntry(o) {
     } else {
       ctx.drawImage(o.markImg, ix, iy, 16, 16);
     }
+  }
+
+  if (o.sweat) {
+    const baseX = ((o.x - cam.x) | 0) + 8;
+    const baseY = ((o.y - cam.y) | 0) + 3;
+    const tt = nowMs() / 140 + (o.sweatPhase || 0);
+    const p1x = baseX + ((Math.sin(tt * 1.7) * 5) | 0);
+    const p1y = baseY + ((Math.cos(tt * 2.1) * 4) | 0);
+    const p2x = baseX + 3 + ((Math.sin(tt * 1.3 + 1.7) * 6) | 0);
+    const p2y = baseY + 1 + ((Math.cos(tt * 1.9 + 0.8) * 5) | 0);
+    const p3x = baseX - 2 + ((Math.sin(tt * 1.9 + 2.4) * 4) | 0);
+    const p3y = baseY + 4 + ((Math.cos(tt * 1.5 + 1.2) * 3) | 0);
+    ctx.save();
+    ctx.fillStyle = "#dff6ff";
+    ctx.fillRect(p1x, p1y, 1, 2);
+    ctx.fillRect(p2x, p2y, 1, 1);
+    ctx.fillRect(p3x, p3y, 1, 1);
+    ctx.restore();
   }
 }
 
@@ -1868,8 +2103,8 @@ function draw() {
 
   // ★ここは見た目用なので performance.now() でもOK（ゲーム進行の時間とは別）
   const tt = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
-  const shouldDrawSea = current.id === "outdoor" || !!waterMaskCanvas;
-  const seaUpdateInterval = IS_MOBILE_DEVICE && current.id === "outdoor" ? 6 : 3;
+  const shouldDrawSea = current.id === "outdoor" || current.id === "mirai" || current.id === "kako" || !!waterMaskCanvas;
+  const seaUpdateInterval = IS_MOBILE_DEVICE && (current.id === "outdoor" || current.id === "mirai" || current.id === "kako") ? 6 : 3;
   if (shouldDrawSea && seaSparkleFrame++ % seaUpdateInterval === 0) {
     sea.draw(seaSparkleCtx, tt, cam, seaSparkleCanvas.width, seaSparkleCanvas.height);
   }
@@ -1878,6 +2113,8 @@ function draw() {
   // ベースレイヤー：shrine完全移行後はbgImgを省略して描画コスト削減
   if (current.id === "shooting_lobby") {
     drawShootingBackdrop(ctx, BASE_W, BASE_H, tt);
+  } else if (current.id === "space") {
+    drawSpaceBackdrop(tt);
   } else if (current.id === "orca_ride") {
     ctx.fillStyle = "#3dc5ce";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -1897,6 +2134,10 @@ function draw() {
   _poolIdx = 0;
   const groundList = _groundList;
   const upperList  = _upperList;
+  const spaceDanger = current.id === "space" && spaceO2 / SPACE_O2_MAX <= 0.2;
+  const moonRot = current.id === "space" && spaceMoonAttach ? spaceMoonAngle + Math.PI / 2 : 0;
+  const panicOx = (phase = 0) => spaceDanger ? (((Math.sin(tt / 45 + phase) * 1.8) | 0)) : 0;
+  const panicOy = (phase = 0) => spaceDanger ? (((Math.sin(tt / 28 + phase) > 0 ? 1 : -1))) : 0;
   if (partyVisible) {
     const singleLeaderOnly = current.id === "shooting_lobby";
     const followerAlpha = 1 - shrineFade;
@@ -1928,12 +2169,12 @@ function draw() {
     }
     const pushParty = (name, o) => (charHeight[name] === "upper" ? upperList : groundList).push(o);
     if (!orcaRide.active && !singleLeaderOnly) {
-      const ip4 = _poolItem(); ip4.img = p4.img; ip4.x = (fx ?? p4.x) + cOff; ip4.y = fy ?? p4.y; ip4.frame = emerging ? 0 : p4.frame; ip4.alpha = followerAlpha; ip4.scale = fs; ip4.metImg = _hwImg(p4.img); ip4.spr = undefined; ip4.sprH = undefined; ip4.shadowImg = undefined;
-      const ip3 = _poolItem(); ip3.img = p3.img; ip3.x = (fx ?? p3.x) + cOff; ip3.y = fy ?? p3.y; ip3.frame = emerging ? 0 : p3.frame; ip3.alpha = followerAlpha; ip3.scale = fs; ip3.metImg = _hwImg(p3.img); ip3.spr = undefined; ip3.sprH = undefined; ip3.shadowImg = undefined;
-      const ip2 = _poolItem(); ip2.img = p2.img; ip2.x = (fx ?? p2.x) + cOff; ip2.y = fy ?? p2.y; ip2.frame = emerging ? 0 : p2.frame; ip2.alpha = followerAlpha; ip2.scale = fs; ip2.metImg = _hwImg(p2.img); ip2.spr = undefined; ip2.sprH = undefined; ip2.shadowImg = undefined;
+      const ip4 = _poolItem(); ip4.img = p4.img; ip4.x = (fx ?? p4.x) + cOff + panicOx(1.3); ip4.y = fy ?? p4.y + panicOy(1.3); ip4.frame = emerging ? 0 : p4.frame; ip4.alpha = followerAlpha; ip4.scale = fs; ip4.rotation = moonRot; ip4.metImg = _hwImg(p4.img); ip4.spr = undefined; ip4.sprH = undefined; ip4.shadowImg = undefined; ip4.sweat = spaceDanger; ip4.sweatPhase = 1.3;
+      const ip3 = _poolItem(); ip3.img = p3.img; ip3.x = (fx ?? p3.x) + cOff + panicOx(2.1); ip3.y = fy ?? p3.y + panicOy(2.1); ip3.frame = emerging ? 0 : p3.frame; ip3.alpha = followerAlpha; ip3.scale = fs; ip3.rotation = moonRot; ip3.metImg = _hwImg(p3.img); ip3.spr = undefined; ip3.sprH = undefined; ip3.shadowImg = undefined; ip3.sweat = spaceDanger; ip3.sweatPhase = 2.1;
+      const ip2 = _poolItem(); ip2.img = p2.img; ip2.x = (fx ?? p2.x) + cOff + panicOx(2.9); ip2.y = fy ?? p2.y + panicOy(2.9); ip2.frame = emerging ? 0 : p2.frame; ip2.alpha = followerAlpha; ip2.scale = fs; ip2.rotation = moonRot; ip2.metImg = _hwImg(p2.img); ip2.spr = undefined; ip2.sprH = undefined; ip2.shadowImg = undefined; ip2.sweat = spaceDanger; ip2.sweatPhase = 2.9;
       pushParty("p4", ip4); pushParty("p3", ip3); pushParty("p2", ip2);
     }
-    const il = _poolItem(); il.img = leader.img; il.x = (playerHoleDrawX !== null ? playerHoleDrawX : leader.x) + cOff; il.y = (playerHoleDrawY !== null ? playerHoleDrawY : leader.y) + rideBob; il.frame = holeTransition ? 0 : leader.frame; il.alpha = undefined; il.scale = playerHoleScale; il.metImg = _hwImg(leader.img); il.spr = undefined; il.sprH = undefined; il.shadowImg = undefined;
+    const il = _poolItem(); il.img = leader.img; il.x = (playerHoleDrawX !== null ? playerHoleDrawX : leader.x) + cOff + panicOx(0.5); il.y = (playerHoleDrawY !== null ? playerHoleDrawY : leader.y) + rideBob + panicOy(0.5); il.frame = holeTransition ? 0 : leader.frame; il.alpha = undefined; il.scale = playerHoleScale; il.rotation = moonRot; il.metImg = _hwImg(leader.img); il.spr = undefined; il.sprH = undefined; il.shadowImg = undefined; il.sweat = spaceDanger; il.sweatPhase = 0.5;
     pushParty("leader", il);
   }
   for (const act of actors) {
@@ -1948,6 +2189,8 @@ function draw() {
     const ia = _poolItem();
     ia.img = act.img; ia.x = act.x; ia.y = act.y; ia.frame = act.frame;
     ia.spr = act.spr; ia.sprH = act.sprH; ia.alpha = act.alpha; ia.scale = undefined; ia.metImg = undefined;
+    ia.sparkle = act.sparkle;
+    ia.sparklePhase = act.sparklePhase;
     ia.markImg = act.markImg;
     ia.markFromImg = act.markFromImg;
     ia.markAnimStart = act.markAnimStart;
@@ -2025,7 +2268,9 @@ function draw() {
   }
 
   // トップレイヤー：同様に完全移行後は shrine 側のみ
-  if (shrineFade >= 1) {
+  if (current.id === "space") {
+    // no top layer
+  } else if (shrineFade >= 1) {
     drawMapImg(bgShrineTopImg);
   } else {
     drawMapImg(bgTopImg);
@@ -2036,6 +2281,92 @@ function draw() {
     drawAfloClubFx(tt);
     applyAfloClubRgbShift();
     drawAfloClubBlackout(tt);
+  }
+
+  if (current.id === "space") {
+    drawSpaceO2Meter();
+  }
+
+  if (timeMachineFx.active) {
+    const effectDur = 5000;
+    const elapsed = tt - timeMachineFx.start;
+    if (elapsed < effectDur) {
+      const prog = Math.max(0, Math.min(1, elapsed / effectDur));
+      const grow = Math.min(1, prog / 0.18);
+      const shrink = Math.max(0, 1 - Math.max(0, prog - 0.72) / 0.28);
+      const bloom = grow * shrink;
+      const cx = BASE_W >> 1;
+      const cy = BASE_H >> 1;
+      ctx.save();
+      ctx.globalCompositeOperation = "screen";
+
+      for (let i = 0; i < 7; i++) {
+        const rr = bloom * (16 + i * 13);
+        const hue = (300 + i * 48 + prog * 180) % 360;
+        const wobble = bloom * (7 + i * 2);
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(i * 0.35 + tt * 0.0005);
+        ctx.beginPath();
+        for (let a = 0; a <= Math.PI * 2 + 0.001; a += Math.PI / 18) {
+          const r = rr + Math.sin(a * 3 + tt * 0.004 + i) * wobble;
+          const x = Math.cos(a) * r;
+          const y = Math.sin(a) * (r * 0.72);
+          if (a === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.fillStyle = `hsla(${hue},95%,68%,${bloom * 0.16})`;
+        ctx.fill();
+        ctx.restore();
+      }
+
+      for (let i = 0; i < 14; i++) {
+        const ang = tt * 0.0011 + (Math.PI * 2 * i) / 14 + Math.sin(tt * 0.0012 + i) * 0.22;
+        const hue = (20 + i * 22 + Math.sin(tt * 0.0008 + i * 2) * 35 + prog * 160) % 360;
+        const len = bloom * (36 + i * 4) + Math.sin(tt * 0.004 + i * 1.7) * (6 + bloom * 12);
+        const beamW = bloom * (8 + (i % 5) * 2);
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(ang);
+        const g = ctx.createLinearGradient(0, 0, len, 0);
+        g.addColorStop(0, `hsla(${hue},100%,68%,0.0)`);
+        g.addColorStop(0.16, `hsla(${hue},100%,70%,${bloom * 0.32})`);
+        g.addColorStop(0.5, `hsla(${(hue + 90) % 360},100%,66%,${bloom * 0.22})`);
+        g.addColorStop(1, `hsla(${(hue + 180) % 360},100%,68%,0.0)`);
+        ctx.fillStyle = g;
+        ctx.fillRect(0, -beamW / 2, len, beamW);
+        ctx.restore();
+      }
+
+      for (let i = 0; i < 5; i++) {
+        const rr = bloom * (14 + i * 16);
+        const hue = (260 + i * 58 + prog * 140) % 360;
+        const ring = ctx.createRadialGradient(cx, cy, rr * 0.1, cx, cy, rr);
+        ring.addColorStop(0, `hsla(${hue},100%,78%,${bloom * 0.2})`);
+        ring.addColorStop(0.4, `hsla(${(hue + 70) % 360},100%,68%,${bloom * 0.1})`);
+        ring.addColorStop(1, "rgba(255,255,255,0)");
+        ctx.fillStyle = ring;
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, rr, rr * 0.72, tt * 0.0003 + i * 0.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, bloom * 38);
+      core.addColorStop(0, "rgba(255,250,180,0.92)");
+      core.addColorStop(0.18, `rgba(255,110,210,${bloom * 0.55})`);
+      core.addColorStop(0.42, `rgba(120,255,180,${bloom * 0.26})`);
+      core.addColorStop(1, "rgba(255,255,255,0)");
+      ctx.fillStyle = core;
+      ctx.beginPath();
+      ctx.arc(cx, cy, bloom * 38, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  if (pageTurnFx.active) {
+    drawPageTurnFx(tt);
   }
 
   // モバイル：神社切替用の白フラッシュオーバーレイ
@@ -2145,7 +2476,7 @@ function draw() {
   }
 
   // デバッグ：座標表示
-  if (DEBUG) {
+  if (DEBUG && !MOBILE) {
     const coord = `${leader.x | 0},${leader.y | 0}`;
     ctx.save();
     ctx.font = "normal 10px PixelMplus10";
@@ -2270,6 +2601,15 @@ function draw() {
         ctx.lineWidth = 1;
         ctx.strokeRect(tr.x - cam.x, tr.y - cam.y, tr.w, tr.h);
         ctx.fillStyle = "rgba(200,80,255,0.2)";
+        ctx.fillRect(tr.x - cam.x, tr.y - cam.y, tr.w, tr.h);
+        ctx.fillStyle = "#fff";
+        ctx.fillText(label, tr.x - cam.x, tr.y - cam.y - 1);
+      }
+      for (const [tr, label] of [[TIMEMACHINE_TALK_TRIGGER, "tm_talk"], [TIMEMACHINE_WAIT_TRIGGER_A, "tm_a"], [TIMEMACHINE_WAIT_TRIGGER_B, "tm_b"]]) {
+        ctx.strokeStyle = "rgba(120,255,120,0.9)";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(tr.x - cam.x, tr.y - cam.y, tr.w, tr.h);
+        ctx.fillStyle = "rgba(120,255,120,0.2)";
         ctx.fillRect(tr.x - cam.x, tr.y - cam.y, tr.w, tr.h);
         ctx.fillStyle = "#fff";
         ctx.fillText(label, tr.x - cam.x, tr.y - cam.y - 1);
@@ -2488,6 +2828,8 @@ function tryInteract(t) {
         achieveQuest,
         checkQuest01,
         getBgmSrc: () => bgmCtl.getOverrideSrc(),
+        hasItem: (id) => inventory.getSnapshot().includes(id),
+        startTimemachineFx,
       });
       if (handled) return;
 
@@ -2611,11 +2953,12 @@ function tryInteract(t) {
 
       actors.splice(i, 1);
 
-      // クエスト01: A〜J が手持ちに揃ったら達成
-      checkQuest01();
+      // クエスト01: ラバーダック取得時だけ判定
+      if (String(id).startsWith("rubber_duck_")) checkQuest01();
 
       const name = itemName(id);
-      dialog.open([[`${name} をてにいれた。`]], null, "sign");
+      if (id === "moon_stone") dialog.open([["つきのいしをてにいれた！"]], null, "sign");
+      else dialog.open([[`${name} をてにいれた。`]], null, "sign");
       return;
     }
   }
@@ -2697,6 +3040,29 @@ function update(t) {
     }
   }
 
+  if (pageTurnFx.active) {
+    const revealMs = 420;
+    if (!pageTurnFx.switched) {
+      if (mapReady) {
+        pageTurnFx.switched = true;
+        pageTurnFx.switchedAt = t;
+      }
+    } else if (mapReady && t - pageTurnFx.switchedAt >= revealMs) {
+      pageTurnFx = {
+        active: false,
+        start: 0,
+        switched: false,
+        switchedAt: 0,
+        destMap: null,
+        spawnAt: null,
+        dir: "rtl",
+      };
+      input.unlock();
+    }
+    updateCam();
+    return;
+  }
+
   // fade 最優先
   if (fade.isActive()) {
     fade.update(t, () => mapReady);
@@ -2735,7 +3101,7 @@ function update(t) {
       bgmCtl.setOverride(null);
       partyVisible = true;
       resetProgress();
-      inventory.resetItems(DEBUG_ITEMS);
+      inventory.resetItems(START_INVENTORY_EMPTY);
       loadMap("outdoor");
       setGameResolution(CONFIG.BASE_W, CONFIG.BASE_H);
       title.start({
@@ -2774,6 +3140,17 @@ function update(t) {
   // jumprope
   if (jumprope.isActive()) {
     jumprope.update();
+    return;
+  }
+
+  if (timeMachineFx.active) {
+    if (t >= timeMachineFx.until) {
+      const cb = timeMachineFx.onDone;
+      timeMachineFx = { active: false, start: 0, until: 0, onDone: null };
+      input.unlock();
+      if (cb) cb();
+    }
+    updateCam();
     return;
   }
 
@@ -2832,14 +3209,23 @@ function update(t) {
   if (input.consume("s")) { saveGame(); return; }
   if (input.consume("l")) { loadGame(); return; }
   if (input.consume("v")) { setBgmOverrideSafe(null); setBgmMapSafe("assets/audio/bgm0.mp3"); return; }
+  if (DEBUG && input.consume("b")) {
+    const inv = inventory.getSnapshot();
+    if (inv.includes("moon_stone")) inventory.removeItem("moon_stone");
+    else inventory.addItem("moon_stone");
+    return;
+  }
 
-  // DEBUG: D で afloclub へワープ
+  // DEBUG: D で宇宙へワープ（タイムマシン起動済み）
   if (DEBUG && input.consume("d")) {
     fade.startCutFade(t, {
       outMs: 150,
       holdMs: 80,
       inMs: 300,
-      onBlack: () => loadMap("afloclub", { spawnAt: { x: 128, y: 160 } }),
+      onBlack: () => {
+        STATE.flags.timeMachineStarted = true;
+        loadMap("space");
+      },
     });
   }
 
@@ -2861,7 +3247,7 @@ function update(t) {
   }
 
   // ---- クエスト29・30: 噴水/ベンチ付近で静止 ----
-  if (current.id === "outdoor") {
+  if (current.id === "outdoor" || current.id === "mirai" || current.id === "kako") {
     const f  = footBox(leader.x, leader.y);
     const fx = (f.x + (f.w >> 1)) | 0;
     const fy = (f.y + (f.h >> 1)) | 0;
@@ -2884,12 +3270,71 @@ function update(t) {
     } else {
       fountainEnterMs = 0;
     }
+
+    const inTimeA = fx >= TIMEMACHINE_WAIT_TRIGGER_A.x && fx < TIMEMACHINE_WAIT_TRIGGER_A.x + TIMEMACHINE_WAIT_TRIGGER_A.w &&
+                    fy >= TIMEMACHINE_WAIT_TRIGGER_A.y && fy < TIMEMACHINE_WAIT_TRIGGER_A.y + TIMEMACHINE_WAIT_TRIGGER_A.h;
+    const inTimeB = fx >= TIMEMACHINE_WAIT_TRIGGER_B.x && fx < TIMEMACHINE_WAIT_TRIGGER_B.x + TIMEMACHINE_WAIT_TRIGGER_B.w &&
+                    fy >= TIMEMACHINE_WAIT_TRIGGER_B.y && fy < TIMEMACHINE_WAIT_TRIGGER_B.y + TIMEMACHINE_WAIT_TRIGGER_B.h;
+    if (inTimeA) {
+      if (timeMachineEnterMsA === 0) timeMachineEnterMsA = now_ms;
+      else if (STATE.flags.timeMachineStarted && now_ms - timeMachineEnterMsA >= 20000 && !pageTurnFx.active) {
+        const spawnAt = { x: leader.x, y: leader.y };
+        const destMap = current.id === "outdoor" ? "mirai" : "outdoor";
+        timeMachineEnterMsA = 0;
+        startPageTurnTravel(destMap, spawnAt, "rtl");
+        updateCam();
+        return;
+      }
+    } else {
+      timeMachineEnterMsA = 0;
+    }
+    if (inTimeB) {
+      if (timeMachineEnterMsB === 0) timeMachineEnterMsB = now_ms;
+      else if (STATE.flags.timeMachineStarted && now_ms - timeMachineEnterMsB >= 20000 && !pageTurnFx.active) {
+        const spawnAt = { x: leader.x, y: leader.y };
+        const destMap = current.id === "outdoor" ? "kako" : "outdoor";
+        timeMachineEnterMsB = 0;
+        startPageTurnTravel(destMap, spawnAt, "ltr");
+        updateCam();
+        return;
+      }
+    } else {
+      timeMachineEnterMsB = 0;
+    }
   }
 
 
 
   // クエスト13: 100000EN 貯める
   if (STATE.money >= 100000) achieveQuest("13");
+
+  if (current.id === "space" && !spaceO2Depleted) {
+    const last = spaceO2LastMs || t;
+    const capacity = getSpaceO2Capacity();
+    if (spaceO2 > capacity) spaceO2 = capacity;
+    spaceO2 = Math.max(0, spaceO2 - (t - last) * getSpaceO2DrainRate());
+    spaceO2LastMs = t;
+    if (spaceO2 <= 0) {
+      spaceO2Depleted = true;
+      input.lock();
+      fade.startCutFade(nowMs(), {
+        outMs: 450,
+        holdMs: 2000,
+        inMs: 500,
+        onBlack: () => {
+          loadMap("moritasaki_room");
+        },
+        onEnd: () => {
+          setTimeout(() => {
+            input.unlock();
+            dialog.open([["ひどいめにあった。"]], null, "sign");
+          }, 2000);
+        },
+      });
+      updateCam();
+      return;
+    }
+  }
 
   if (!mapReady) {
     updateCam();
@@ -3040,6 +3485,82 @@ function update(t) {
     dy = 0;
 
   const spd = SPEED * (input.down("c") ? 5 : 1);
+
+  if (current.id === "space") {
+    if (SPACE_MOON_SYSTEM_ENABLED) {
+      const px = leader.x + 8;
+      const py = leader.y + 13;
+      const mdx = px - SPACE_MOON.cx;
+      const mdy = py - SPACE_MOON.cy;
+      const dist = Math.hypot(mdx, mdy) || 1;
+      if (!spaceMoonAttach && t >= spaceMoonCooldownUntil && dist < SPACE_MOON.surfaceR + 26) {
+        spaceMoonAttach = true;
+        spaceMoonAngle = Math.atan2(mdy, mdx);
+        spaceMoonRadius = Math.max(SPACE_MOON.surfaceR - 2, Math.min(SPACE_MOON.surfaceR + 10, dist));
+        spaceVel.x = 0;
+        spaceVel.y = 0;
+      }
+
+      if (spaceMoonAttach) {
+        const angSpd = input.down("c") ? 0.05 : 0.032;
+        if (input.down("ArrowLeft"))  spaceMoonAngle -= angSpd;
+        if (input.down("ArrowRight")) spaceMoonAngle += angSpd;
+        if (input.down("ArrowUp"))    spaceMoonRadius = Math.min(SPACE_MOON.surfaceR + 18, spaceMoonRadius + 0.8);
+        if (input.down("ArrowDown"))  spaceMoonRadius = Math.max(SPACE_MOON.surfaceR - 4, spaceMoonRadius - 0.6);
+        if (spaceMoonRadius <= SPACE_MOON.surfaceR - 4) achieveQuest("20");
+
+        if (spaceMoonRadius > SPACE_MOON.surfaceR + 14) {
+          spaceMoonAttach = false;
+          spaceMoonCooldownUntil = t + 500;
+          spaceVel.x = Math.cos(spaceMoonAngle) * 0.7;
+          spaceVel.y = Math.sin(spaceMoonAngle) * 0.7;
+        } else {
+          leader.x = SPACE_MOON.cx + Math.cos(spaceMoonAngle) * spaceMoonRadius - 8;
+          leader.y = SPACE_MOON.cy + Math.sin(spaceMoonAngle) * spaceMoonRadius - 13;
+          followers.push(leader.x, leader.y);
+          if (t - leader.last > FRAME_MS + 20) {
+            leader.frame ^= 1;
+            leader.last = t;
+          }
+          followers.update(t, { p2, p3, p4 });
+          updateCam();
+          return;
+        }
+      }
+    }
+
+    const acc = input.down("c") ? 0.12 : 0.06;
+    const max = input.down("c") ? 1.9 : 1.25;
+    if (input.down("ArrowLeft"))  spaceVel.x -= acc;
+    if (input.down("ArrowRight")) spaceVel.x += acc;
+    if (input.down("ArrowUp"))    spaceVel.y -= acc;
+    if (input.down("ArrowDown"))  spaceVel.y += acc;
+
+    const len = Math.hypot(spaceVel.x, spaceVel.y);
+    if (len > max) {
+      spaceVel.x = (spaceVel.x / len) * max;
+      spaceVel.y = (spaceVel.y / len) * max;
+    }
+
+    spaceVel.x *= 0.988;
+    spaceVel.y *= 0.988;
+
+    if (Math.abs(spaceVel.x) > 0.01 || Math.abs(spaceVel.y) > 0.01) {
+      leader.x = Math.max(0, Math.min(current.bgW - SPR, leader.x + spaceVel.x));
+      leader.y = Math.max(0, Math.min(current.bgH - SPR, leader.y + spaceVel.y));
+      followers.push(leader.x, leader.y);
+      if (t - leader.last > FRAME_MS + 30) {
+        leader.frame ^= 1;
+        leader.last = t;
+      }
+    } else {
+      leader.frame = 0;
+    }
+
+    followers.update(t, { p2, p3, p4 });
+    updateCam();
+    return;
+  }
 
   if (input.down("ArrowLeft"))  dx = -spd;
   if (input.down("ArrowRight")) dx =  spd;

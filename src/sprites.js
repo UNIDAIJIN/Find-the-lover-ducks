@@ -53,6 +53,7 @@ export const SPRITES = {
 
   // other
   board: loadSprite("assets/sprites/board.png"),
+  pizzashop: loadSprite("assets/sprites/pizzashop.png"),
   fan: loadSprite("assets/sprites/fan.png"),
   ac_1: loadSprite("assets/sprites/ac_1.png"),
   ac_2: loadSprite("assets/sprites/ac_2.png"),
@@ -110,6 +111,7 @@ export const SPRITES = {
   balloondog:      loadSprite("assets/sprites/balloondog.png"),
   balloondog_half: loadSprite("assets/sprites/balloondog_half.png"),
   balloon:         loadSprite("assets/sprites/balloon.png"),
+  moon:            loadSprite("assets/sprites/moon.png"),
   chinanago_off:  loadSprite("assets/sprites/chinanago_off.png"),
   chinanago_half: loadSprite("assets/sprites/chinanago_half.png"),
   chinanago_on:   loadSprite("assets/sprites/chinanago_on.png"),

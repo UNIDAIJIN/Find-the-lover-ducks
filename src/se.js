@@ -133,6 +133,27 @@ export function playClickOn() {
   osc.stop(t + 0.04);
 }
 
+export function playTimeMachineShine() {
+  const ctx = getCtx();
+  if (ctx.state !== "running") return;
+  const t = ctx.currentTime;
+  for (let i = 0; i < 8; i++) {
+    const st = t + i * 0.06;
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.connect(g);
+    g.connect(ctx.destination);
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(1800 + i * 120, st);
+    osc.frequency.exponentialRampToValueAtTime(2600 + i * 140, st + 0.08);
+    g.gain.setValueAtTime(0.001, st);
+    g.gain.linearRampToValueAtTime(0.07, st + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.001, st + 0.12);
+    osc.start(st);
+    osc.stop(st + 0.13);
+  }
+}
+
 // ---- 勝利音: 短い上昇ファンファーレ ----
 export function playVictory() {
   const ctx = getCtx();

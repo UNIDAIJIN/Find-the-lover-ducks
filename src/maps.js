@@ -28,6 +28,9 @@ import { house09Map }         from "./data/maps/house09.js";
 import { house10Map }         from "./data/maps/house10.js";
 import { house11Map }         from "./data/maps/house11.js";
 import { afloclubMap }        from "./data/maps/afloclub.js";
+import { miraiMap }           from "./data/maps/mirai.js";
+import { kakoMap }            from "./data/maps/kako.js";
+import { spaceMap }           from "./data/maps/space.js";
 import { umiHouse1Map }       from "./data/maps/umi_house1.js";
 import { umiHouse2Map }       from "./data/maps/umi_house2.js";
 import { umiHouse3Map }       from "./data/maps/umi_house3.js";
@@ -71,6 +74,9 @@ export const MAPS = {
   house10:   house10Map,
   house11:   house11Map,
   afloclub:  afloclubMap,
+  mirai:     miraiMap,
+  kako:      kakoMap,
+  space:     spaceMap,
   umi_house1: umiHouse1Map,
   umi_house2: umiHouse2Map,
   umi_house3: umiHouse3Map,

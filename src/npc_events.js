@@ -1,7 +1,7 @@
 // npc_events.js
 import { STATE } from "./state.js";
 import { SPRITES } from "./sprites.js";
-import { playCooking, playIndianJingle, playItemJingle, playInnJingle, playJaws, stopJaws, playCrush, playConfirm, playCoin, playDoor } from "./se.js";
+import { playCooking, playIndianJingle, playItemJingle, playInnJingle, playJaws, stopJaws, playCrush, playConfirm, playCoin, playDoor, playClickOn } from "./se.js";
 
 export function runNpcEvent(act, ctx) {
   const ev = act?.event;
@@ -432,6 +432,37 @@ export function runNpcEvent(act, ctx) {
         dialog.open([["（ちらりとみられた。）"]], null, "sign");
       });
     }
+    return true;
+  }
+
+  if (ev.type === "timemachine_slot") {
+    const { dialog, choice, hasItem, startTimemachineFx, lockInput, unlockInput } = ctx;
+    if (STATE.flags.timeMachineStarted) {
+      dialog.open([["つきのいしはピッタリとはまっている。"]], null, "sign");
+      return true;
+    }
+    dialog.open([["なにかをおくばしょのようだ。"]], () => {
+      if (typeof hasItem !== "function" || !hasItem("moon_stone")) return;
+      choice.open(["はい", "いいえ"], (idx) => {
+        if (idx !== 0) return;
+        if (typeof lockInput === "function") lockInput();
+        playClickOn();
+        setTimeout(() => {
+          if (typeof unlockInput === "function") unlockInput();
+          dialog.open([["ぴったりとはまった！"]], () => {
+            if (typeof startTimemachineFx === "function") {
+              startTimemachineFx(() => {
+                STATE.flags.timeMachineStarted = true;
+                dialog.open([
+                  ["すごいひかった。"],
+                  ["なんだったのだろう。"],
+                ], null, "sign");
+              });
+            }
+          }, "sign");
+        }, 2000);
+      }, "つきのいしをおいてみますか？");
+    });
     return true;
   }
 

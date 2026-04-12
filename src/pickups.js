@@ -21,4 +21,7 @@ export const PICKUPS_BY_MAP = {
   charch: [
     { itemId: "rubber_duck_B", x: 192, y: 127 },
   ],
+  space: [
+    { itemId: "moon_stone", x: 1920, y: 126 },
+  ],
 };

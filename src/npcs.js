@@ -3,6 +3,7 @@ import { CONFIG } from "./config.js";
 import { SPRITES } from "./sprites.js";
 
 import { boardNpc }         from "./data/npcs/board.js";
+import { pizzashopNpc }     from "./data/npcs/pizzashop.js";
 import { fanNpc }           from "./data/npcs/fan.js";
 import { ac1Npc }           from "./data/npcs/ac_1.js";
 import { koriNpc }          from "./data/npcs/kori.js";
@@ -46,9 +47,33 @@ function resolve(def) {
   return { animMs: NPC_FRAME_MS, ...rest, img: SPRITES[spriteKey] };
 }
 
+const timemachineSlotNpc = {
+  kind: "npc",
+  name: "timemachine_slot",
+  spriteKey: "board",
+  x: 2641,
+  y: 121,
+  talkHit: { x: 0, y: 0, w: 3, h: 5 },
+  talkType: "sign",
+  talkPages: [["なにかをおくばしょのようだ。"]],
+  solid: false,
+  hidden: true,
+  event: { type: "timemachine_slot" },
+};
+
 export const NPCS_BY_MAP = {
   outdoor: [
     resolve(boardNpc),
+    resolve({
+      ...boardNpc,
+      name: "board_timemachine",
+      x: 2675,
+      y: 127,
+      talkPages: [["←　これはタイムマシン"]],
+      talkType: "sign",
+    }),
+    resolve(pizzashopNpc),
+    resolve(timemachineSlotNpc),
     resolve(seatsNpc),
     resolve(cat1Npc),
     resolve(fanFlowerNpc),
@@ -156,6 +181,14 @@ export const NPCS_BY_MAP = {
 
   house07: [
     resolve(ac1Npc),
+  ],
+
+  mirai: [
+    resolve(timemachineSlotNpc),
+  ],
+
+  kako: [
+    resolve(timemachineSlotNpc),
   ],
 
   afloclub: [
