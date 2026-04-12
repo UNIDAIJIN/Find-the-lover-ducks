@@ -3231,16 +3231,13 @@ function update(t) {
     return;
   }
 
-  // DEBUG: D で宇宙へワープ（タイムマシン起動済み）
+  // DEBUG: D で宇宙へワープ
   if (DEBUG && input.consume("d")) {
     fade.startCutFade(t, {
       outMs: 150,
       holdMs: 80,
       inMs: 300,
-      onBlack: () => {
-        STATE.flags.timeMachineStarted = true;
-        loadMap("space");
-      },
+      onBlack: () => { loadMap("space"); },
     });
   }
 
