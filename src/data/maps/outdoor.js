@@ -47,7 +47,7 @@ export const outdoorMap = {
       id:        4,
       to:        "moritasaki_room",
       trigger:   { x: 2103, y: 2554, w: 16, h: 8 },
-      entryAt:   { x: 2103, y: 2546 },
+      entryAt:   { x: 2103, y: 2549 },
       entryWalk: { dx: 0, dy: 1, frames: 20 },
     },
     {
