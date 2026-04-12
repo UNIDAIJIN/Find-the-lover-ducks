@@ -1505,6 +1505,7 @@ function holeCheck(t) {
 
 // ---- Door warp ----
 let doorCooldown = 0;
+let ignoredDoorId = null;
 function doorCheck(t) {
   if (!mapReady || t < doorCooldown) return;
   if (menu.isOpen()) return;
@@ -1518,8 +1519,16 @@ function doorCheck(t) {
   const fy = (f.y + (f.h >> 1)) | 0;
 
   const def = MAPS[current.id];
+  if (ignoredDoorId != null) {
+    const ignoredDoor = (def.doors || []).find(d => d.id === ignoredDoorId);
+    const tr = ignoredDoor?.trigger;
+    if (!tr || !(fx >= tr.x && fx < tr.x + tr.w && fy >= tr.y && fy < tr.y + tr.h)) {
+      ignoredDoorId = null;
+    }
+  }
   for (const door of def.doors || []) {
     if (!door.trigger) continue;
+    if (door.id === ignoredDoorId) continue;
     const tr = door.trigger;
     if (fx >= tr.x && fx < tr.x + tr.w && fy >= tr.y && fy < tr.y + tr.h) {
       doorCooldown = t + DOOR_COOLDOWN_MS;
@@ -1673,6 +1682,7 @@ function loadMap(id, opt = null) {
   timeMachineFx = { active: false, start: 0, until: 0, onDone: null };
   timeMachineEnterMsA = 0;
   timeMachineEnterMsB = 0;
+  ignoredDoorId = opt?.doorId ?? null;
   if (id !== "space") {
     spaceVel.x = 0;
     spaceVel.y = 0;
