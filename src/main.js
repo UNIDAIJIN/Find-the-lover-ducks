@@ -496,6 +496,7 @@ function _poolItem() {
   if (_poolIdx < _POOL_SIZE) {
     const item = _renderPool[_poolIdx++];
     item.sparkle = undefined;
+    item.sparkleColor = undefined;
     item.sparklePhase = undefined;
     item.markImg = undefined;
     item.markFromImg = undefined;
@@ -587,7 +588,8 @@ function spawnActorsForMap(mapId) {
       talkHit: { x: 0, y: 0, w: 16, h: 16 },
       solid: true,
       animMs: NPC_FRAME_MS,
-      sparkle: itemId === "moon_stone",
+      sparkle: itemId === "moon_stone" || itemId === "iron_heart",
+      sparkleColor: itemId === "iron_heart" ? "red" : "green",
       sparklePhase: Math.random() * Math.PI * 2,
     });
   }
@@ -631,7 +633,8 @@ function spawnPickup(itemId, x, y) {
     talkHit: { x: 0, y: 0, w: 16, h: 16 },
     solid: true,
     animMs: NPC_FRAME_MS,
-    sparkle: itemId === "moon_stone",
+    sparkle: itemId === "moon_stone" || itemId === "iron_heart",
+    sparkleColor: itemId === "iron_heart" ? "red" : "green",
     sparklePhase: Math.random() * Math.PI * 2,
   });
 }
@@ -1909,12 +1912,13 @@ function drawEntry(o) {
     const sy = ((o.y - cam.y) | 0) + 8;
     const t = nowMs() / 180 + (o.sparklePhase || 0);
     const r = Math.sin(t) > 0 ? 3 : 2;
+    const red = o.sparkleColor === "red";
     ctx.save();
     ctx.globalAlpha = 0.95;
-    ctx.fillStyle = "#9dff9d";
+    ctx.fillStyle = red ? "#ff8f8f" : "#9dff9d";
     ctx.fillRect(sx - r, sy, r * 2 + 1, 1);
     ctx.fillRect(sx, sy - r, 1, r * 2 + 1);
-    ctx.fillStyle = "rgba(170,255,170,0.7)";
+    ctx.fillStyle = red ? "rgba(255,140,140,0.7)" : "rgba(170,255,170,0.7)";
     ctx.fillRect(sx - 1, sy - 1, 3, 3);
     ctx.restore();
     return;
@@ -2190,6 +2194,7 @@ function draw() {
     ia.img = act.img; ia.x = act.x; ia.y = act.y; ia.frame = act.frame;
     ia.spr = act.spr; ia.sprH = act.sprH; ia.alpha = act.alpha; ia.scale = undefined; ia.metImg = undefined;
     ia.sparkle = act.sparkle;
+    ia.sparkleColor = act.sparkleColor;
     ia.sparklePhase = act.sparklePhase;
     ia.markImg = act.markImg;
     ia.markFromImg = act.markFromImg;

@@ -24,4 +24,7 @@ export const PICKUPS_BY_MAP = {
   space: [
     { itemId: "moon_stone", x: 1920, y: 126 },
   ],
+  mirai: [
+    { itemId: "iron_heart", x: 2638, y: 152 },
+  ],
 };
