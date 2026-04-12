@@ -3480,11 +3480,10 @@ function update(t) {
   if (autoWalk && autoWalk.frames > 0) {
     const nx = leader.x + autoWalk.dx;
     const ny = leader.y + autoWalk.dy;
-    if (!hitBg(nx, ny) && !hitNpc(nx, ny)) {
-      leader.x = nx; leader.y = ny;
-      followers.push(leader.x, leader.y);
-      if (t - leader.last > FRAME_MS) { leader.frame ^= 1; leader.last = t; }
-    }
+    leader.x = nx;
+    leader.y = ny;
+    followers.push(leader.x, leader.y);
+    if (t - leader.last > FRAME_MS) { leader.frame ^= 1; leader.last = t; }
     autoWalk.frames--;
     if (autoWalk.frames <= 0) autoWalk = null;
     updateCam();
