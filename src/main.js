@@ -14,7 +14,7 @@ import { createTitle  }     from "./title.js";
 import { createCharSelect } from "./char_select.js";
 import { createLoading }    from "./loading.js";
 import { setupMobileController } from "./mobile_controller.js";
-import { playSuzu, playDoor, playZazza, playHoleFall, playHoleRoll, playConfirm, playClickOn, playTimeMachineShine, playWave, startHeartbeat, stopHeartbeat, playQuestJingleB, playPunch, startShootingBgm, stopShootingBgm, startAfloClubBgm, stopAfloClubBgm, stopJaws, playBattleWinJingle, getAfloClubKickPulseMs } from "./se.js";
+import { playSuzu, playDoor, playZazza, playHoleFall, playHoleRoll, playConfirm, playClickOn, playTimeMachineShine, playWave, startHeartbeat, stopHeartbeat, playQuestJingleB, playPunch, startShootingBgm, stopShootingBgm, startAfloClubBgm, stopAfloClubBgm, stopJaws, playBattleWinJingle, getAfloClubKickPulseMs, unlockSeAudio } from "./se.js";
 import { createMenu } from "./ui_menu.js";
 import { createTripEffect }     from "./trip_effect.js";
 import { createGoodTripEffect } from "./trip_effect_good.js";
@@ -1798,8 +1798,8 @@ function loadMap(id, opt = null) {
 
     seaholeCutscene = { active: false, shadowX: BASE_W, charOffsetX: 0 };
 
-    bgmCtl.setUnderwater(current.id === "seahole");
-    bgmCtl.setReverb(current.id === "pool" || current.id === "charch" ? current.id : null);
+    bgmCtl.setUnderwater(!MOBILE && current.id === "seahole");
+    bgmCtl.setReverb(!MOBILE && (current.id === "pool" || current.id === "charch") ? current.id : null);
     if (current.id === "seahole") initFish();
 
     chinanagoActivated = false;
@@ -2773,7 +2773,7 @@ function tryInteract(t) {
             actors = actors.filter(a => a.id !== "trip_duck");
           });
           bgmCtl.setOverride(null);
-          bgmCtl.startTripPitch();
+          if (!MOBILE) bgmCtl.startTripPitch();
           if (!STATE.flags.duckGCollected) {
             actors.push({ kind: "pickup", id: "trip_duck", itemId: "rubber_duck_G_bad", img: SPRITES.duck, x: 168, y: 140, spr: 16, frame: 0, last: 0, alpha: 0 });
           }
@@ -2786,7 +2786,7 @@ function tryInteract(t) {
             actors = actors.filter(a => a.id !== "trip_duck");
           });
           bgmCtl.setOverride(null);
-          bgmCtl.startGoodTripPitch();
+          if (!MOBILE) bgmCtl.startGoodTripPitch();
           if (!STATE.flags.duckGCollected) {
             actors.push({ kind: "pickup", id: "trip_duck", itemId: "rubber_duck_G", img: SPRITES.duck, x: 86, y: 127, spr: 16, frame: 0, last: 0, alpha: 0 });
           }
@@ -3794,7 +3794,14 @@ function startTitle() {
 bgmCtl.setOverride("about:blank"); // ローディング・タイトル中はBGM無音
 loading.start(startTitle);
 
-if (MOBILE) setupMobileController(input);
+if (MOBILE) {
+  setupMobileController(input, {
+    onUserGesture() {
+      bgmCtl.unlock();
+      unlockSeAudio();
+    },
+  });
+}
 
 
 if (!window.__rpgLoopStarted) {

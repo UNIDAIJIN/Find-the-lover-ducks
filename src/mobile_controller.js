@@ -1,5 +1,7 @@
 // mobile_controller.js
-export function setupMobileController(input) {
+export function setupMobileController(input, {
+  onUserGesture = null,
+} = {}) {
   const style = document.createElement("style");
   style.textContent = `
     body {
@@ -157,6 +159,52 @@ export function setupMobileController(input) {
       transform: translateY(2px);
       background: #333;
     }
+    .btn-icon {
+      width: 36px;
+      height: 20px;
+      border-radius: 6px;
+      border: none;
+      background: #111;
+      color: #666;
+      cursor: pointer;
+      box-shadow: 0 2px 0 #0a0a0a;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      padding: 0;
+    }
+    .btn-icon:active, .btn-icon.pressed {
+      box-shadow: 0 1px 0 #0a0a0a;
+      transform: translateY(1px);
+      background: #222;
+    }
+    .btn-icon .play {
+      width: 0;
+      height: 0;
+      border-top: 4px solid transparent;
+      border-bottom: 4px solid transparent;
+      border-left: 7px solid #777;
+      margin-left: 1px;
+    }
+    .btn-icon .pause {
+      position: relative;
+      width: 7px;
+      height: 8px;
+    }
+    .btn-icon .pause::before,
+    .btn-icon .pause::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      width: 2px;
+      height: 8px;
+      background: #777;
+    }
+    .btn-icon .pause::before { left: 0; }
+    .btn-icon .pause::after  { right: 0; }
   `;
   document.head.appendChild(style);
 
@@ -186,7 +234,9 @@ export function setupMobileController(input) {
       <button class="btn-small" data-key-tap="s">SAVE</button>
       <button class="btn-small" data-key-tap="l">LOAD</button>
       <button class="btn-debug" data-key-tap="d">D</button>
-      <button class="btn-debug" data-key-tap="c">C</button>
+      <button class="btn-icon" data-audio-toggle="1" aria-label="audio">
+        <span class="play"></span><span class="pause"></span>
+      </button>
     </div>
   `;
   document.body.appendChild(ctrl);
@@ -194,6 +244,9 @@ export function setupMobileController(input) {
   // ---- 振動 ----
   function vibrate(ms = 10) {
     try { navigator.vibrate?.(ms); } catch (_) {}
+  }
+  function wakeAudio() {
+    if (typeof onUserGesture === "function") onUserGesture();
   }
 
   // ---- スティック ロジック ----
@@ -258,12 +311,14 @@ export function setupMobileController(input) {
   stickWrap.addEventListener("touchstart", e => {
     e.preventDefault();
     stickActive = true;
+    wakeAudio();
     vibrate(8);
     onStickMove(0, 0, e.touches[0]);
   }, { passive: false });
 
   stickWrap.addEventListener("touchmove", e => {
     e.preventDefault();
+    wakeAudio();
     if (stickActive) onStickMove(0, 0, e.touches[0]);
   }, { passive: false });
 
@@ -273,6 +328,7 @@ export function setupMobileController(input) {
   // マウスフォールバック
   stickWrap.addEventListener("mousedown", e => {
     stickActive = true;
+    wakeAudio();
     onStickMove(0, 0, e);
     const move = ev => { if (stickActive) onStickMove(0, 0, ev); };
     const up   = ()  => { onStickEnd(); window.removeEventListener("mousemove", move); window.removeEventListener("mouseup", up); };
@@ -283,7 +339,7 @@ export function setupMobileController(input) {
   // ---- A/B ボタン ----
   ctrl.querySelectorAll("[data-key]").forEach(btn => {
     const key = btn.dataset.key;
-    const press   = e => { e.preventDefault(); btn.classList.add("pressed");    vibrate(12); input.press(key); };
+    const press   = e => { e.preventDefault(); wakeAudio(); btn.classList.add("pressed"); vibrate(12); input.press(key); };
     const release = e => { e.preventDefault(); btn.classList.remove("pressed"); input.release(key); };
     btn.addEventListener("touchstart",  press,   { passive: false });
     btn.addEventListener("touchend",    release, { passive: false });
@@ -298,6 +354,7 @@ export function setupMobileController(input) {
     const key = btn.dataset.keyTap;
     const tap = e => {
       e.preventDefault();
+      wakeAudio();
       btn.classList.add("pressed");
       vibrate(15);
       input.press(key);
@@ -305,5 +362,19 @@ export function setupMobileController(input) {
     };
     btn.addEventListener("touchstart", tap, { passive: false });
     btn.addEventListener("mousedown",  tap);
+  });
+
+  ctrl.querySelectorAll("[data-audio-toggle]").forEach(btn => {
+    const tap = e => {
+      e.preventDefault();
+      wakeAudio();
+      btn.classList.add("pressed");
+      vibrate(15);
+      input.press("v");
+      setTimeout(() => { input.release("v"); }, 80);
+      setTimeout(() => { btn.classList.remove("pressed"); }, 80);
+    };
+    btn.addEventListener("touchstart", tap, { passive: false });
+    btn.addEventListener("mousedown", tap);
   });
 }

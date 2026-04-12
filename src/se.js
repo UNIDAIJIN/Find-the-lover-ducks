@@ -19,6 +19,14 @@ function getCtx() {
   });
 });
 
+export function unlockSeAudio() {
+  if (_ctx) {
+    if (_ctx.state === "suspended") _ctx.resume().catch(() => {});
+    return;
+  }
+  getCtx();
+}
+
 async function loadBuffer(name) {
   if (_buffers[name]) return;
   try {
@@ -30,9 +38,12 @@ async function loadBuffer(name) {
 
 function play(name, vol) {
   const buf = _buffers[name];
-  if (!buf) return;
+  if (!buf) {
+    loadBuffer(name).then(() => play(name, vol));
+    return;
+  }
   const ctx = getCtx();
-  if (ctx.state !== "running") return;
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
   try {
     const src  = ctx.createBufferSource();
     src.buffer = buf;
@@ -51,7 +62,7 @@ loadBuffer("se_crash.mp3");
 // ---- カーソル音: カチッとした短いクリック ----
 export function playCursor() {
   const ctx = getCtx();
-  if (ctx.state !== "running") return;
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
   const t = ctx.currentTime;
 
   // ノイズバースト → バンドパスフィルターでカチッ感
@@ -90,7 +101,7 @@ export function playCursor() {
 // ---- 決定音: ピコン（2音の上昇）----
 export function playConfirm() {
   const ctx = getCtx();
-  if (ctx.state !== "running") return;
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
   const t = ctx.currentTime;
 
   // "ピ"（660Hz）→ "コン"（1047Hz）の2音
@@ -110,7 +121,7 @@ export function playConfirm() {
 // ---- クリック音: カチッ ----
 export function playClickOn() {
   const ctx = getCtx();
-  if (ctx.state !== "running") return;
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
   const t = ctx.currentTime;
 
   const osc = ctx.createOscillator();
@@ -135,7 +146,7 @@ export function playClickOn() {
 
 export function playTimeMachineShine() {
   const ctx = getCtx();
-  if (ctx.state !== "running") return;
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
   const t = ctx.currentTime;
   for (let i = 0; i < 8; i++) {
     const st = t + i * 0.06;
@@ -157,7 +168,7 @@ export function playTimeMachineShine() {
 // ---- 勝利音: 短い上昇ファンファーレ ----
 export function playVictory() {
   const ctx = getCtx();
-  if (ctx.state !== "running") return;
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
   const t = ctx.currentTime;
 
   [
@@ -221,7 +232,7 @@ export function playBattleWinJingle() {
 // ---- ブザー音: 短い下降2音 ----
 export function playBuzzer() {
   const ctx = getCtx();
-  if (ctx.state !== "running") return;
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
   const t = ctx.currentTime;
 
   [[220, 0.00, 0.08], [165, 0.07, 0.11]].forEach(([freq, delay, dur]) => {
@@ -244,7 +255,7 @@ export function playSuzu()    { play("se_suzu.mp3", 0.8); }
 // ---- コイン購入音: チャリン ----
 export function playCoin() {
   const ctx = getCtx();
-  if (ctx.state !== "running") return;
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
   const t = ctx.currentTime;
   [[1480, 0, 0.08], [2093, 0.06, 0.18]].forEach(([freq, delay, decay]) => {
     const st  = t + delay;
@@ -264,7 +275,8 @@ export function playCoin() {
 // voiceType: "m_low"|"m_mid"|"m_high"|"f_low"|"f_mid"|"f_high"|"old"|"robot"|"cat"|"default"
 export function playTypingVoice(voiceType = "default") {
   const ctx = getCtx();
-  if (!ctx || ctx.state !== "running") return;
+  if (!ctx) return;
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
   const t = ctx.currentTime;
 
   const voices = {
@@ -301,7 +313,7 @@ export function playTypingVoice(voiceType = "default") {
 // ---- 穴落下音: ぽいんぽいんぽいん（3回バウンド）----
 export function playHoleFall() {
   const ctx = getCtx();
-  if (ctx.state !== "running") return;
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
   const t = ctx.currentTime;
 
   for (let i = 0; i < 3; i++) {
@@ -323,7 +335,7 @@ export function playHoleFall() {
 // ---- 転がり音: ピュー（高音から低音へ下降ホイッスル）----
 export function playHoleRoll(durationMs) {
   const ctx = getCtx();
-  if (ctx.state !== "running") return;
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
   const t   = ctx.currentTime;
   const dur = durationMs / 1000;
 
@@ -360,7 +372,7 @@ export function playHoleRoll(durationMs) {
 // ---- ざっざっ（土・砂利を踏む2連スクレイプ）----
 export function playZazza() {
   const ctx = getCtx();
-  if (ctx.state !== "running") return;
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
   const t = ctx.currentTime;
 
   function scrape(st) {
@@ -388,7 +400,7 @@ export function playZazza() {
 // ---- ドア音: がちゃ（金属ラッチ） ----
 export function playDoor() {
   const ctx = getCtx();
-  if (ctx.state !== "running") return;
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
   const t = ctx.currentTime;
 
   function metalClick(startT, amp) {
@@ -419,7 +431,7 @@ export function playDoor() {
 // メロディ: G A B C D C B G# G（全音符均等）
 export function playIndianJingle() {
   const ctx = getCtx();
-  if (ctx.state !== "running") return;
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
   const t = ctx.currentTime;
 
   // シタール風：ノコギリ波 + アタック瞬間に高めからピッチが落ちるギロっと感
@@ -507,7 +519,7 @@ export function playIndianJingle() {
 // ---- 波の音: ザザーン（うねり→砕ける→引く）----
 export function playWave() {
   const ctx = getCtx();
-  if (ctx.state !== "running") return;
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
   const t = ctx.currentTime;
   const dur = 2.2;
 
@@ -542,7 +554,7 @@ export function playWave() {
 // ---- アイテム取得ジングル: 明るい上昇アルペジオ（C→E→G→C）----
 export function playItemJingle() {
   const ctx = getCtx();
-  if (ctx.state !== "running") return;
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
   const t = ctx.currentTime;
 
   // C5→E5→G5→C6
@@ -568,7 +580,7 @@ export function playItemJingle() {
 // ---- 宿ジングル: ちーん（ベル風、ほっこり） ----
 export function playInnJingle() {
   const ctx = getCtx();
-  if (ctx.state !== "running") return;
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
   const t = ctx.currentTime;
 
   // G5 → B5 → D6 → G6（上行アルペジオ、最後をベル長めに保持）
@@ -605,7 +617,7 @@ export function playInnJingle() {
 // ---- 道具使用SE: てれれてってってー（軽快カービィ風） ----
 export function playUseItemSe() {
   const ctx = getCtx();
-  if (ctx.state !== "running") return;
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
   const t = ctx.currentTime;
 
   // て  れ  れ  て  っ  て  っ  てー
@@ -669,7 +681,8 @@ export function startHeartbeat(bpm = 68, volume = 0.35) {
 
   function beat() {
     const actx = getCtx();
-    if (!actx || actx.state !== "running") return;
+    if (!actx) return;
+    if (actx.state === "suspended") actx.resume().catch(() => {});
     const t = actx.currentTime;
     _playThump(actx, t,        62, volume * 1.57, 0.15); // lub
     _playThump(actx, t + 0.18, 68, volume * 1.09, 0.12); // dub
@@ -713,7 +726,7 @@ export function playCrush() {
 // ---- パンチ音: ドカッ / バキッ / ボコッ ----
 export function playPunch(type = 0) {
   const ctx = getCtx();
-  if (ctx.state !== "running") return;
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
   const t = ctx.currentTime;
 
   // ノイズバースト（肉を叩く感）
@@ -754,7 +767,7 @@ export function playPunch(type = 0) {
 // パターンA: ゼルダ風ファンファーレ（E→G#→B→E の上昇、最後はベル余韻）
 export function playQuestJingleA() {
   const ctx = getCtx();
-  if (ctx.state !== "running") return;
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
   const t = ctx.currentTime;
   const notes = [329.63, 415.30, 493.88, 659.26]; // E4 G#4 B4 E5
   const N = 0.11;
@@ -787,7 +800,7 @@ export function playQuestJingleA() {
 // パターンB: 短いきらめき（高音バースト→余韻、コイン取得系）
 export function playQuestJingleB() {
   const ctx = getCtx();
-  if (ctx.state !== "running") return;
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
   const t = ctx.currentTime;
   // 素早い上昇 + 2音ロングトーン
   const quick = [523.25, 659.25, 783.99, 1046.50, 1318.51];
@@ -819,7 +832,7 @@ export function playQuestJingleB() {
 // パターンC: クラシックRPG達成音（ド〜ミ〜ソ〜ドー ゆっくり、最後に和音）
 export function playQuestJingleC() {
   const ctx = getCtx();
-  if (ctx.state !== "running") return;
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
   const t = ctx.currentTime;
   const melody = [
     [261.63, 0.00], // C4
@@ -857,7 +870,7 @@ export function playQuestJingleC() {
 // パターンD: 短いトランペット風ファンファーレ（タタタター）
 export function playQuestJingleD() {
   const ctx = getCtx();
-  if (ctx.state !== "running") return;
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
   const t = ctx.currentTime;
   // タ タ タ ター（付点リズム）
   const pattern = [
@@ -898,7 +911,7 @@ export function playQuestJingleD() {
 // ---- カレー調理音: ぐつぐつ沸騰 + 泡ぽこぽこ ----
 export function playCooking(durationMs = 2400) {
   const ctx = getCtx();
-  if (ctx.state !== "running") return;
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
   const t = ctx.currentTime;
   const dur = durationMs / 1000;
 
@@ -1031,7 +1044,7 @@ function schedLead(t, freq) {
 export function startShootingBgm() {
   stopShootingBgm();
   const ctx = getCtx();
-  if (ctx.state !== "running") return;
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
 
   let nextStepTime = ctx.currentTime + 0.05;
   let stepIdx = 0;
@@ -1111,7 +1124,7 @@ function schedAfloBass(t, freq) {
 export function startAfloClubBgm() {
   stopAfloClubBgm();
   const ctx = getCtx();
-  if (ctx.state !== "running") return;
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
 
   let nextStepTime = ctx.currentTime + 0.05;
   let stepIdx = 0;
