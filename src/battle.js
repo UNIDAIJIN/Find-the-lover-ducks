@@ -1,6 +1,7 @@
 // battle.js
 import { drawBattleScreen } from "./battle_ui.js";
 import { playCursor, playConfirm } from "./se.js";
+import { SPRITES } from "./sprites.js";
 import { STATE } from "./state.js";
 
 export function createBattleSystem(cfg) {
@@ -42,8 +43,7 @@ export function createBattleSystem(cfg) {
     duckLine("フハハ！フハハハ！", { win: true }),
   ];
 
-  const bossImg = new Image();
-  bossImg.src = "assets/battle/boss.png";
+  const bossImg = SPRITES.minami;
 
   // =====================
   // SE (Sound Effects)
@@ -1043,6 +1043,9 @@ export function createBattleSystem(cfg) {
       BASE_W,
       BASE_H,
       bossImg,
+      bossFrameW: 16,
+      bossFrameH: 16,
+      bossScale: 4.55,
       DISPLAY_ORDER,
       ACTION_ORDER,
       itemName,

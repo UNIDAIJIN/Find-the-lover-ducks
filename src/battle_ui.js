@@ -4,6 +4,9 @@ export function drawBattleScreen(ctx, st, opt) {
     BASE_W,
     BASE_H,
     bossImg,
+    bossFrameW = 0,
+    bossFrameH = 0,
+    bossScale = 3,
     DISPLAY_ORDER,
     itemName,
 
@@ -262,9 +265,10 @@ export function drawBattleScreen(ctx, st, opt) {
   const encE = 1 - Math.pow(1 - encT, 3); // easeOut
 
   if (bossImg && bossImg.complete && bossImg.naturalWidth > 0) {
-    const BOSS_SCALE = 3;
-    const bw = (bossImg.naturalWidth  * BOSS_SCALE) | 0;
-    const bh = (bossImg.naturalHeight * BOSS_SCALE) | 0;
+    const sw = bossFrameW > 0 ? bossFrameW : bossImg.naturalWidth;
+    const sh = bossFrameH > 0 ? bossFrameH : bossImg.naturalHeight;
+    const bw = (sw * bossScale) | 0;
+    const bh = (sh * bossScale) | 0;
     const bx = ((BASE_W - bw) / 2) | 0;
     const by = (statY - bh) | 0;
 
@@ -275,11 +279,24 @@ export function drawBattleScreen(ctx, st, opt) {
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
-    ctx.globalAlpha = bossAlpha;
     ctx.translate(cx, cy);
     ctx.scale(zoomScale, zoomScale);
     ctx.translate(-cx, -cy);
-    ctx.drawImage(bossImg, bx, by, bw, bh);
+
+    // 黒背景に沈まないよう、足元にごく薄い受け光を置く
+    ctx.globalAlpha = bossAlpha * 0.11;
+    ctx.fillStyle = "#6a6a72";
+    ctx.fillRect((bx + bw * 0.18) | 0, (by + bh * 0.86) | 0, (bw * 0.64) | 0, Math.max(2, (bh * 0.08) | 0));
+
+    // 目立たない程度の淡いハイライトで輪郭を少しだけ持ち上げる
+    ctx.shadowColor = "rgba(255,255,255,0.18)";
+    ctx.shadowBlur = 6;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 1;
+    ctx.globalAlpha = bossAlpha;
+    ctx.drawImage(bossImg, 0, 0, sw, sh, bx, by, bw, bh);
+    ctx.shadowColor = "transparent";
+    ctx.shadowBlur = 0;
 
     // 赤点滅（フェードと同じアルファを乗算）
     if ((bossFlashUntil | 0) > (now | 0)) {
