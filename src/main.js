@@ -499,6 +499,9 @@ function _poolItem() {
     item.sparkleColor = undefined;
     item.sparklePhase = undefined;
     item.markImg = undefined;
+    item.markSpr = undefined;
+    item.markAnimMs = undefined;
+    item.markMode = undefined;
     item.markFromImg = undefined;
     item.markAnimStart = undefined;
     item.markAnimUntil = undefined;
@@ -516,6 +519,34 @@ function _poolItem() {
 const _cactusShadowOff = { x: 9, y: 1 }; // 毎フレーム生成しない
 const tintCanvas = document.createElement("canvas");
 const tintCtx = tintCanvas.getContext("2d");
+const PIZZA_TARGET_NAMES = ["kori", "yahhy", "keeper"];
+const PIZZA_ITEM_ID = "pizza";
+
+function getPizzaReward(elapsedMs) {
+  const sec = Math.max(0, (elapsedMs / 1000) | 0);
+  if (sec <= 30) return 1500;
+  if (sec <= 60) return 1200;
+  if (sec <= 120) return 1000;
+  if (sec <= 180) return 700;
+  return 400;
+}
+
+function refreshPizzaJobMarkers() {
+  for (const act of actors) {
+    if (act.kind !== "npc") continue;
+    if (!PIZZA_TARGET_NAMES.includes(act.name)) continue;
+    act.markImg = null;
+    act.markSpr = undefined;
+    act.markAnimMs = undefined;
+    act.markMode = undefined;
+  }
+  if (!STATE.flags.pizzaJobActive || STATE.flags.pizzaDelivered) return;
+  const target = STATE.flags.pizzaTargetNpc;
+  const act = actors.find((a) => a.kind === "npc" && a.name === target);
+  if (!act) return;
+  act.markImg = SPRITES.pizza_sign;
+  act.markMode = "pizza_pop";
+}
 
 function talkBoxLeader() {
   return { x: leader.x, y: leader.y, w: SPR, h: SPR };
@@ -567,6 +598,14 @@ function spawnActorsForMap(mapId) {
   if (STATE.achievedQuests.size >= 20) {
     const a = actors.find(a => a.id === "keeper");
     if (a) { a.x = 1613; a.y = 2709; }
+  }
+  refreshPizzaJobMarkers();
+  if (mapId === "outdoor") {
+    const ps = actors.find((a) => a.name === "pizzashop");
+    if (ps) {
+      ps.markImg = SPRITES.pizza_sign;
+      ps.markMode = "pizza_pop";
+    }
   }
 
   const list = PICKUPS_BY_MAP?.[mapId] || [];
@@ -931,6 +970,23 @@ const menu = createMenu({
         dialog.open([
           ["ナツミはウォッカをたべてみた！"],
           ["ウゲー！"],
+        ], null, "sign");
+      }, 700);
+      return true;
+    }
+    if (id === "pizza") {
+      inventory.removeItem("pizza");
+      if (STATE.flags.pizzaJobActive && !STATE.flags.pizzaDelivered) {
+        STATE.flags.pizzaAte = true;
+      }
+      input.lock();
+      setTimeout(() => setBgmOverrideSafe(null), 670);
+      setTimeout(() => {
+        input.unlock();
+        dialog.open([
+          ["激うま！"],
+          ["商品をたべてしまった。"],
+          ["あやまりにいこう。"],
         ], null, "sign");
       }, 700);
       return true;
@@ -1714,6 +1770,7 @@ function loadMap(id, opt = null) {
 
     // クエスト11: チキンカレーのエフェクト中にプールに入る
     if (id === "pool" && goodTrip.isActive()) achieveQuest("11");
+    if (id === "kako") achieveQuest("22");
 
     current.bgW = (def.bgW || bgImg.naturalWidth) | 0;
     current.bgH = (def.bgH || bgImg.naturalHeight) | 0;
@@ -1982,6 +2039,13 @@ function drawEntry(o) {
     const ix = ((o.x - cam.x) | 0) + ((sprSize - 16) >> 1);
     const bob = Math.sin(nowMs() / 180) > 0 ? 1 : 0;
     const iy = ((o.y - cam.y) | 0) - 3 + bob;
+    if (o.markMode === "pizza_pop") {
+      return;
+    }
+    const markSpr = o.markSpr | 0;
+    const markFrame = markSpr > 0 && o.markAnimMs
+      ? (((now / o.markAnimMs) | 0) % Math.max(1, ((o.markImg.naturalWidth / markSpr) | 0)))
+      : 0;
     if (o.markAnimStart && o.markAnimUntil && now < o.markAnimUntil && o.markFromImg?.naturalWidth > 0) {
       const dur = Math.max(1, o.markAnimUntil - o.markAnimStart);
       const p = Math.min(1, Math.max(0, (now - o.markAnimStart) / dur));
@@ -1997,11 +2061,13 @@ function drawEntry(o) {
         ctx.save();
         ctx.translate(ix + 8, iy + 8);
         ctx.scale(s, s);
-        ctx.drawImage(o.markImg, -8, -8, 16, 16);
+        if (markSpr > 0) ctx.drawImage(o.markImg, markFrame * markSpr, 0, markSpr, 16, -8, -8, 16, 16);
+        else ctx.drawImage(o.markImg, -8, -8, 16, 16);
         ctx.restore();
       }
     } else {
-      ctx.drawImage(o.markImg, ix, iy, 16, 16);
+      if (markSpr > 0) ctx.drawImage(o.markImg, markFrame * markSpr, 0, markSpr, 16, ix, iy, 16, 16);
+      else ctx.drawImage(o.markImg, ix, iy, 16, 16);
     }
   }
 
@@ -2022,6 +2088,17 @@ function drawEntry(o) {
     ctx.fillRect(p3x, p3y, 1, 1);
     ctx.restore();
   }
+}
+
+function drawPizzaMarkOverlay(o) {
+  if (o.markMode !== "pizza_pop") return;
+  if (!o.markImg?.complete || o.markImg.naturalWidth <= 0) return;
+  const sprSize = o.spr ?? SPR;
+  const now = nowMs();
+  const ix = ((o.x - cam.x) | 0) + ((sprSize - 16) >> 1);
+  const iy = ((o.y - cam.y) | 0) - 19;
+  const popY = iy - 16 + Math.sin(now / 260) * 1.2;
+  ctx.drawImage(o.markImg, 0, 0, 16, 16, ix, popY, 16, 16);
 }
 
 function draw() {
@@ -2207,6 +2284,9 @@ function draw() {
     ia.sparkleColor = act.sparkleColor;
     ia.sparklePhase = act.sparklePhase;
     ia.markImg = act.markImg;
+    ia.markSpr = act.markSpr;
+    ia.markAnimMs = act.markAnimMs;
+    ia.markMode = act.markMode;
     ia.markFromImg = act.markFromImg;
     ia.markAnimStart = act.markAnimStart;
     ia.markAnimUntil = act.markAnimUntil;
@@ -2228,6 +2308,8 @@ function draw() {
   for (let i = 0; i < groundList.length; i++) drawEntry(groundList[i]);
   drawMapImg(bgMidImg);
   for (let i = 0; i < upperList.length; i++) drawEntry(upperList[i]);
+  for (let i = 0; i < groundList.length; i++) drawPizzaMarkOverlay(groundList[i]);
+  for (let i = 0; i < upperList.length; i++) drawPizzaMarkOverlay(upperList[i]);
 
 // seahole 魚の描画（スプライットの上）
   if (current.id === "seahole") {
@@ -2750,6 +2832,20 @@ function tryInteract(t) {
         activateShootingLobbyDoor(act, t);
         return;
       }
+      if (
+        STATE.flags.pizzaJobActive &&
+        !STATE.flags.pizzaDelivered &&
+        STATE.flags.pizzaTargetNpc === act.name &&
+        PIZZA_TARGET_NAMES.includes(act.name) &&
+        inventory.getSnapshot().includes(PIZZA_ITEM_ID)
+      ) {
+        inventory.removeItem(PIZZA_ITEM_ID);
+        STATE.flags.pizzaDelivered = true;
+        STATE.flags.pizzaDeliveredAtMs = nowMs();
+        refreshPizzaJobMarkers();
+        dialog.open([["ピザを配達した！"]], null, "sign");
+        return;
+      }
       if (act.showWhenBgm && bgmCtl.getOverrideSrc() !== act.showWhenBgm) continue;
       dialog.setVoice(act.voice || "default");
       const handled = runNpcEvent(act, {
@@ -2845,6 +2941,41 @@ function tryInteract(t) {
         getBgmSrc: () => bgmCtl.getOverrideSrc(),
         hasItem: (id) => inventory.getSnapshot().includes(id),
         startTimemachineFx,
+        startPizzaJob: () => {
+          const target = PIZZA_TARGET_NAMES[(Math.random() * PIZZA_TARGET_NAMES.length) | 0];
+          STATE.flags.pizzaJobActive = true;
+          STATE.flags.pizzaTargetNpc = target;
+          STATE.flags.pizzaDelivered = false;
+          STATE.flags.pizzaStartMs = nowMs();
+          STATE.flags.pizzaLastReward = 0;
+          inventory.addItem(PIZZA_ITEM_ID);
+          refreshPizzaJobMarkers();
+          return target;
+        },
+        settlePizzaJob: () => {
+          const reward = getPizzaReward(nowMs() - (STATE.flags.pizzaStartMs | 0));
+          STATE.money += reward;
+          STATE.flags.pizzaLastReward = reward;
+          STATE.flags.pizzaSuccessCount = (STATE.flags.pizzaSuccessCount | 0) + 1;
+          if ((STATE.flags.pizzaSuccessCount | 0) >= 5) achieveQuest("16");
+          delete STATE.flags.pizzaJobActive;
+          delete STATE.flags.pizzaTargetNpc;
+          delete STATE.flags.pizzaDelivered;
+          delete STATE.flags.pizzaStartMs;
+          delete STATE.flags.pizzaDeliveredAtMs;
+          delete STATE.flags.pizzaAte;
+          refreshPizzaJobMarkers();
+          return reward;
+        },
+        cancelPizzaJob: () => {
+          delete STATE.flags.pizzaJobActive;
+          delete STATE.flags.pizzaTargetNpc;
+          delete STATE.flags.pizzaDelivered;
+          delete STATE.flags.pizzaStartMs;
+          delete STATE.flags.pizzaDeliveredAtMs;
+          delete STATE.flags.pizzaAte;
+          refreshPizzaJobMarkers();
+        },
       });
       if (handled) return;
 

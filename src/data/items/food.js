@@ -1,4 +1,5 @@
 export const foodItems = [
+  { id: "pizza", name: "ピザ", bgmSrc: null, throwDmg: 1 },
   { id: "tacos", name: "タコス", bgmSrc: null, throwDmg: 1 },
   { id: "hone",  name: "ほね",   bgmSrc: null, throwDmg: 1 },
   { id: "vodka", name: "ウォッカ", bgmSrc: null, throwDmg: 1 },

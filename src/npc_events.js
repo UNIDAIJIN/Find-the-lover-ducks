@@ -346,6 +346,54 @@ export function runNpcEvent(act, ctx) {
     return true;
   }
 
+  if (ev.type === "pizza_shop") {
+    const { dialog, choice, startPizzaJob, settlePizzaJob, cancelPizzaJob, inventory } = ctx;
+    if (STATE.flags.pizzaJobActive) {
+      if (STATE.flags.pizzaDelivered) {
+        const reward = typeof settlePizzaJob === "function" ? settlePizzaJob() : 1000;
+        const elapsedMs = Math.max(0, (STATE.flags.pizzaDeliveredAtMs | 0) - (STATE.flags.pizzaStartMs | 0));
+        const totalSec = (elapsedMs / 1000) | 0;
+        const mm = ((totalSec / 60) | 0).toString();
+        const ss = (totalSec % 60).toString().padStart(2, "0");
+        playCoin();
+        dialog.open([
+          ["おつかれさま！"],
+          [`${mm}:${ss}！がんばったね！`],
+          ["これお給料ね！"],
+          [`${reward}EN をもらった！`],
+        ]);
+      } else if (STATE.flags.pizzaAte) {
+        if (typeof cancelPizzaJob === "function") cancelPizzaJob();
+        dialog.open([["もー、なにしてんのー、だめだよー、たべちゃ。"]]);
+      } else {
+        if (typeof inventory?.getSnapshot === "function" && !inventory.getSnapshot().includes("pizza")) {
+          inventory.addItem("pizza");
+        }
+        dialog.open([["はやくピザをとどけてきて！"]]);
+      }
+      return true;
+    }
+
+    dialog.open([
+      ["あ、新しいバイトの人？"],
+      ["今いそがしいから、これとどけてきて！"],
+    ], () => {
+      choice.open(["はい", "いいえ"], (idx) => {
+        if (typeof choice.close === "function") choice.close();
+        if (idx !== 0) {
+          dialog.open([["またこんどな。"]]);
+          return;
+        }
+        if (typeof startPizzaJob === "function") startPizzaJob();
+        playConfirm();
+        dialog.open([
+          ["《ピザをわたされた。》"],
+        ], null, "sign");
+      }, "やる？");
+    });
+    return true;
+  }
+
   if (ev.type === "afro_club") {
     const { dialog, achieveQuest } = ctx;
     if (STATE.headwear === "afro") {
@@ -386,8 +434,8 @@ export function runNpcEvent(act, ctx) {
     const { dialog } = ctx;
     if (STATE.headwear === "afro") {
       dialog.open([
-        ["いいねーキミタチ。こっちおいでキミタチ。"],
-        ["さぁ、レヴィ＝ストロースの話でもしようじゃないかキミタチ。"],
+        ["いいねーキミタツィ。こっちおいでキミタツィ。"],
+        ["さぁ、レヴィ＝ストロースの話でもしようじゃないかキミタツィ。"],
       ]);
     } else {
       dialog.open([["フッ。"]], () => {

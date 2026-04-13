@@ -53,6 +53,7 @@ export const SPRITES = {
 
   // other
   board: loadSprite("assets/sprites/board.png"),
+  pizza_sign: loadSprite("assets/sprites/pizza_sign.png"),
   pizzashop: loadSprite("assets/sprites/pizzashop.png"),
   fan: loadSprite("assets/sprites/fan.png"),
   ac_1: loadSprite("assets/sprites/ac_1.png"),

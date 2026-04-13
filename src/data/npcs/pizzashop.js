@@ -4,6 +4,7 @@ export const pizzashopNpc = {
   spriteKey: "pizzashop",
   x: 1603,
   y: 875,
-  talkHit: { x: 0, y: 0, w: 0, h: 0 },
+  talkHit: { x: 0, y: 0, w: 16, h: 16 },
   solid: true,
+  event: { type: "pizza_shop" },
 };
