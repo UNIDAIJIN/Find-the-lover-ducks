@@ -14,7 +14,7 @@ import { createTitle  }     from "./title.js";
 import { createCharSelect } from "./char_select.js";
 import { createLoading }    from "./loading.js";
 import { setupMobileController } from "./mobile_controller.js";
-import { playSuzu, playDoor, playZazza, playHoleFall, playHoleRoll, playConfirm, playClickOn, playTimeMachineShine, playWave, startHeartbeat, stopHeartbeat, playQuestJingleB, playPunch, startShootingBgm, stopShootingBgm, startAfloClubBgm, stopAfloClubBgm, stopJaws, playBattleWinJingle, getAfloClubKickPulseMs, unlockSeAudio } from "./se.js";
+import { playSuzu, playDoor, playZazza, playHoleFall, playHoleRoll, playConfirm, playClickOn, playTimeMachineShine, playWave, startHeartbeat, stopHeartbeat, playQuestJingleB, playPunch, startShootingBgm, stopShootingBgm, startAfloClubBgm, stopAfloClubBgm, stopJaws, playBattleWinJingle, getAfloClubKickPulseMs, unlockSeAudio, startRainLoop, stopRainLoop } from "./se.js";
 import { createMenu } from "./ui_menu.js";
 import { createTripEffect }     from "./trip_effect.js";
 import { createGoodTripEffect } from "./trip_effect_good.js";
@@ -30,7 +30,7 @@ const MOBILE = new URLSearchParams(location.search).has('m');
 const canvas = document.getElementById("c");
 const ctx = canvas.getContext("2d");
 const trip     = createTripEffect();
-const goodTrip = createGoodTripEffect();
+const goodTrip = createGoodTripEffect({ useCssFilter: MOBILE });
 ctx.imageSmoothingEnabled = false;
 
 const { SCALE, SPR, SPEED, FRAME_MS, GAP2, GAP3, GAP4, NPC_FRAME_MS, DOOR_COOLDOWN_MS, MAP_FADE_OUT_MS, MAP_FADE_IN_MS } = CONFIG;
@@ -139,6 +139,88 @@ const SHADOW_W = 130;
 let seaholeCutscene = { active: false, shadowX: BASE_W, charOffsetX: 0 };
 let orcaRide = { active: false, startMs: 0, durationMs: 15000, ending: false };
 let mechaEvolution = { active: false, phase: "idle", startMs: 0, fromImg: null, toImg: null };
+let theaterScene = { active: false, startMs: 0, exitWaitStartMs: 0, phase: "intro", messageShown: false };
+const RAIN_DROP_COUNT = 84;
+const RAIN_DURATION_MS = 60000;
+let rainScene = {
+  active: false,
+  untilMs: 0,
+  questAtMs: 0,
+  questDone: false,
+  drops: Array.from({ length: RAIN_DROP_COUNT }, () => ({ x: 0, y: 0, len: 0, speed: 0 })),
+};
+
+function seedRainDrops() {
+  for (const d of rainScene.drops) {
+    d.x = Math.random() * (BASE_W + 32) - 16;
+    d.y = Math.random() * (BASE_H + 32) - 16;
+    d.len = 7 + Math.random() * 9;
+    d.speed = 3.4 + Math.random() * 2.4;
+  }
+}
+
+function startRainScene(now) {
+  rainScene.active = true;
+  rainScene.untilMs = now + RAIN_DURATION_MS;
+  rainScene.questAtMs = now + 1000;
+  rainScene.questDone = false;
+  seedRainDrops();
+  startRainLoop();
+}
+
+function updateRainScene(now) {
+  if (!rainScene.active) return;
+  if (now >= rainScene.untilMs) {
+    rainScene.active = false;
+    stopRainLoop();
+    return;
+  }
+  if (current.id !== "outdoor") return;
+  if (!rainScene.questDone && now >= rainScene.questAtMs) {
+    rainScene.questDone = true;
+    achieveQuest("24");
+  }
+
+  for (const d of rainScene.drops) {
+    d.y += d.speed;
+    if (d.y > BASE_H + 12) {
+      d.x = Math.random() * (BASE_W + 24) - 12;
+      d.y = -12 - Math.random() * 28;
+      d.len = 7 + Math.random() * 9;
+      d.speed = 3.4 + Math.random() * 2.4;
+    }
+  }
+}
+
+function drawRainScene(tt) {
+  if (!rainScene.active || current.id !== "outdoor") return;
+
+  const remaining = Math.max(0, rainScene.untilMs - tt);
+  const fade = Math.min(1, remaining / 1800);
+  ctx.save();
+  ctx.globalAlpha = 0.14 * fade;
+  ctx.fillStyle = "#102030";
+  ctx.fillRect(0, 0, BASE_W, BASE_H);
+  ctx.restore();
+
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+  ctx.strokeStyle = `rgba(190,220,255,${0.28 * fade})`;
+  ctx.lineWidth = 1;
+  for (const d of rainScene.drops) {
+    ctx.beginPath();
+    ctx.moveTo(d.x | 0, d.y | 0);
+    ctx.lineTo(d.x | 0, (d.y - d.len) | 0);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  ctx.save();
+  ctx.globalAlpha = 0.06 * fade;
+  ctx.fillStyle = "#9fc2ff";
+  ctx.fillRect(0, 0, BASE_W, BASE_H);
+  ctx.restore();
+}
 
 function drawCenteredChar(img, x, y, scale = 4, frame = 0) {
   if (!img?.naturalWidth) return;
@@ -146,6 +228,87 @@ function drawCenteredChar(img, x, y, scale = 4, frame = 0) {
   const w = spr * scale;
   const h = spr * scale;
   ctx.drawImage(img, frame * spr, 0, spr, spr, (x - w / 2) | 0, (y - h / 2) | 0, w | 0, h | 0);
+}
+
+function drawTheaterScene(tt) {
+  ctx.fillStyle = "#000";
+  ctx.fillRect(0, 0, BASE_W, BASE_H);
+
+  const img = SPRITES.movie;
+  if (!img?.naturalWidth) return;
+
+  const elapsed = tt - theaterScene.startMs;
+  const frameDur = 320;
+  const framePhase = (elapsed % frameDur) / frameDur;
+  const frame = ((elapsed / frameDur) | 0) % 2;
+  const nextFrame = (frame + 1) % 2;
+  const fadeIn = Math.min(1, elapsed / 2200);
+  const fadeAlpha = fadeIn * fadeIn * (3 - 2 * fadeIn);
+  const frameW = (img.naturalWidth / 2) | 0;
+  const frameH = img.naturalHeight | 0;
+  const cx = BASE_W * 0.5;
+  const cy = BASE_H * 0.5;
+  const jitterX = Math.sin(tt / 170) * 0.9 + Math.sin(tt / 43) * 0.45;
+  const jitterY = Math.sin(tt / 210 + 0.7) * 0.7 + Math.sin(tt / 57) * 0.35;
+  const x = cx + jitterX;
+  const y = cy + jitterY;
+  const w = BASE_W;
+  const h = Math.round(BASE_W * (frameH / frameW));
+  const trails = 4;
+  const projectorFlicker = 0.9 + Math.sin(tt / 41) * 0.06 + Math.sin(tt / 13) * 0.035;
+
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+  for (let i = trails; i >= 1; i--) {
+    const tx = x - i * 0.7;
+    const alpha = 0.08 * (1 - i / (trails + 1));
+    const trailFrame = (frame + i) % 2;
+    ctx.globalAlpha = alpha;
+    ctx.drawImage(img, trailFrame * frameW, 0, frameW, frameH, (tx - w / 2) | 0, (y - h / 2) | 0, w | 0, h | 0);
+  }
+  ctx.restore();
+
+  const blurMix = Math.max(0, 1 - Math.abs(framePhase - 0.5) / 0.5);
+  const blurAlpha = blurMix * 0.62;
+  const blurOffset = 4 + blurMix * 6;
+
+  ctx.save();
+  ctx.globalAlpha = 0.12 * fadeAlpha;
+  ctx.fillStyle = "#7ee6ff";
+  ctx.fillRect(0, 0, BASE_W, BASE_H);
+  ctx.restore();
+
+  ctx.save();
+  ctx.shadowColor = "rgba(255,255,255,0.28)";
+  ctx.shadowBlur = 26;
+  ctx.globalAlpha = projectorFlicker * fadeAlpha;
+  if (blurAlpha > 0.001) {
+    ctx.globalAlpha = blurAlpha * 0.72 * fadeAlpha;
+    ctx.drawImage(img, nextFrame * frameW, 0, frameW, frameH, (x - w / 2 - blurOffset) | 0, (y - h / 2) | 0, w | 0, h | 0);
+    ctx.drawImage(img, nextFrame * frameW, 0, frameW, frameH, (x - w / 2 + blurOffset) | 0, (y - h / 2) | 0, w | 0, h | 0);
+    ctx.globalAlpha = blurAlpha * 0.48 * fadeAlpha;
+    ctx.drawImage(img, nextFrame * frameW, 0, frameW, frameH, (x - w / 2 - blurOffset * 0.55) | 0, (y - h / 2) | 0, w | 0, h | 0);
+    ctx.drawImage(img, nextFrame * frameW, 0, frameW, frameH, (x - w / 2 + blurOffset * 0.55) | 0, (y - h / 2) | 0, w | 0, h | 0);
+    ctx.globalAlpha = (0.28 + blurAlpha * 0.3) * fadeAlpha;
+    ctx.drawImage(img, frame * frameW, 0, frameW, frameH, (x - w / 2 - 2) | 0, (y - h / 2) | 0, w | 0, h | 0);
+    ctx.drawImage(img, frame * frameW, 0, frameW, frameH, (x - w / 2 + 2) | 0, (y - h / 2) | 0, w | 0, h | 0);
+  }
+  ctx.globalAlpha = (1 - blurAlpha * 0.4) * projectorFlicker * fadeAlpha;
+  ctx.drawImage(img, frame * frameW, 0, frameW, frameH, (x - w / 2) | 0, (y - h / 2) | 0, w | 0, h | 0);
+  ctx.restore();
+
+  ctx.save();
+  for (let i = 0; i < 20; i++) {
+    const n = Math.sin(tt * 0.021 + i * 17.13);
+    const px = ((n * 0.5 + 0.5) * BASE_W) | 0;
+    const py = (((Math.sin(tt * 0.017 + i * 9.7) * 0.5 + 0.5) * BASE_H)) | 0;
+    const a = 0.025 + ((i % 3) * 0.01);
+    ctx.globalAlpha = a * fadeAlpha;
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(px, py, 1, 1);
+  }
+  ctx.restore();
+
 }
 
 function startMechaEvolutionScene() {
@@ -308,6 +471,7 @@ let shootingKnockback = null;
 // ---- ベンチ・噴水トリガー ----
 const BENCH_TRIGGER    = { x: 402,  y: 2443, w: 40, h: 32 }; // 教会ベンチ (422,2459)
 const FOUNTAIN_TRIGGER = { x: 1972, y: 1447, w: 160, h: 64 }; // 噴水 (2052,1479)
+const SHOVEL_DIG_TRIGGER = { x: 1952, y: 2190, w: 16, h: 16 }; // around 1960,2198
 const TIMEMACHINE_TALK_TRIGGER = { x: 2641, y: 121, w: 3, h: 5 };
 const TIMEMACHINE_WAIT_TRIGGER_A = { x: 2616, y: 116, w: 24, h: 12 };
 const TIMEMACHINE_WAIT_TRIGGER_B = { x: 2645, y: 116, w: 24, h: 12 };
@@ -316,7 +480,7 @@ let fountainEnterMs = 0;
 let timeMachineEnterMsA = 0;
 let timeMachineEnterMsB = 0;
 let heightLevel = "ground"; // "ground" | "upper"
-let exclamations = []; // { x, y, startMs, duration }
+let exclamations = []; // { sx, sy, startMs, duration, char?, color? }
 let chinanagoActivated = false;
 let cactusActivated    = false;
 const SHRINE_WHITE_SPEED = 1 / 8; // ~8フレームでフェードイン/アウト
@@ -914,6 +1078,104 @@ const menu = createMenu({
   },
   toast,
   onUseItem: (id) => {
+    if (id === "pickaxe") {
+      const f = footBox(leader.x, leader.y);
+      const fx = (f.x + (f.w >> 1)) | 0;
+      const fy = (f.y + (f.h >> 1)) | 0;
+      const canDigTreasure =
+        current.id === "outdoor" &&
+        !STATE.flags.treasureDug &&
+        STATE.flags.shovelHitHard &&
+        fx >= SHOVEL_DIG_TRIGGER.x &&
+        fx < SHOVEL_DIG_TRIGGER.x + SHOVEL_DIG_TRIGGER.w &&
+        fy >= SHOVEL_DIG_TRIGGER.y &&
+        fy < SHOVEL_DIG_TRIGGER.y + SHOVEL_DIG_TRIGGER.h;
+      input.lock();
+      setTimeout(() => setBgmOverrideSafe(null), 670);
+      setTimeout(() => {
+        input.unlock();
+        if (canDigTreasure) {
+          STATE.flags.treasureDug = true;
+          dialog.open([
+            ["あしもとを掘った。"],
+            ["ガキン。"],
+          ], () => {
+            exclamations.push({
+              sx: ((leader.x + 8) - cam.x) | 0,
+              sy: (leader.y - cam.y) | 0,
+              startMs: nowMs(),
+              duration: 2000,
+              char: "!",
+              color: "#e00",
+              opaque: true,
+            });
+            input.lock();
+            setTimeout(() => {
+              input.unlock();
+              STATE.money = Math.min(STATE.money + 999999, 999999);
+              dialog.open([
+                ["埋蔵金だ！"],
+                ["なんと埋蔵金を見つけた！"],
+                ["999999ENを手に入れた。"],
+              ], null, "sign");
+            }, 2000);
+          }, "sign");
+          return;
+        }
+        dialog.open([
+          ["あしもとを掘った。"],
+          ["ガキン。"],
+        ], null, "sign");
+      }, 700);
+      return true;
+    }
+    if (id === "shovel") {
+      const f = footBox(leader.x, leader.y);
+      const fx = (f.x + (f.w >> 1)) | 0;
+      const fy = (f.y + (f.h >> 1)) | 0;
+      const inDigSpot =
+        current.id === "outdoor" &&
+        !STATE.flags.treasureDug &&
+        fx >= SHOVEL_DIG_TRIGGER.x &&
+        fx < SHOVEL_DIG_TRIGGER.x + SHOVEL_DIG_TRIGGER.w &&
+        fy >= SHOVEL_DIG_TRIGGER.y &&
+        fy < SHOVEL_DIG_TRIGGER.y + SHOVEL_DIG_TRIGGER.h;
+      input.lock();
+      setTimeout(() => setBgmOverrideSafe(null), 670);
+      setTimeout(() => {
+        input.unlock();
+        if (inDigSpot) {
+          STATE.flags.shovelHitHard = true;
+          dialog.open([
+            ["あしもとを掘った。"],
+            ["ザクり。"],
+          ], () => {
+            exclamations.push({
+              sx: ((leader.x + 8) - cam.x) | 0,
+              sy: (leader.y - cam.y) | 0,
+              startMs: nowMs(),
+              duration: 2000,
+              char: "?",
+              color: "#fff",
+              opaque: true,
+            });
+            input.lock();
+            setTimeout(() => {
+              input.unlock();
+              dialog.open([
+                ["なにか硬いものにあたってこれ以上掘れない。"],
+              ], null, "sign");
+            }, 2000);
+          }, "sign");
+          return;
+        }
+        dialog.open([
+          ["あしもとを掘った。"],
+          ["ザクり。"],
+        ], null, "sign");
+      }, 700);
+      return true;
+    }
     if (id === "gunter") {
       inventory.removeItem("gunter");
       input.lock();
@@ -1270,9 +1532,10 @@ function clearFlags() {
 function resetProgress() {
   collectedItems.clear();
   clearFlags();
-  STATE.money    = 0;
+  STATE.money    = DEBUG ? 10000 : 0;
   STATE.headwear = null;
   STATE.achievedQuests.clear();
+  resetHeightState();
 }
 
 function isSceneActive() {
@@ -1482,7 +1745,7 @@ function npcFootBox(act) {
     const rawH = Math.max(1, (act.hitH ?? 8) | 0);
     const w = Math.max(1, rawW - 2);
     const ox = (((spr - rawW) / 2 + 1) | 0) + (act.hitOx | 0);
-    const oy = Math.max(0, sprH - rawH);
+    const oy = Math.max(0, sprH - rawH) + (act.hitOy | 0);
     return { x: act.x + ox, y: act.y + oy, w, h: rawH };
   }
   const mx = (spr * 0.2) | 0;
@@ -1599,6 +1862,18 @@ function doorCheck(t) {
 // ---- Shrine trigger check ----
 const charHeight = { leader: "ground", p2: "ground", p3: "ground", p4: "ground" };
 const stairZonePrev = { leader: false, p2: false, p3: false, p4: false };
+
+function resetHeightState() {
+  charHeight.leader = "ground";
+  charHeight.p2 = "ground";
+  charHeight.p3 = "ground";
+  charHeight.p4 = "ground";
+  heightLevel = "ground";
+  stairZonePrev.leader = false;
+  stairZonePrev.p2 = false;
+  stairZonePrev.p3 = false;
+  stairZonePrev.p4 = false;
+}
 
 function checkStairForChar(name, cx, cy) {
   const f  = footBox(cx, cy);
@@ -1736,6 +2011,7 @@ function loadMap(id, opt = null) {
   current.id = id;
   afloBlackout = { active: false, phase: "idle", phaseStart: 0 };
   timeMachineFx = { active: false, start: 0, until: 0, onDone: null };
+  theaterScene = { active: id === "theater", startMs: 0, exitWaitStartMs: 0, phase: "intro", messageShown: false };
   timeMachineEnterMsA = 0;
   timeMachineEnterMsB = 0;
   ignoredDoorId = opt?.doorId ?? null;
@@ -1755,6 +2031,11 @@ function loadMap(id, opt = null) {
   if (id === "outdoor") {
     delete STATE.flags.carefulActive;
     delete STATE.flags.ac1Gone;
+  }
+  if (!(prevMapId === "theater" && id === "outdoor" && opt?.doorId === 34)) {
+    rainScene.active = false;
+    rainScene.questDone = false;
+    stopRainLoop();
   }
 
   menu.close();
@@ -1848,6 +2129,14 @@ function loadMap(id, opt = null) {
       bgmCtl.setOverride("about:blank");
       stopShootingBgm();
       startAfloClubBgm();
+    } else if (current.id === "theater") {
+      bgmCtl.setOverride("assets/audio/bgm_movie.mp3");
+      stopShootingBgm();
+      stopAfloClubBgm();
+    } else if (prevMapId === "theater") {
+      bgmCtl.setOverride(null);
+      stopShootingBgm();
+      stopAfloClubBgm();
     } else {
       stopShootingBgm();
       stopAfloClubBgm();
@@ -1863,6 +2152,30 @@ function loadMap(id, opt = null) {
     cactusActivated    = false;
     followers.reset({ leader, p2, p3, p4 });
     updateCam();
+    if (current.id === "theater") {
+      theaterScene.startMs = nowMs();
+      theaterScene.exitWaitStartMs = 0;
+      theaterScene.phase = "intro";
+      theaterScene.messageShown = false;
+    }
+    if (prevMapId === "theater" && current.id === "outdoor" && opt?.doorId === 34) {
+      startRainScene(nowMs());
+      actors.push({
+        kind: "npc",
+        name: "misaki",
+        x: 2498,
+        y: 1383,
+        img: SPRITES.misaki,
+        spr: 16,
+        sprH: 16,
+        frame: 0,
+        last: 0,
+        talkHit: { x: 0, y: 0, w: 16, h: 14 },
+        talkPages: [["映画館から出て雨が降ってると、なんかちょっとした気持ちになるよねぇ。"]],
+        solid: true,
+        animMs: Infinity,
+      });
+    }
     mapReady = true;
     if (typeof opt?.onReady === "function") opt.onReady();
   }
@@ -2096,7 +2409,7 @@ function drawPizzaMarkOverlay(o) {
   const sprSize = o.spr ?? SPR;
   const now = nowMs();
   const ix = ((o.x - cam.x) | 0) + ((sprSize - 16) >> 1);
-  const iy = ((o.y - cam.y) | 0) - 19;
+  const iy = ((o.y - cam.y) | 0) - 3;
   const popY = iy - 16 + Math.sin(now / 260) * 1.2;
   ctx.drawImage(o.markImg, 0, 0, 16, 16, ix, popY, 16, 16);
 }
@@ -2200,6 +2513,22 @@ function draw() {
     sea.draw(seaSparkleCtx, tt, cam, seaSparkleCanvas.width, seaSparkleCanvas.height);
   }
   if (shouldDrawSea) ctx.drawImage(seaSparkleCanvas, 0, 0);
+
+  if (current.id === "theater") {
+    drawTheaterScene(tt);
+    menu.draw(ctx);
+    letterbox.draw(ctx, tt);
+    dialog.draw(ctx);
+    choice.draw(ctx);
+    shop.draw(ctx);
+    jumprope.draw(ctx);
+    inventory.draw(ctx);
+    toast.draw(ctx, tt);
+    questAlert.update(); drainQuestQueue();
+    questAlert.draw(ctx);
+    fade.draw(ctx);
+    return;
+  }
 
   // ベースレイヤー：shrine完全移行後はbgImgを省略して描画コスト削減
   if (current.id === "shooting_lobby") {
@@ -2310,6 +2639,7 @@ function draw() {
   for (let i = 0; i < upperList.length; i++) drawEntry(upperList[i]);
   for (let i = 0; i < groundList.length; i++) drawPizzaMarkOverlay(groundList[i]);
   for (let i = 0; i < upperList.length; i++) drawPizzaMarkOverlay(upperList[i]);
+  drawRainScene(tt);
 
 // seahole 魚の描画（スプライットの上）
   if (current.id === "seahole") {
@@ -2486,10 +2816,14 @@ function draw() {
     ctx.restore();
   }
 
-  // セピアフィルター（letterbox 連動）
-  canvas.style.filter = letterbox.isActive()
-    ? `sepia(${letterbox.getSepiaAmount().toFixed(3)})`
-    : "";
+  // セピアフィルター（letterbox 連動）+ グッドトリップ色味
+  {
+    const parts = [];
+    if (letterbox.isActive()) parts.push(`sepia(${letterbox.getSepiaAmount().toFixed(3)})`);
+    const gtf = goodTrip.getCssFilter?.();
+    if (gtf) parts.push(gtf);
+    canvas.style.filter = parts.join(" ");
+  }
 
   // びっくりマーク
   if (exclamations.length > 0) {
@@ -2501,16 +2835,16 @@ function draw() {
       let scale = 1;
       if (elapsed < 150) scale = (elapsed / 150) * 1.2;
       else if (elapsed < 220) scale = 1.2 - (elapsed - 150) / 70 * 0.2;
-      const alpha = p > 0.8 ? 1 - (p - 0.8) / 0.2 : 1;
+      const alpha = e.opaque ? 1 : (p > 0.8 ? 1 - (p - 0.8) / 0.2 : 1);
       ctx.save();
       ctx.globalAlpha = alpha;
       ctx.translate(e.sx, e.sy - 10);
       ctx.scale(scale, scale);
-      ctx.fillStyle = "#e00";
+      ctx.fillStyle = e.color || "#e00";
       ctx.font = "bold 12px PixelMplus10";
       ctx.textAlign = "center";
       ctx.textBaseline = "bottom";
-      ctx.fillText("!", 0, 0);
+      ctx.fillText(e.char || "!", 0, 0);
       ctx.restore();
     }
   }
@@ -2710,6 +3044,18 @@ function draw() {
         ctx.fillRect(tr.x - cam.x, tr.y - cam.y, tr.w, tr.h);
         ctx.fillStyle = "#fff";
         ctx.fillText(label, tr.x - cam.x, tr.y - cam.y - 1);
+      }
+      {
+        const tr = SHOVEL_DIG_TRIGGER;
+        const dug = STATE.flags.treasureDug;
+        const color = dug ? "120,120,120" : "220,160,60";
+        ctx.strokeStyle = `rgba(${color},0.9)`;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(tr.x - cam.x, tr.y - cam.y, tr.w, tr.h);
+        ctx.fillStyle = `rgba(${color},0.25)`;
+        ctx.fillRect(tr.x - cam.x, tr.y - cam.y, tr.w, tr.h);
+        ctx.fillStyle = "#fff";
+        ctx.fillText(dug ? "dig(done)" : "dig", tr.x - cam.x, tr.y - cam.y - 1);
       }
     }
 
@@ -2930,6 +3276,8 @@ function tryInteract(t) {
               sy: (m.y - cam.y) | 0,
               startMs: now,
               duration: 1200,
+              char: "!",
+              color: "#e00",
             });
           }
         },
@@ -3324,6 +3672,39 @@ function update(t) {
     leader.frame = 0;
     p2.frame = p3.frame = p4.frame = 0;
     for (const act of actors) act.frame = 0;
+    updateCam();
+    return;
+  }
+
+  if (current.id === "theater") {
+    input.consume("x");
+    input.consume("s");
+    input.consume("l");
+    input.consume("v");
+    input.consume("b");
+    input.consume("d");
+    input.consume("ArrowUp");
+    input.consume("ArrowDown");
+    input.consume("ArrowLeft");
+    input.consume("ArrowRight");
+    leader.frame = 0;
+    p2.frame = p3.frame = p4.frame = 0;
+    for (const act of actors) act.frame = 0;
+    if (theaterScene.phase === "intro" && !theaterScene.messageShown && t - theaterScene.startMs >= 5000) {
+      theaterScene.messageShown = true;
+      dialog.open([
+        ["白黒の映画だ。"],
+        ["女が砂糖をたべる映像が30分くらい続いている。"],
+      ], () => {
+        theaterScene.phase = "await_exit";
+        theaterScene.exitWaitStartMs = nowMs();
+      }, "sign");
+      updateCam();
+      return;
+    }
+    if (theaterScene.phase === "await_exit" && t - theaterScene.exitWaitStartMs >= 5000 && input.consume("z")) {
+      fade.startMapFade("outdoor", { doorId: 34 }, t, loadMap);
+    }
     updateCam();
     return;
   }
@@ -3879,6 +4260,8 @@ function update(t) {
       }
     }
   }
+
+  updateRainScene(t);
 
   doorCheck(t);
   holeCheck(t);

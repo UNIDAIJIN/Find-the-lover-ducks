@@ -8,6 +8,14 @@ export function createBgm({
   bgm.loop = true;
   bgm.volume = volume;
   bgm.preload = "none";
+  const sourceVolumeScale = {
+    "assets/audio/bgm_movie.mp3": 1.8,
+  };
+
+  function applyVolumeForSrc(src) {
+    const scale = sourceVolumeScale[src] ?? 1;
+    bgm.volume = Math.min(1, volume * scale);
+  }
 
   let unlocked = false;
 
@@ -24,6 +32,8 @@ export function createBgm({
 
   function apply(src) {
     if (!src) return;
+
+    applyVolumeForSrc(src);
 
     // ユーザー操作前はダウンロードしない（遅延ロード）
     if (!unlocked) return;

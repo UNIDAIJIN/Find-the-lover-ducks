@@ -27,6 +27,7 @@ import { balloondogNpc }    from "./data/npcs/balloondog.js";
 import { balloonNpc }       from "./data/npcs/balloon.js";
 import { workmangirlNpc }  from "./data/npcs/workmangirl.js";
 import { workmanNpc }      from "./data/npcs/workman.js";
+import { diggyNpc }        from "./data/npcs/diggy.js";
 import { yahhyNpc }        from "./data/npcs/yahhy.js";
 import { yashiNpc }        from "./data/npcs/yashi.js";
 import { moriGirlNpc }    from "./data/npcs/mori_girl.js";
@@ -92,10 +93,10 @@ export const NPCS_BY_MAP = {
     resolve({ ...yashiNpc, name: "yashi_4", x: 1939, y: 2054 }),
     resolve({ ...yashiNpc, name: "yashi_5", x: 1965, y: 2030 }),
     resolve({ ...yashiNpc, name: "yashi_6", x: 1992, y: 2007 }),
-    resolve({ ...yashiNpc, name: "yashi_7", x: 2179, y: 1005, solid: false }),
-    resolve({ ...yashiNpc, name: "yashi_8", x: 1873, y: 674, solid: false }),
-    resolve({ ...yashiNpc, name: "yashi3_1", spriteKey: "yashi3", x: 2100, y: 542, solid: false }),
-    resolve({ ...yashiNpc, name: "yashi3_2", spriteKey: "yashi3", x: 2406, y: 874, solid: false }),
+    resolve({ ...yashiNpc, name: "yashi_7", x: 2179, y: 1005, hitOy: 5 }),
+    resolve({ ...yashiNpc, name: "yashi_8", x: 1873, y: 674, hitOy: 5 }),
+    resolve({ ...yashiNpc, name: "yashi3_1", spriteKey: "yashi3", x: 2100, y: 542, hitOy: 5 }),
+    resolve({ ...yashiNpc, name: "yashi3_2", spriteKey: "yashi3", x: 2406, y: 874, hitOy: 5 }),
     resolve(fanNpc),
     resolve({ ...fanNpc, name: "fan_2", x: 2299, y: 1133 }),
     resolve(koriNpc),
@@ -115,6 +116,10 @@ export const NPCS_BY_MAP = {
   workmen: [
     resolve(workmangirlNpc),
     resolve(workmanNpc),
+  ],
+
+  digitmore: [
+    resolve(diggyNpc),
   ],
 
   vj_room01: [

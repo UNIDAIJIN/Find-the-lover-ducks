@@ -1,9 +1,10 @@
 // trip_effect_good.js — グッドトリップ視覚エフェクト（チキンカレー）
-export function createGoodTripEffect() {
+export function createGoodTripEffect({ useCssFilter = false } = {}) {
   let active  = false;
   let startMs = 0;
   let _onEnd  = null;
   let _eased  = 0;
+  let _cssFilter = "";
   let tmp     = null;
 
   // スパークル用の固定乱数列（初期化時に確定）
@@ -30,12 +31,13 @@ export function createGoodTripEffect() {
     _onEnd  = onEnd || null;
   }
 
-  function stop()         { active = false; _eased = 0; }
+  function stop()         { active = false; _eased = 0; _cssFilter = ""; }
   function isActive()     { return active; }
   function getIntensity() { return _eased; }
+  function getCssFilter() { return _cssFilter; }
 
   function applyFX(ctx, canvas, nowMs) {
-    if (!active) return;
+    if (!active) { _cssFilter = ""; return; }
     const elapsed = (nowMs - startMs) / 1000;
     const W = canvas.width;
     const H = canvas.height;
@@ -45,6 +47,7 @@ export function createGoodTripEffect() {
 
     if (elapsed >= TOTAL_SEC) {
       active = false;
+      _cssFilter = "";
       if (_onEnd) { _onEnd(); _onEnd = null; }
       return;
     }
@@ -63,10 +66,16 @@ export function createGoodTripEffect() {
     const scale    = 1 + breathe;
     const brightness = 1 + 0.35 * eased;
     const contrast   = 1 + 0.25 * eased;
+    const saturate   = 1 + 1.2 * eased;
+    const filterStr = `brightness(${brightness.toFixed(2)}) contrast(${contrast.toFixed(2)}) saturate(${saturate.toFixed(2)})`;
     ctx.clearRect(0, 0, W, H);
     ctx.save();
-    const saturate   = 1 + 1.2 * eased;
-    ctx.filter = `brightness(${brightness.toFixed(2)}) contrast(${contrast.toFixed(2)}) saturate(${saturate.toFixed(2)})`;
+    if (useCssFilter) {
+      _cssFilter = filterStr;
+    } else {
+      _cssFilter = "";
+      ctx.filter = filterStr;
+    }
     ctx.translate(W / 2, H / 2);
     ctx.scale(scale, scale);
     ctx.translate(-W / 2, -H / 2);
@@ -88,5 +97,5 @@ export function createGoodTripEffect() {
     ctx.globalAlpha = 1;
   }
 
-  return { start, stop, isActive, getIntensity, applyFX };
+  return { start, stop, isActive, getIntensity, applyFX, getCssFilter };
 }

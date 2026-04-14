@@ -44,6 +44,7 @@ export const SPRITES = {
   shaman: loadSprite("assets/sprites/Shaman.png"),
   ponydeadyouth: loadSprite("assets/sprites/ponydeadyouth.png"),
   hisaro:       loadSprite("assets/sprites/hisaro.png"),
+  diggy:        loadSprite("assets/sprites/diggy.png"),
   workmangirl:  loadSprite("assets/sprites/workmangirl.png"),
   workman:      loadSprite("assets/sprites/workman.png"),
 
@@ -66,6 +67,7 @@ export const SPRITES = {
   fan_flower: loadSprite("assets/sprites/fan_flower.png"),
   kori: loadSprite("assets/sprites/kori.png"),
   cat1: loadSprite("assets/sprites/cat_g.png"),
+  misaki: loadSprite("assets/sprites/misaki.png"),
   seats: loadSprite("assets/sprites/seats.png"),
 
   // hole マップ
@@ -112,6 +114,7 @@ export const SPRITES = {
   balloondog:      loadSprite("assets/sprites/balloondog.png"),
   balloondog_half: loadSprite("assets/sprites/balloondog_half.png"),
   balloon:         loadSprite("assets/sprites/balloon.png"),
+  movie:           loadSprite("assets/sprites/movie.png"),
   moon:            loadSprite("assets/sprites/moon.png"),
   chinanago_off:  loadSprite("assets/sprites/chinanago_off.png"),
   chinanago_half: loadSprite("assets/sprites/chinanago_half.png"),

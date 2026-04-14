@@ -37,6 +37,7 @@ import { umiHouse3Map }       from "./data/maps/umi_house3.js";
 import { dHoleMap }           from "./data/maps/d_hole.js";
 import { inugoyaMap }         from "./data/maps/inugoya.js";
 import { shootingLobbyMap }   from "./data/maps/shooting_lobby.js";
+import { digitmoreMap }       from "./data/maps/digitmore.js";
 
 // ---- util: ダミー画像（1px） ----
 const BLACK_1PX =
@@ -87,6 +88,16 @@ export const MAPS = {
   vj_room01: vjRoom01Map,
   vj_room02: vjRoom02Map,
   shooting_lobby: shootingLobbyMap,
+  digitmore: digitmoreMap,
+  theater: {
+    bgSrc: BLACK_1PX,
+    colSrc: CLEAR_1PX,
+    bgmSrc: null,
+    bgW: 1280,
+    bgH: 720,
+    spawn: { x: 640, y: 360 },
+    doors: [],
+  },
   orca_ride: {
     bgSrc: BLACK_1PX,
     colSrc: CLEAR_1PX,

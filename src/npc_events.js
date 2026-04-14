@@ -540,23 +540,37 @@ export function runNpcEvent(act, ctx) {
   }
 
   if (ev.type === "yahhy_jumprope") {
-    const { dialog, jumprope, achieveQuest } = ctx;
-    const greeting = ev.greeting || [["なわとびしようよ！"]];
-    dialog.open(greeting, () => {
-      jumprope.start((count) => {
-        if (count >= 100 && typeof achieveQuest === "function") achieveQuest("17");
-        let reward = 0;
-        if      (count >= 50) reward = 2000;
-        else if (count >= 20) reward =  500;
-        else if (count >= 10) reward =  200;
-        else if (count >=  3) reward =   50;
-        STATE.money = Math.min(STATE.money + reward, 999999);
-        const msg = reward > 0
-          ? `${count}かい！  ${reward}EN もらった！`
-          : count > 0 ? `${count}かい。` : `…。`;
-        dialog.open([[msg]], null, "sign");
-      });
-    });
+    const { dialog, jumprope, achieveQuest, choice } = ctx;
+    const startJumprope = () => {
+      choice.open(["はい", "いいえ"], (sel) => {
+        if (sel !== 0) {
+          dialog.open([["いってらっしゃい！"]], null, "sign");
+          return;
+        }
+        jumprope.start((count) => {
+          if (count >= 100 && typeof achieveQuest === "function") achieveQuest("17");
+          let reward = 0;
+          if      (count >= 50) reward = 2000;
+          else if (count >= 20) reward =  500;
+          else if (count >= 10) reward =  200;
+          else if (count >=  3) reward =   50;
+          STATE.money = Math.min(STATE.money + reward, 999999);
+          const msg = reward > 0
+            ? `${count}かい！  ${reward}EN もらった！`
+            : count > 0 ? `${count}かい。` : `…。`;
+          dialog.open([[msg]], null, "sign");
+        });
+      }, "なわとびしていく？");
+    };
+
+    if (!STATE.flags.yahhyJumpropeExplained) {
+      STATE.flags.yahhyJumpropeExplained = true;
+      dialog.open([
+        ["なんか神社の木にまいてあったツナで縄跳びをするとお金が出てきたんだけど、"],
+      ], startJumprope);
+    } else {
+      startJumprope();
+    }
     return true;
   }
 

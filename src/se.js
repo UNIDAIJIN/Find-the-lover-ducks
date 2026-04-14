@@ -2,7 +2,12 @@
 const SE_PATH = "assets/audio/se/";
 
 let _ctx = null;
+let _unlocked = false;
 const _buffers = {};
+let _rainNoise = null;
+let _rainGain = null;
+let _rainHp = null;
+let _rainLp = null;
 
 function getCtx() {
   if (!_ctx) {
@@ -12,19 +17,75 @@ function getCtx() {
   return _ctx;
 }
 
+function primeUnlock(ctx) {
+  try {
+    const buf = ctx.createBuffer(1, 1, 22050);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(ctx.destination);
+    src.start(0);
+  } catch (_) {}
+}
+
+function gestureUnlock() {
+  const ctx = getCtx();
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
+  if (!_unlocked) {
+    primeUnlock(ctx);
+    _unlocked = true;
+  }
+}
+
 // ユーザー操作で AudioContext を resume（suspended 状態から解除）
-["pointerdown", "keydown", "touchstart"].forEach((ev) => {
-  window.addEventListener(ev, () => {
-    if (_ctx && _ctx.state === "suspended") _ctx.resume().catch(() => {});
-  });
+["pointerdown", "keydown", "touchstart", "touchend", "click"].forEach((ev) => {
+  window.addEventListener(ev, gestureUnlock, { passive: true });
 });
 
 export function unlockSeAudio() {
-  if (_ctx) {
-    if (_ctx.state === "suspended") _ctx.resume().catch(() => {});
-    return;
-  }
-  getCtx();
+  gestureUnlock();
+}
+
+function ensureRainLoop() {
+  const ctx = getCtx();
+  if (_rainNoise && _rainGain && _rainHp && _rainLp) return ctx;
+
+  const len = ctx.sampleRate * 2;
+  const noiseBuf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const data = noiseBuf.getChannelData(0);
+  for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * 0.75;
+
+  _rainNoise = ctx.createBufferSource();
+  _rainNoise.buffer = noiseBuf;
+  _rainNoise.loop = true;
+
+  _rainHp = ctx.createBiquadFilter();
+  _rainHp.type = "highpass";
+  _rainHp.frequency.value = 900;
+
+  _rainLp = ctx.createBiquadFilter();
+  _rainLp.type = "lowpass";
+  _rainLp.frequency.value = 5200;
+
+  _rainGain = ctx.createGain();
+  _rainGain.gain.value = 0.0001;
+
+  _rainNoise.connect(_rainHp);
+  _rainHp.connect(_rainLp);
+  _rainLp.connect(_rainGain);
+  _rainGain.connect(ctx.destination);
+  _rainNoise.start();
+  return ctx;
+}
+
+export function startRainLoop() {
+  const ctx = ensureRainLoop();
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
+  _rainGain.gain.setTargetAtTime(0.045, ctx.currentTime, 0.45);
+}
+
+export function stopRainLoop() {
+  if (!_rainGain || !_ctx) return;
+  _rainGain.gain.setTargetAtTime(0.0001, _ctx.currentTime, 0.6);
 }
 
 async function loadBuffer(name) {

@@ -148,9 +148,9 @@ export function createShop({ BASE_W, BASE_H, input } = {}) {
     ctx.fillStyle = "#fff";
     ctx.fillRect(r.x + 2, r.y + 2, r.w - 4, TITLE_H);
     ctx.fillStyle = "#000";
-    ctx.textAlign = "center";
-    ctx.fillText(shopName, r.x + r.w / 2, r.y + 4);
-    ctx.textAlign = "left";
+    const titleW = ctx.measureText(shopName).width;
+    const titleX = (r.x + (r.w - titleW) / 2) | 0;
+    ctx.fillText(shopName, titleX, r.y + 4);
 
     // アイテムリスト（スクロール対応）
     const listY  = r.y + TITLE_H + PAD;

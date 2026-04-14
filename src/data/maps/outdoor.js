@@ -72,6 +72,13 @@ export const outdoorMap = {
       entryWalk: { dx: 0, dy: 1, frames: 20 },
     },
     {
+      id:        36,
+      to:        "digitmore",
+      trigger:   { x: 1703, y: 753, w: 16, h: 8 },
+      entryAt:   { x: 1703, y: 745 },
+      entryWalk: { dx: 0, dy: 1, frames: 20 },
+    },
+    {
       id:        11,
       to:        "stair2",
       trigger:   { x: 2257, y: 660, w: 16, h: 8 },
@@ -230,6 +237,13 @@ export const outdoorMap = {
       to:        "inugoya",
       trigger:   { x: 2449, y: 1124, w: 16, h: 8 },
       entryAt:   { x: 2449, y: 1116 },
+      entryWalk: { dx: 0, dy: 1, frames: 20 },
+    },
+    {
+      id:        34,
+      to:        "theater",
+      trigger:   { x: 2512, y: 1323, w: 16, h: 8 },
+      entryAt:   { x: 2512, y: 1315 },
       entryWalk: { dx: 0, dy: 1, frames: 20 },
     },
   ],
