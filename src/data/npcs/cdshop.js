@@ -4,8 +4,7 @@ export const cdshopNpc = {
   spriteKey: "cdshop",
   x: 89,
   y: 122,
-  talkHit: { x: 0, y: 0, w: 16, h: 16 },
+  talkHit: { x: 0, y: 0, w: 16, h: 19 },
   solid: true,
-  talkType: "sign",
-  talkPages: [[""]],
+  event: { type: "cdshop_rental" },
 };

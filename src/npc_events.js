@@ -570,6 +570,81 @@ export function runNpcEvent(act, ctx) {
     return true;
   }
 
+  if (ev.type === "cdshop_rental") {
+    const { dialog, shop, achieveQuest } = ctx;
+
+    if (STATE.flags.cdshopRentalPaid) {
+      const SONGS = [
+        { id: "cd_song_01", name: "にじいろのまち",              file: "bgm0.mp3"        },
+        { id: "cd_song_02", name: "バニラアイスはお好き？",       file: "bgm_select.mp3"  },
+        { id: "cd_song_03", name: "アスファルトの夢",            file: "duckA.mp3"       },
+        { id: "cd_song_04", name: "あのことリコーダー",          file: "duckB.mp3"       },
+        { id: "cd_song_05", name: "冒険の書を捨てよ",            file: "duckC.mp3"       },
+        { id: "cd_song_06", name: "fromギャル部屋ラヂオ",        file: "duckD.mp3"       },
+        { id: "cd_song_07", name: "落下点",                       file: "duckE.mp3"       },
+        { id: "cd_song_08", name: "オルカライド！",              file: "duckF.mp3"       },
+        { id: "cd_song_09", name: "バッドトリップ",              file: "duckG-bad.mp3"   },
+        { id: "cd_song_10", name: "グッドトリップ",              file: "duckG-good.mp3"  },
+        { id: "cd_song_11", name: "のんびりのんびり、",          file: "duckH.mp3"       },
+        { id: "cd_song_12", name: "プールサイドダンサー",        file: "duckI.mp3"       },
+        { id: "cd_song_13", name: "きみは死んでしまった。",       file: "duckJ.mp3"       },
+        { id: "cd_song_14", name: "ネバーエンディング",          file: "bgm_end.mp3"     },
+      ];
+      const musicItems = SONGS.map((s) => ({ id: s.id, name: s.name, price: 2000 }));
+
+      const showMusicShop = (initialCursor = 0) => {
+        shop.open(musicItems, "やめる", "ビデオ・ギャラクシー", (id, savedCursor) => {
+          if (id === null) {
+            dialog.open([["まいどあり！"]]);
+            return;
+          }
+          const song = SONGS.find((s) => s.id === id);
+          if (song) {
+            const a = document.createElement("a");
+            a.href = "assets/audio/" + song.file;
+            a.download = song.file;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+          }
+          playCoin();
+          showMusicShop(savedCursor ?? 0);
+        }, initialCursor);
+      };
+
+      dialog.open([["ヨォ！おまえらじゃん！"]], () => {
+        showMusicShop();
+      });
+      return true;
+    }
+
+    const items = [{ id: "cdshop_rental_fee", name: "レンタル延滞料", price: 999999 }];
+
+    dialog.open([
+      ["あ！オイ！"],
+      ["おまえら！"],
+      ["はやくアルマゲドンかえせよ！"],
+      ["何年借りてんだよ！"],
+    ], () => {
+      shop.open(items, "やめる", "ビデオ・ギャラクシー", (id) => {
+        if (id === "cdshop_rental_fee") {
+          STATE.flags.cdshopRentalPaid = true;
+          playCoin();
+          dialog.open([
+            ["うお！やるじゃんおまえら！"],
+            ["まさか払い切ると思ってなかったぜ。"],
+          ], () => {
+            if (typeof achieveQuest === "function") achieveQuest("25");
+          });
+        } else {
+          dialog.open([["地の果てまでおってやるからな！"]]);
+        }
+      });
+    });
+
+    return true;
+  }
+
   if (ev.type === "moritasaki_gift") {
     const { dialog, inventory } = ctx;
     if (STATE.flags.moritasakiGiftGave) {
@@ -627,8 +702,8 @@ export function runNpcEvent(act, ctx) {
       dialog.open([["いまがそのとき！"]]);
     } else {
       dialog.open([
-        ["ここは、おまえがいつかくるばしょ。"],
-        ["でもいまはまだ、そのときじゃねぇんだな。"],
+        ["ここはおまえがいつかくるばしょだ。"],
+        ["でもいまはまだそのときじゃねぇんだな。"],
       ]);
     }
     return true;

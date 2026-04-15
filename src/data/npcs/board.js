@@ -10,6 +10,6 @@ export const boardNpc = {
   y:         2551,
   talkHit:   { x: 0, y: 0, w: 16, h: 14 },
   talkType:  "sign",
-  talkPages: [["ここは モリタサキ・イン・ザ・プールのいえ"]],
+  talkPages: [["モリタサキ・イン・ザ・プールのいえ"]],
   solid:     true,
 };

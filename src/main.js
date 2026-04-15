@@ -1282,6 +1282,21 @@ const menu = createMenu({
       }, 700);
       return true;
     }
+    if (id === "ice_cream") {
+      inventory.removeItem("ice_cream");
+      input.lock();
+      setTimeout(restoreItemBgm, 670);
+      setTimeout(() => {
+        STATE.flags.eatCount = (STATE.flags.eatCount || 0) + 1;
+        if (STATE.flags.eatCount >= 10) achieveQuest("26");
+        input.unlock();
+        dialog.open([
+          ["ナツミはアイスクリームをたべてみた！"],
+          ["あまい、つめたーい。"],
+        ], null, "sign");
+      }, 700);
+      return true;
+    }
     if (id === "pizza") {
       inventory.removeItem("pizza");
       if (STATE.flags.pizzaJobActive && !STATE.flags.pizzaDelivered) {
@@ -2692,7 +2707,6 @@ function draw() {
   for (let i = 0; i < upperList.length; i++) drawEntry(upperList[i]);
   for (let i = 0; i < groundList.length; i++) drawPizzaMarkOverlay(groundList[i]);
   for (let i = 0; i < upperList.length; i++) drawPizzaMarkOverlay(upperList[i]);
-  drawRainScene(tt);
 
 // seahole 魚の描画（スプライットの上）
   if (current.id === "seahole") {
@@ -2756,6 +2770,8 @@ function draw() {
     drawMapImg(bgTopImg);
     if (shrineFade > 0) drawMapImg(bgShrineTopImg, shrineFade);
   }
+
+  drawRainScene(tt);
 
   if (current.id === "afloclub") {
     drawAfloClubFx(tt);
@@ -3129,6 +3145,15 @@ function draw() {
 // ---- Update ----
 function updateNpcAnim(t) {
   for (const act of actors) {
+    if (act.patrol) {
+      if (act.patrolHomeX === undefined) act.patrolHomeX = act.x;
+      if (act.patrolDir === undefined) act.patrolDir = 1;
+      const speed = act.patrol.speed ?? 0.25;
+      const range = act.patrol.range ?? 20;
+      act.x += act.patrolDir * speed;
+      if (act.x >= act.patrolHomeX + range) { act.x = act.patrolHomeX + range; act.patrolDir = -1; }
+      else if (act.x <= act.patrolHomeX - range) { act.x = act.patrolHomeX - range; act.patrolDir = 1; }
+    }
     if (act.animMode === "seq") {
       const ms = act.animMs ?? NPC_FRAME_MS;
       if (t - (act.last | 0) > ms) {

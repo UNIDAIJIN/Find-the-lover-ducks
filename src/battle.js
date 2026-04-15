@@ -402,6 +402,7 @@ export function createBattleSystem(cfg) {
       logFadeDur: 0,
       showYouWin: false,
       uboaQueued: false,
+      bossFrozen: false,
 
       uiKickUntil: 0,
       uiKickMode: "none",
@@ -616,6 +617,12 @@ export function createBattleSystem(cfg) {
   // Enemy actions
   // =================
   function bossAct() {
+    if (st.bossFrozen) {
+      st.bossFrozen = false;
+      queueMsg([`ミナミはこおっていて動けなかった！`], { autoMs: 900 });
+      return;
+    }
+
     const aoe = Math.random() < 0.2;
 
     if (aoe) {
@@ -759,6 +766,13 @@ export function createBattleSystem(cfg) {
       });
 
       if (dmg > 0) queueMsg([`ミナミに${dmg}のダメージ！`], { autoMs: 550 });
+
+      if (id === "ice_cream") {
+        queueMsg([`ミナミはこおりついた！`], {
+          autoMs: 800,
+          apply: () => { st.bossFrozen = true; },
+        });
+      }
 
       if (isRubberDuck) {
         const src = typeof itemBgmSrc === "function" ? itemBgmSrc(id) : null;

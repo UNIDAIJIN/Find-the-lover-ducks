@@ -42,6 +42,10 @@ import { shamanNpc }     from "./data/npcs/shaman.js";
 import { ponydeadyouthNpc } from "./data/npcs/ponydeadyouth.js";
 import { kingyobachiSanNpc } from "./data/npcs/kingyobachi_san.js";
 import { moritasakiGiftNpc } from "./data/npcs/moritasaki_gift.js";
+import { ufogirlNpc }        from "./data/npcs/ufogirl.js";
+import { iceNpc }            from "./data/npcs/ice.js";
+import { yumaNpc }           from "./data/npcs/yuma.js";
+import { afloboyNpc }        from "./data/npcs/afloboy.js";
 
 const { NPC_FRAME_MS } = CONFIG;
 
@@ -112,6 +116,9 @@ export const NPCS_BY_MAP = {
     resolve(luchaNpc),
     resolve(keeperNpc),
     resolve(kingyobachiSanNpc),
+    resolve(iceNpc),
+    resolve(yumaNpc),
+    resolve(afloboyNpc),
     ...cactusNpcs.map(resolve),
   ].map((npc) => ({ ...npc, y: typeof npc.y === "number" ? npc.y + 1 : npc.y })),
 
@@ -204,6 +211,10 @@ export const NPCS_BY_MAP = {
 
   house07: [
     resolve(ac1Npc),
+  ],
+
+  house08: [
+    resolve(ufogirlNpc),
   ],
 
   mirai: [

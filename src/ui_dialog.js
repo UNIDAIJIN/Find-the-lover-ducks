@@ -236,7 +236,7 @@ export function createDialog({ BASE_W, BASE_H, input } = {}) {
     let row = 0;
     if (instant) {
       for (const wl of wrappedLines) {
-        ctx.fillText(wl, rect.x + pad, rect.y + 7 + row * 16);
+        ctx.fillText(wl, rect.x + pad, rect.y + 9 + row * 14);
         row++;
       }
     } else {
@@ -244,7 +244,7 @@ export function createDialog({ BASE_W, BASE_H, input } = {}) {
       for (const wl of wrappedLines) {
         if (remaining <= 0) break;
         const visible = wl.slice(0, remaining);
-        ctx.fillText(visible, rect.x + pad, rect.y + 6 + row * 16);
+        ctx.fillText(visible, rect.x + pad, rect.y + 9 + row * 14);
         remaining -= wl.length;
         row++;
       }

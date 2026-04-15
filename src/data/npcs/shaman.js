@@ -13,7 +13,7 @@ export const shamanNpc = {
     byeDialog: [["……"]],
     items: Array.from({ length: 30 }, (_, i) => {
       const n = i + 1;
-      return { id: `otsuge_${String(n).padStart(2, "0")}`, name: `お告げの書${n}`, price: 1000 };
+      return { id: `otsuge_${String(n).padStart(2, "0")}`, name: `お告げの書${n}`, price: 600 };
     }),
     closeLabel: "やめる",
   },
