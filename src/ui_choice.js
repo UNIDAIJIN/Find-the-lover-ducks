@@ -136,12 +136,12 @@ export function createChoice({ BASE_W, BASE_H, input } = {}) {
 
     // 質問テキスト（タイプライター）
     const visible = String(question).slice(0, charIndex);
-    ctx.fillText(visible, r.x + pad, r.y + 8);
+    ctx.fillText(visible, r.x + pad, r.y + 7);
 
     // タイプ完了後のみ選択肢を表示
     if (!isTypingDone()) return;
 
-    const cy     = r.y + 8 + 18;
+    const cy     = r.y + 7 + 18;
     const hPad   = 6;  // ボックス左右パディング
     const gapW   = 16; // 選択肢間隔
     const labels = options.map(o => String(o ?? ""));

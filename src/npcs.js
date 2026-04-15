@@ -4,6 +4,7 @@ import { SPRITES } from "./sprites.js";
 
 import { boardNpc }         from "./data/npcs/board.js";
 import { pizzashopNpc }     from "./data/npcs/pizzashop.js";
+import { cdshopNpc }        from "./data/npcs/cdshop.js";
 import { fanNpc }           from "./data/npcs/fan.js";
 import { ac1Npc }           from "./data/npcs/ac_1.js";
 import { koriNpc }          from "./data/npcs/kori.js";
@@ -39,6 +40,8 @@ import { keeperNpc }     from "./data/npcs/keeper.js";
 import { pbdNpc }        from "./data/npcs/pbd.js";
 import { shamanNpc }     from "./data/npcs/shaman.js";
 import { ponydeadyouthNpc } from "./data/npcs/ponydeadyouth.js";
+import { kingyobachiSanNpc } from "./data/npcs/kingyobachi_san.js";
+import { moritasakiGiftNpc } from "./data/npcs/moritasaki_gift.js";
 
 const { NPC_FRAME_MS } = CONFIG;
 
@@ -73,11 +76,11 @@ export const NPCS_BY_MAP = {
       talkPages: [["←　これはタイムマシン"]],
       talkType: "sign",
     }),
-    resolve(pizzashopNpc),
     resolve(timemachineSlotNpc),
     resolve(seatsNpc),
     resolve(cat1Npc),
     resolve(fanFlowerNpc),
+    resolve({ ...fanFlowerNpc, name: "fan_flower_2", x: 2560, y: 1320 }),
     resolve(carefulNpc),
     resolve(orca3Npc),
     resolve(chinanagoOffNpc),
@@ -99,6 +102,8 @@ export const NPCS_BY_MAP = {
     resolve({ ...yashiNpc, name: "yashi3_2", spriteKey: "yashi3", x: 2406, y: 874, hitOy: 5 }),
     resolve(fanNpc),
     resolve({ ...fanNpc, name: "fan_2", x: 2299, y: 1133 }),
+    resolve({ ...fanNpc, name: "fan_3", x: 1522, y: 875 }),
+    resolve({ ...fanNpc, name: "fan_4", x: 1595, y: 928 }),
     resolve(koriNpc),
     resolve(moriGirlNpc),
     resolve(mizugiMNpc),
@@ -106,6 +111,7 @@ export const NPCS_BY_MAP = {
     resolve(gateNpc),
     resolve(luchaNpc),
     resolve(keeperNpc),
+    resolve(kingyobachiSanNpc),
     ...cactusNpcs.map(resolve),
   ].map((npc) => ({ ...npc, y: typeof npc.y === "number" ? npc.y + 1 : npc.y })),
 
@@ -120,6 +126,18 @@ export const NPCS_BY_MAP = {
 
   digitmore: [
     resolve(diggyNpc),
+  ],
+
+  pizza: [
+    resolve(pizzashopNpc),
+  ],
+
+  cdshop: [
+    resolve(cdshopNpc),
+  ],
+
+  moritasaki_room: [
+    resolve(moritasakiGiftNpc),
   ],
 
   vj_room01: [

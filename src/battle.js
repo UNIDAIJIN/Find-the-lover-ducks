@@ -220,10 +220,10 @@ export function createBattleSystem(cfg) {
     if (STATE.flags.mechaNatsumi) {
       const natsumi = byName.get("NATSUMI");
       if (natsumi) {
-        natsumi.hp += 500;
-        natsumi.maxHp += 500;
-        natsumi.atkMin += 500;
-        natsumi.atkMax += 500;
+        natsumi.hp = 999;
+        natsumi.maxHp = 999;
+        natsumi.atkMin = 5000;
+        natsumi.atkMax = 6000;
       }
     }
 
@@ -401,6 +401,7 @@ export function createBattleSystem(cfg) {
       logFadeFrom: 0,
       logFadeDur: 0,
       showYouWin: false,
+      uboaQueued: false,
 
       uiKickUntil: 0,
       uiKickMode: "none",
@@ -775,27 +776,7 @@ export function createBattleSystem(cfg) {
             const reaction = DUCK_REACTIONS[st.ducksThrown | 0];
             if (!reaction) return;
             if (reaction.win) {
-              // 10投目：Z送り → ウボァー表示と同時に赤点滅＋フェード(3s) → YOU WIN! 3s → フィールドへ
-              queueMsg(reaction.lines, { autoMs: 2000, noSkip: true, typed: reaction.typed || null });
-              queueMsg(["ミナミ「」"], { autoMs: 1500, noSkip: true, typed: { prefix: "ミナミ「", text: "フハ・・・・、", suffix: "」", charMs: 60 } });
-              const EFFECT_MS = 3000;
-              queueMsg(["ミナミ「」"], {
-                autoMs: EFFECT_MS,
-                noSkip: true,
-                typed: { prefix: "ミナミ「", text: "ウボァーーーーー！！", suffix: "」", charMs: 60 },
-                apply: () => {
-                  st.bossFlashUntil = (st.now | 0) + EFFECT_MS;
-                  st.bossFadeFrom   = st.now | 0;
-                  st.bossFadeDur    = EFFECT_MS;
-                  st.logFadeFrom    = st.now | 0;
-                  st.logFadeDur     = EFFECT_MS;
-                },
-              });
-              queueEvent({
-                autoMs: 3000,
-                apply:   () => { st.showYouWin = true; setOverrideBgm("about:blank"); playYouWinJingle(); },
-                onClose: () => endToField("win"),
-              });
+              queueUboaFinale();
             } else {
               queueMsg(reaction.lines, { autoMs: 2000, noSkip: true, typed: reaction.typed || null });
             }
@@ -848,6 +829,31 @@ export function createBattleSystem(cfg) {
     }
   }
 
+  function queueUboaFinale() {
+    if (st.uboaQueued) return;
+    st.uboaQueued = true;
+    queueMsg(["ミナミ「」"], { autoMs: 2000, noSkip: true, typed: { prefix: "ミナミ「", text: "フハハ！フハハハ！", suffix: "」", charMs: 60 } });
+    queueMsg(["ミナミ「」"], { autoMs: 1500, noSkip: true, typed: { prefix: "ミナミ「", text: "フハ・・・・、", suffix: "」", charMs: 60 } });
+    const EFFECT_MS = 3000;
+    queueMsg(["ミナミ「」"], {
+      autoMs: EFFECT_MS,
+      noSkip: true,
+      typed: { prefix: "ミナミ「", text: "ウボァーーーーー！！", suffix: "」", charMs: 60 },
+      apply: () => {
+        st.bossFlashUntil = (st.now | 0) + EFFECT_MS;
+        st.bossFadeFrom   = st.now | 0;
+        st.bossFadeDur    = EFFECT_MS;
+        st.logFadeFrom    = st.now | 0;
+        st.logFadeDur     = EFFECT_MS;
+      },
+    });
+    queueEvent({
+      autoMs: 3000,
+      apply:   () => { st.showYouWin = true; setOverrideBgm("about:blank"); playYouWinJingle(); },
+      onClose: () => endToField("win"),
+    });
+  }
+
   function resolveOneStep() {
     if (!st) return;
     if (st.msg) return;
@@ -858,7 +864,7 @@ export function createBattleSystem(cfg) {
     }
 
     if ((st.boss.hp | 0) <= 0) {
-      queueMsg(["たおした。"], { autoMs: 800, onClose: () => endToField("win") });
+      queueUboaFinale();
       return;
     }
 

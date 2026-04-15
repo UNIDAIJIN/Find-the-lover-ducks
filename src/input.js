@@ -23,7 +23,7 @@ export function createInput() {
   }
 
   function isOurKey(k) {
-    return isArrowKey(k) || k === "z" || k === "x" || k === "c" || k === "d" || k === "s" || k === "l" || k === "v" || k === "b";
+    return isArrowKey(k) || k === "z" || k === "x" || k === "c" || k === "d" || k === "s" || k === "l" || k === "v" || k === "b" || k === "1" || k === "2";
   }
 
   function onKeyDown(e) {

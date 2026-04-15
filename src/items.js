@@ -14,11 +14,13 @@ const TEMP_ITEMS = Array.from({ length: 10 }, (_, i) => ({
 const ALL_ITEMS = [...rubberDucks, ...equipmentItems, ...foodItems, ...otsugeItems];
 const ITEM_MAP = new Map([...ALL_ITEMS, ...TEMP_ITEMS].map((d) => [d.id, d]));
 
+export const ALL_ITEM_IDS = ALL_ITEMS.map((d) => d.id);
+
 export const START_INVENTORY_DEBUG = [
   ...ALL_ITEMS.flatMap((d) => d.id === "gunter" ? Array(10).fill(d.id) : [d.id]),
   ...TEMP_ITEMS.map((d) => d.id),
 ];
-export const START_INVENTORY_NORMAL = ["kingyobachi"];
+export const START_INVENTORY_NORMAL = [];
 export const START_INVENTORY_EMPTY = [];
 
 export function itemName(id)     { return ITEM_MAP.get(id)?.name    ?? id;   }

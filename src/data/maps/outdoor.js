@@ -74,8 +74,8 @@ export const outdoorMap = {
     {
       id:        36,
       to:        "digitmore",
-      trigger:   { x: 1703, y: 753, w: 16, h: 8 },
-      entryAt:   { x: 1703, y: 745 },
+      trigger:   { x: 1560, y: 939, w: 16, h: 8 },
+      entryAt:   { x: 1560, y: 931 },
       entryWalk: { dx: 0, dy: 1, frames: 20 },
     },
     {
@@ -123,8 +123,8 @@ export const outdoorMap = {
     {
       id:        17,
       to:        "workmen",
-      trigger:   { x: 1534, y: 864, w: 16, h: 8 },
-      entryAt:   { x: 1534, y: 856 },
+      trigger:   { x: 1460, y: 939, w: 16, h: 8 },
+      entryAt:   { x: 1460, y: 931 },
       entryWalk: { dx: 0, dy: 1, frames: 20 },
     },
     {
@@ -242,8 +242,22 @@ export const outdoorMap = {
     {
       id:        34,
       to:        "theater",
-      trigger:   { x: 2512, y: 1323, w: 16, h: 8 },
-      entryAt:   { x: 2512, y: 1315 },
+      trigger:   { x: 2391, y: 1357, w: 16, h: 8 },
+      entryAt:   { x: 2391, y: 1349 },
+      entryWalk: { dx: 0, dy: 1, frames: 20 },
+    },
+    {
+      id:        37,
+      to:        "pizza",
+      trigger:   { x: 2516, y: 1339, w: 16, h: 8 },
+      entryAt:   { x: 2516, y: 1331 },
+      entryWalk: { dx: 0, dy: 1, frames: 20 },
+    },
+    {
+      id:        38,
+      to:        "cdshop",
+      trigger:   { x: 1515, y: 938, w: 16, h: 8 },
+      entryAt:   { x: 1515, y: 930 },
       entryWalk: { dx: 0, dy: 1, frames: 20 },
     },
   ],

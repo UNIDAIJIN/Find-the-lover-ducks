@@ -764,13 +764,6 @@ function spawnActorsForMap(mapId) {
     if (a) { a.x = 1613; a.y = 2709; }
   }
   refreshPizzaJobMarkers();
-  if (mapId === "outdoor") {
-    const ps = actors.find((a) => a.name === "pizzashop");
-    if (ps) {
-      ps.markImg = SPRITES.pizza_sign;
-      ps.markMode = "pizza_pop";
-    }
-  }
 
   const list = PICKUPS_BY_MAP?.[mapId] || [];
   for (const p of list) {
@@ -865,6 +858,17 @@ let pageTurnFx = {
   spawnAt: null,
   dir: "rtl",
 };
+const TM_FADE_OUT_MS = 400;
+const TM_FADE_IN_MS  = 400;
+let timeMachineTravelFx = {
+  active: false,
+  start: 0,
+  switched: false,
+  switchedAt: 0,
+  destMap: null,
+  spawnAt: null,
+  dir: "rtl",
+};
 const SPACE_O2_MAX = 12000;
 let spaceO2 = SPACE_O2_MAX;
 let spaceO2LastMs = 0;
@@ -881,6 +885,14 @@ function isAfloClubBgmLocked() {
 function setBgmOverrideSafe(src) {
   if (isAfloClubBgmLocked()) return;
   bgmCtl.setOverride(src);
+}
+let _preItemBgm = null;
+function captureItemBgm() {
+  const cur = bgmCtl.getOverrideSrc();
+  _preItemBgm = (cur && cur !== "about:blank") ? cur : null;
+}
+function restoreItemBgm() {
+  setBgmOverrideSafe(_preItemBgm);
 }
 function setBgmMapSafe(src) {
   if (isAfloClubBgmLocked()) return;
@@ -972,6 +984,38 @@ function startPageTurnTravel(destMap, spawnAt, dir = "rtl") {
   };
   loadMap(destMap, { spawnAt });
 }
+function startTimeMachineTravel(destMap, spawnAt, dir = "rtl") {
+  input.lock();
+  timeMachineTravelFx = {
+    active: true,
+    start: nowMs(),
+    switched: false,
+    switchedAt: 0,
+    destMap,
+    spawnAt,
+    dir,
+  };
+  try { playTimeMachineShine(); } catch (_) {}
+  try { navigator.vibrate?.([40,20,60,20,80,20,110,20,150,20,200]); } catch (_) {}
+}
+function drawTimeMachineTravelFx(tt) {
+  if (!timeMachineTravelFx.active) return;
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+  if (!timeMachineTravelFx.switched) {
+    const elapsed = tt - timeMachineTravelFx.start;
+    const p = Math.max(0, Math.min(1, elapsed / TM_FADE_OUT_MS));
+    ctx.globalAlpha = p;
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, BASE_W, BASE_H);
+  } else {
+    const p = !mapReady ? 0 : Math.max(0, Math.min(1, (tt - timeMachineTravelFx.switchedAt) / TM_FADE_IN_MS));
+    ctx.globalAlpha = 1 - p;
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, BASE_W, BASE_H);
+  }
+  ctx.restore();
+}
 function drawPageTurnFx(tt) {
   if (!pageTurnFx.active) return;
   const revealMs = 420;
@@ -1045,9 +1089,10 @@ const inventory = createInventory({
   input,
   itemName,
   itemBgmSrc,
-  stopBgm: () => setBgmOverrideSafe("about:blank"),
+  stopBgm: () => { captureItemBgm(); setBgmOverrideSafe("about:blank"); },
   unlockBgm: () => bgmCtl.unlock(),
   setOverrideBgm: (src) => {
+    if (src == null) { restoreItemBgm(); return; }
     setBgmOverrideSafe(src);
     if (src === "assets/audio/duckF.mp3" && current.id === "seahole") {
       input.lock();
@@ -1067,9 +1112,10 @@ const menu = createMenu({
   inventory,
   itemName,
   itemBgmSrc,
-  stopBgm:        () => setBgmOverrideSafe("about:blank"),
+  stopBgm:        () => { captureItemBgm(); setBgmOverrideSafe("about:blank"); },
   unlockBgm:      () => bgmCtl.unlock(),
   setOverrideBgm: (src) => {
+    if (src == null) { restoreItemBgm(); return; }
     setBgmOverrideSafe(src);
     if (src === "assets/audio/duckF.mp3" && current.id === "seahole") {
       input.lock();
@@ -1091,7 +1137,7 @@ const menu = createMenu({
         fy >= SHOVEL_DIG_TRIGGER.y &&
         fy < SHOVEL_DIG_TRIGGER.y + SHOVEL_DIG_TRIGGER.h;
       input.lock();
-      setTimeout(() => setBgmOverrideSafe(null), 670);
+      setTimeout(restoreItemBgm, 670);
       setTimeout(() => {
         input.unlock();
         if (canDigTreasure) {
@@ -1141,7 +1187,7 @@ const menu = createMenu({
         fy >= SHOVEL_DIG_TRIGGER.y &&
         fy < SHOVEL_DIG_TRIGGER.y + SHOVEL_DIG_TRIGGER.h;
       input.lock();
-      setTimeout(() => setBgmOverrideSafe(null), 670);
+      setTimeout(restoreItemBgm, 670);
       setTimeout(() => {
         input.unlock();
         if (inDigSpot) {
@@ -1179,7 +1225,7 @@ const menu = createMenu({
     if (id === "gunter") {
       inventory.removeItem("gunter");
       input.lock();
-      setTimeout(() => setBgmOverrideSafe(null), 670);
+      setTimeout(restoreItemBgm, 670);
       setTimeout(() => {
         STATE.flags.eatCount = (STATE.flags.eatCount || 0) + 1;
         if (STATE.flags.eatCount >= 10) achieveQuest("26");
@@ -1194,7 +1240,7 @@ const menu = createMenu({
     if (id === "hone") {
       inventory.removeItem("hone");
       input.lock();
-      setTimeout(() => setBgmOverrideSafe(null), 670);
+      setTimeout(restoreItemBgm, 670);
       setTimeout(() => {
         STATE.flags.eatCount = (STATE.flags.eatCount || 0) + 1;
         if (STATE.flags.eatCount >= 10) achieveQuest("26");
@@ -1209,7 +1255,7 @@ const menu = createMenu({
     if (id === "tacos") {
       inventory.removeItem("tacos");
       input.lock();
-      setTimeout(() => setBgmOverrideSafe(null), 670);
+      setTimeout(restoreItemBgm, 670);
       setTimeout(() => {
         STATE.flags.eatCount = (STATE.flags.eatCount || 0) + 1;
         if (STATE.flags.eatCount >= 10) achieveQuest("26");
@@ -1224,7 +1270,7 @@ const menu = createMenu({
     if (id === "vodka") {
       inventory.removeItem("vodka");
       input.lock();
-      setTimeout(() => setBgmOverrideSafe(null), 670);
+      setTimeout(restoreItemBgm, 670);
       setTimeout(() => {
         STATE.flags.eatCount = (STATE.flags.eatCount || 0) + 1;
         if (STATE.flags.eatCount >= 10) achieveQuest("26");
@@ -1242,7 +1288,7 @@ const menu = createMenu({
         STATE.flags.pizzaAte = true;
       }
       input.lock();
-      setTimeout(() => setBgmOverrideSafe(null), 670);
+      setTimeout(restoreItemBgm, 670);
       setTimeout(() => {
         input.unlock();
         dialog.open([
@@ -1255,7 +1301,7 @@ const menu = createMenu({
     }
     if (id === "moon_stone") {
       input.lock();
-      setTimeout(() => setBgmOverrideSafe(null), 670);
+      setTimeout(restoreItemBgm, 670);
       setTimeout(() => {
         input.unlock();
         dialog.open([
@@ -1269,7 +1315,7 @@ const menu = createMenu({
     if (id === "iron_heart") {
       inventory.removeItem("iron_heart");
       input.lock();
-      setTimeout(() => setBgmOverrideSafe(null), 670);
+      setTimeout(restoreItemBgm, 670);
       setTimeout(() => {
         STATE.flags.eatCount = (STATE.flags.eatCount || 0) + 1;
         if (STATE.flags.eatCount >= 10) achieveQuest("26");
@@ -1297,7 +1343,7 @@ const menu = createMenu({
     if (id === "densetsu_no_ken") {
       inventory.removeItem("densetsu_no_ken");
       input.lock();
-      setTimeout(() => setBgmOverrideSafe(null), 670);
+      setTimeout(restoreItemBgm, 670);
       setTimeout(() => {
         STATE.flags.eatCount = (STATE.flags.eatCount || 0) + 1;
         if (STATE.flags.eatCount >= 10) achieveQuest("26");
@@ -1311,7 +1357,7 @@ const menu = createMenu({
     }
     if (id === "temp_item_1") {
       input.lock();
-      setTimeout(() => setBgmOverrideSafe(null), 670);
+      setTimeout(restoreItemBgm, 670);
       setTimeout(() => {
         input.unlock();
         dialog.open([["仮アイテム１をつかった！"]], null, "sign");
@@ -1320,7 +1366,7 @@ const menu = createMenu({
     }
     if (id === "temp_item_2") {
       input.lock();
-      setTimeout(() => setBgmOverrideSafe(null), 670);
+      setTimeout(restoreItemBgm, 670);
       setTimeout(() => {
         input.unlock();
         dialog.open([["仮アイテム２をつかった！"]], null, "sign");
@@ -1332,7 +1378,7 @@ const menu = createMenu({
       const quest = QUESTS.find(q => q.id === String(n).padStart(2, "0"));
       const cond = quest?.cond ?? "？？？";
       input.lock();
-      setTimeout(() => setBgmOverrideSafe(null), 670);
+      setTimeout(restoreItemBgm, 670);
       setTimeout(() => {
         input.unlock();
         dialog.open([
@@ -1351,7 +1397,7 @@ const menu = createMenu({
     if (HEADWEAR_DEFS[id]) {
       const def = HEADWEAR_DEFS[id];
       input.lock();
-      setTimeout(() => setBgmOverrideSafe(null), 670);
+      setTimeout(restoreItemBgm, 670);
       if (STATE.headwear === def.key) {
         STATE.headwear = null;
         setTimeout(() => { input.unlock(); dialog.open([[def.off]], null, "sign"); }, 700);
@@ -1532,7 +1578,7 @@ function clearFlags() {
 function resetProgress() {
   collectedItems.clear();
   clearFlags();
-  STATE.money    = DEBUG ? 10000 : 0;
+  STATE.money    = 0;
   STATE.headwear = null;
   STATE.achievedQuests.clear();
   resetHeightState();
@@ -2105,18 +2151,6 @@ function loadMap(id, opt = null) {
       } else {
         stopShootingBgm();
       }
-    } else if (current.id === "charch" && !STATE.flags.duckBCollected) {
-      stopShootingBgm();
-      bgmCtl.setMap("assets/audio/duckB.mp3");
-    } else if (current.id === "pool" && !STATE.flags.duckICollected) {
-      stopShootingBgm();
-      bgmCtl.setMap("assets/audio/duckI.mp3");
-    } else if (
-      (prevMapId === "charch" && !STATE.flags.duckBCollected) ||
-      (prevMapId === "pool"   && !STATE.flags.duckICollected)
-    ) {
-      stopShootingBgm();
-      bgmCtl.setMap("assets/audio/bgm0.mp3");
     } else if (current.id === "shooting_lobby") {
       bgmCtl.setOverride("about:blank");
       stopAfloClubBgm();
@@ -2163,8 +2197,8 @@ function loadMap(id, opt = null) {
       actors.push({
         kind: "npc",
         name: "misaki",
-        x: 2498,
-        y: 1383,
+        x: 2414,
+        y: 1349,
         img: SPRITES.misaki,
         spr: 16,
         sprH: 16,
@@ -2570,7 +2604,7 @@ function draw() {
       ? Math.round((1 - Math.cos((tt - orcaRide.startMs) * Math.PI * 2 / 720)) / 2)
       : 0;
     const _hw = STATE.headwear;
-    const _p1imgs = [SPRITES.p1, SPRITES.p1_t1, SPRITES.p1_t2];
+    const _p1imgs = [SPRITES.p1, SPRITES.p1_t1, SPRITES.p1_t2, SPRITES.mecha_natsumi];
     const _p2imgs = [SPRITES.p2, SPRITES.p2_t1, SPRITES.p2_t2];
     const _p3imgs = [SPRITES.p3, SPRITES.p3_t1, SPRITES.p3_t2];
     const _p4imgs = [SPRITES.p4, SPRITES.p4_t1, SPRITES.p4_t2];
@@ -2599,7 +2633,26 @@ function draw() {
   }
   for (const act of actors) {
     if (act.hidden) continue;
-    if (act.showWhenBgm && bgmCtl.getOverrideSrc() !== act.showWhenBgm) continue;
+    let bgmFadeAlpha = 1;
+    if (act.showWhenBgm) {
+      const match = bgmCtl.getOverrideSrc() === act.showWhenBgm;
+      if (act._bgmMatch === undefined) {
+        act._bgmMatch = match;
+        act._bgmAlpha = match ? 1 : 0;
+      }
+      if (act._bgmMatch !== match) {
+        act._bgmMatch = match;
+      }
+      const BGM_FADE_MS = 500;
+      const target = match ? 1 : 0;
+      const dt = Math.max(0, tt - (act._bgmAlphaLast ?? tt));
+      act._bgmAlphaLast = tt;
+      const step = dt / BGM_FADE_MS;
+      if (act._bgmAlpha < target) act._bgmAlpha = Math.min(target, (act._bgmAlpha ?? 0) + step);
+      else if (act._bgmAlpha > target) act._bgmAlpha = Math.max(target, (act._bgmAlpha ?? 1) - step);
+      bgmFadeAlpha = act._bgmAlpha;
+      if (bgmFadeAlpha <= 0) continue;
+    }
     // ビューポートカリング（画面外NPCはスキップ）
     const actSpr = act.spr ?? SPR;
     const actSprH = act.sprH ?? actSpr;
@@ -2608,7 +2661,7 @@ function draw() {
     const isCactus = act.name === "cactus_hat" || act.name?.startsWith("cactus_");
     const ia = _poolItem();
     ia.img = act.img; ia.x = act.x; ia.y = act.y; ia.frame = act.frame;
-    ia.spr = act.spr; ia.sprH = act.sprH; ia.alpha = act.alpha; ia.scale = undefined; ia.metImg = undefined;
+    ia.spr = act.spr; ia.sprH = act.sprH; ia.alpha = (act.alpha != null ? act.alpha : 1) * bgmFadeAlpha; ia.scale = undefined; ia.metImg = undefined;
     ia.sparkle = act.sparkle;
     ia.sparkleColor = act.sparkleColor;
     ia.sparklePhase = act.sparklePhase;
@@ -2794,6 +2847,9 @@ function draw() {
 
   if (pageTurnFx.active) {
     drawPageTurnFx(tt);
+  }
+  if (timeMachineTravelFx.active) {
+    drawTimeMachineTravelFx(tt);
   }
 
   // モバイル：神社切替用の白フラッシュオーバーレイ
@@ -3432,18 +3488,9 @@ function tryInteract(t) {
       if (id === "rubber_duck_G" || id === "rubber_duck_G_bad") {
         STATE.flags.duckGCollected = true;
       }
-      if (id === "rubber_duck_B") {
-        STATE.flags.duckBCollected = true;
-        bgmCtl.setMap("assets/audio/bgm0.mp3");
-      }
-      if (id === "rubber_duck_I") {
-        STATE.flags.duckICollected = true;
-        bgmCtl.setMap("assets/audio/bgm0.mp3");
-      }
-      if (id === "rubber_duck_F") {
-        STATE.flags.duckFCollected = true;
-        bgmCtl.setMap("assets/audio/bgm0.mp3");
-      }
+      if (id === "rubber_duck_B") STATE.flags.duckBCollected = true;
+      if (id === "rubber_duck_I") STATE.flags.duckICollected = true;
+      if (id === "rubber_duck_F") STATE.flags.duckFCollected = true;
 
       actors.splice(i, 1);
 
@@ -3543,6 +3590,29 @@ function update(t) {
       }
     } else if (mapReady && t - pageTurnFx.switchedAt >= revealMs) {
       pageTurnFx = {
+        active: false,
+        start: 0,
+        switched: false,
+        switchedAt: 0,
+        destMap: null,
+        spawnAt: null,
+        dir: "rtl",
+      };
+      input.unlock();
+    }
+    updateCam();
+    return;
+  }
+
+  if (timeMachineTravelFx.active) {
+    if (!timeMachineTravelFx.switched) {
+      if (t - timeMachineTravelFx.start >= TM_FADE_OUT_MS) {
+        loadMap(timeMachineTravelFx.destMap, { spawnAt: timeMachineTravelFx.spawnAt });
+        timeMachineTravelFx.switched = true;
+        timeMachineTravelFx.switchedAt = t;
+      }
+    } else if (mapReady && t - timeMachineTravelFx.switchedAt >= TM_FADE_IN_MS) {
+      timeMachineTravelFx = {
         active: false,
         start: 0,
         switched: false,
@@ -3736,6 +3806,14 @@ function update(t) {
   if (input.consume("s")) { saveGame(); return; }
   if (input.consume("l")) { loadGame(); return; }
   if (input.consume("v")) { setBgmOverrideSafe(null); setBgmMapSafe("assets/audio/bgm0.mp3"); return; }
+  if (DEBUG && input.consume("1") && !pageTurnFx.active && !timeMachineTravelFx.active) {
+    startTimeMachineTravel("kako", undefined, "ltr");
+    return;
+  }
+  if (DEBUG && input.consume("2") && !pageTurnFx.active && !timeMachineTravelFx.active) {
+    startTimeMachineTravel("mirai", undefined, "rtl");
+    return;
+  }
   if (DEBUG && input.consume("b")) {
     const inv = inventory.getSnapshot();
     if (inv.includes("moon_stone")) inventory.removeItem("moon_stone");
@@ -3801,11 +3879,11 @@ function update(t) {
                     fy >= TIMEMACHINE_WAIT_TRIGGER_B.y && fy < TIMEMACHINE_WAIT_TRIGGER_B.y + TIMEMACHINE_WAIT_TRIGGER_B.h;
     if (inTimeA) {
       if (timeMachineEnterMsA === 0) timeMachineEnterMsA = now_ms;
-      else if (STATE.flags.timeMachineStarted && now_ms - timeMachineEnterMsA >= 20000 && !pageTurnFx.active) {
+      else if (STATE.flags.timeMachineStarted && now_ms - timeMachineEnterMsA >= 20000 && !pageTurnFx.active && !timeMachineTravelFx.active) {
         const spawnAt = { x: leader.x, y: leader.y };
         const destMap = current.id === "outdoor" ? "mirai" : "outdoor";
         timeMachineEnterMsA = 0;
-        startPageTurnTravel(destMap, spawnAt, "rtl");
+        startTimeMachineTravel(destMap, spawnAt, "rtl");
         updateCam();
         return;
       }
@@ -3814,11 +3892,11 @@ function update(t) {
     }
     if (inTimeB) {
       if (timeMachineEnterMsB === 0) timeMachineEnterMsB = now_ms;
-      else if (STATE.flags.timeMachineStarted && now_ms - timeMachineEnterMsB >= 20000 && !pageTurnFx.active) {
+      else if (STATE.flags.timeMachineStarted && now_ms - timeMachineEnterMsB >= 20000 && !pageTurnFx.active && !timeMachineTravelFx.active) {
         const spawnAt = { x: leader.x, y: leader.y };
         const destMap = current.id === "outdoor" ? "kako" : "outdoor";
         timeMachineEnterMsB = 0;
-        startPageTurnTravel(destMap, spawnAt, "ltr");
+        startTimeMachineTravel(destMap, spawnAt, "ltr");
         updateCam();
         return;
       }

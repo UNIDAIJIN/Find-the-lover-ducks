@@ -1,6 +1,7 @@
 // npc_events.js
 import { STATE } from "./state.js";
 import { SPRITES } from "./sprites.js";
+import { ALL_ITEM_IDS } from "./items.js";
 import { playCooking, playIndianJingle, playItemJingle, playInnJingle, playJaws, stopJaws, playCrush, playConfirm, playCoin, playDoor, playClickOn } from "./se.js";
 
 export function runNpcEvent(act, ctx) {
@@ -376,20 +377,13 @@ export function runNpcEvent(act, ctx) {
 
     dialog.open([
       ["あ、新しいバイトの人？"],
-      ["今いそがしいから、これとどけてきて！"],
+      ["今いそがしいからこれとどけてきて！"],
     ], () => {
-      choice.open(["はい", "いいえ"], (idx) => {
-        if (typeof choice.close === "function") choice.close();
-        if (idx !== 0) {
-          dialog.open([["またこんどな。"]]);
-          return;
-        }
-        if (typeof startPizzaJob === "function") startPizzaJob();
-        playConfirm();
-        dialog.open([
-          ["《ピザをわたされた。》"],
-        ], null, "sign");
-      }, "やる？");
+      if (typeof startPizzaJob === "function") startPizzaJob();
+      playConfirm();
+      dialog.open([
+        ["ピザをわたされた。"],
+      ], null, "sign");
     });
     return true;
   }
@@ -566,10 +560,46 @@ export function runNpcEvent(act, ctx) {
     if (!STATE.flags.yahhyJumpropeExplained) {
       STATE.flags.yahhyJumpropeExplained = true;
       dialog.open([
-        ["なんか神社の木にまいてあったツナで縄跳びをするとお金が出てきたんだけど、"],
+        ["この前、神社に行ってさ。"],
+        ["木に巻いてあったツナで縄跳びしたらあら不思議。"],
+        ["なんとお金が出てきました。"],
       ], startJumprope);
     } else {
       startJumprope();
+    }
+    return true;
+  }
+
+  if (ev.type === "moritasaki_gift") {
+    const { dialog, inventory } = ctx;
+    if (STATE.flags.moritasakiGiftGave) {
+      dialog.open([["もう　なにもない。"]], null, "sign");
+      return true;
+    }
+    STATE.flags.moritasakiGiftGave = true;
+    STATE.money = Math.min((STATE.money | 0) + 10000, 999999);
+    for (const id of ALL_ITEM_IDS) inventory.addItem(id);
+    playItemJingle();
+    dialog.open([
+      ["10000EN と すべてのアイテムを てにいれた！"],
+    ], null, "sign");
+    return true;
+  }
+
+  if (ev.type === "kingyobachi_san_give") {
+    const { dialog, inventory } = ctx;
+    if (STATE.flags.kingyobachiSanGave) {
+      dialog.open([["ヨヨヨよ。"]]);
+    } else {
+      dialog.open([
+        ["ヨヨヨよ。オレが見えるのか。"],
+        ["そんなきみたちにプレゼントだ。"],
+      ], () => {
+        STATE.flags.kingyobachiSanGave = true;
+        inventory.addItem(ev.giveItem);
+        playItemJingle();
+        dialog.open([["きんぎょばちを手に入れた。"]], null, "sign");
+      });
     }
     return true;
   }

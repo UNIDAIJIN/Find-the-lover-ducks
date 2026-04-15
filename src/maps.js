@@ -38,6 +38,8 @@ import { dHoleMap }           from "./data/maps/d_hole.js";
 import { inugoyaMap }         from "./data/maps/inugoya.js";
 import { shootingLobbyMap }   from "./data/maps/shooting_lobby.js";
 import { digitmoreMap }       from "./data/maps/digitmore.js";
+import { pizzaMap }           from "./data/maps/pizza.js";
+import { cdshopMap }          from "./data/maps/cdshop.js";
 
 // ---- util: ダミー画像（1px） ----
 const BLACK_1PX =
@@ -89,6 +91,8 @@ export const MAPS = {
   vj_room02: vjRoom02Map,
   shooting_lobby: shootingLobbyMap,
   digitmore: digitmoreMap,
+  pizza:     pizzaMap,
+  cdshop:    cdshopMap,
   theater: {
     bgSrc: BLACK_1PX,
     colSrc: CLEAR_1PX,

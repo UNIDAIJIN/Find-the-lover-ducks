@@ -54,8 +54,9 @@ export const SPRITES = {
 
   // other
   board: loadSprite("assets/sprites/board.png"),
-  pizza_sign: loadSprite("assets/sprites/pizza_sign.png"),
   pizzashop: loadSprite("assets/sprites/pizzashop.png"),
+  cdshop: loadSprite("assets/sprites/cdshop.png"),
+  pizza_sign: loadSprite("assets/sprites/pizza_sign.png"),
   fan: loadSprite("assets/sprites/fan.png"),
   ac_1: loadSprite("assets/sprites/ac_1.png"),
   ac_2: loadSprite("assets/sprites/ac_2.png"),
@@ -84,6 +85,7 @@ export const SPRITES = {
   aflo_p3:     loadSprite("assets/sprites/aflo_p3.png"),
   aflo_p4:     loadSprite("assets/sprites/aflo_p4.png"),
   kingyobachi: loadSprite("assets/sprites/kingyobachi.png"),
+  kingyobachi_san: loadSprite("assets/sprites/kingyobachi-san.png"),
   s_hat:       loadSprite("assets/sprites/s_hat.png"),
 
   // cactus
