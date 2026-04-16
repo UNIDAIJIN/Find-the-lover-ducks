@@ -59,6 +59,7 @@ export const SPRITES = {
   ufogirl: loadSprite("assets/sprites/ufogirl.png"),
   yuma: loadSprite("assets/sprites/yuma.png"),
   afloboy: loadSprite("assets/sprites/afloboy.png"),
+  dream: loadSprite("assets/sprites/dream.png"),
   ice: loadSprite("assets/sprites/ice.png"),
   pizza_sign: loadSprite("assets/sprites/pizza_sign.png"),
   fan: loadSprite("assets/sprites/fan.png"),

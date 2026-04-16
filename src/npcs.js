@@ -46,6 +46,7 @@ import { ufogirlNpc }        from "./data/npcs/ufogirl.js";
 import { iceNpc }            from "./data/npcs/ice.js";
 import { yumaNpc }           from "./data/npcs/yuma.js";
 import { afloboyNpc }        from "./data/npcs/afloboy.js";
+import { dreamNpc }          from "./data/npcs/dream.js";
 
 const { NPC_FRAME_MS } = CONFIG;
 
@@ -78,6 +79,22 @@ export const NPCS_BY_MAP = {
       x: 2675,
       y: 127,
       talkPages: [["←　これはタイムマシン"]],
+      talkType: "sign",
+    }),
+    resolve({
+      ...boardNpc,
+      name: "board_vj_records",
+      x: 1820,
+      y: 695,
+      talkPages: [["すばらしき音楽事務所、ヴィニールジャンキーレコーディングス"]],
+      talkType: "sign",
+    }),
+    resolve({
+      ...boardNpc,
+      name: "board_afroclub",
+      x: 2626,
+      y: 1031,
+      talkPages: [["アフロ・クラブへようこそ"]],
       talkType: "sign",
     }),
     resolve(timemachineSlotNpc),
@@ -119,6 +136,7 @@ export const NPCS_BY_MAP = {
     resolve(iceNpc),
     resolve(yumaNpc),
     resolve(afloboyNpc),
+    resolve(dreamNpc),
     ...cactusNpcs.map(resolve),
   ].map((npc) => ({ ...npc, y: typeof npc.y === "number" ? npc.y + 1 : npc.y })),
 

@@ -298,16 +298,19 @@ export function drawBattleScreen(ctx, st, opt) {
     ctx.shadowColor = "transparent";
     ctx.shadowBlur = 0;
 
-    // 赤点滅（フェードと同じアルファを乗算）
-    if ((bossFlashUntil | 0) > (now | 0)) {
-      const pulse = 0.45 + 0.45 * Math.sin((now | 0) / 80);
-      ctx.globalAlpha = bossAlpha * pulse;
-      ctx.fillStyle = "#f00";
-      ctx.fillRect(bx, by, bw, bh);
-    }
     ctx.restore();
   }
   ctx.restore();
+
+  // 赤点滅（画面全体、UIより下）
+  if ((bossFlashUntil | 0) > (now | 0)) {
+    const pulse = 0.45 + 0.45 * Math.sin((now | 0) / 80);
+    ctx.save();
+    ctx.globalAlpha = pulse;
+    ctx.fillStyle = "#f00";
+    ctx.fillRect(0, 0, BASE_W, BASE_H);
+    ctx.restore();
+  }
 
   // =====================
   // HUD layer (+shake +uiKick)

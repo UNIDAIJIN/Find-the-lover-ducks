@@ -347,6 +347,22 @@ export function runNpcEvent(act, ctx) {
     return true;
   }
 
+  if (ev.type === "dream_talk") {
+    const { dialog, choice } = ctx;
+    choice.open(["はい", "いいえ"], (sel) => {
+      if (sel === 0) {
+        dialog.open([
+          ["どこかに埋蔵金が埋まってるらしいんだ！"],
+          ["大きな木が６本はえてる場所のまんなか近くだって！"],
+          ["木をさがすならって森にきてみたけど、どこだろう。"],
+        ]);
+      } else {
+        dialog.open([["ふーん。きっとこうかいするよ。"]]);
+      }
+    }, "ゆめでみたんだ！ききたいか？");
+    return true;
+  }
+
   if (ev.type === "pizza_shop") {
     const { dialog, choice, startPizzaJob, settlePizzaJob, cancelPizzaJob, inventory } = ctx;
     if (STATE.flags.pizzaJobActive) {
