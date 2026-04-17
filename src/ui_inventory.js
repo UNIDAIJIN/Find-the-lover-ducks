@@ -89,18 +89,16 @@ export function createInventory({
     const src = itemBgmSrc(id);
 
     closeInv();
-    if (typeof stopBgm === "function") stopBgm();
+    if (src && typeof stopBgm === "function") stopBgm();
     playItemJingle();
     if (toast) toast.show(`${name} をつかった。`);
 
-    setTimeout(() => {
-      if (src) {
+    if (src) {
+      setTimeout(() => {
         unlockBgm();
         setOverrideBgm(src);
-      } else {
-        setOverrideBgm(null);
-      }
-    }, 670);
+      }, 670);
+    }
   }
 
   function update() {

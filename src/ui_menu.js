@@ -150,14 +150,13 @@ export function createMenu({
             const name = itemName(id);
             const src  = itemBgmSrc(id);
             close();
-            if (typeof stopBgm === "function") stopBgm();
+            if (src && typeof stopBgm === "function") stopBgm();
             playUseItemSe();
             if (toast) toast.show(`${name} をつかった。`);
             const handled = typeof onUseItem === "function" && onUseItem(id);
-            if (!handled) {
+            if (!handled && src) {
               setTimeout(() => {
-                if (src) { unlockBgm(); setOverrideBgm(src); }
-                else     { setOverrideBgm(null); }
+                unlockBgm(); setOverrideBgm(src);
               }, 670);
             }
           }
