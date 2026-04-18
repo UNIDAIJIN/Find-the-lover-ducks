@@ -2,7 +2,7 @@
 import { STATE } from "./state.js";
 import { SPRITES } from "./sprites.js";
 import { ALL_ITEM_IDS } from "./items.js";
-import { playCooking, playIndianJingle, playItemJingle, playInnJingle, playJaws, stopJaws, playCrush, playConfirm, playCoin, playDoor, playClickOn } from "./se.js";
+import { playCooking, playIndianJingle, playItemJingle, playInnJingle, playJaws, stopJaws, playCrush, playConfirm, playCoin, playDoor, playClickOn, playTimeMachineShine } from "./se.js";
 
 export function runNpcEvent(act, ctx) {
   const ev = act?.event;
@@ -347,6 +347,12 @@ export function runNpcEvent(act, ctx) {
     return true;
   }
 
+  if (ev.type === "start_diving") {
+    const { startDiving } = ctx;
+    if (typeof startDiving === "function") startDiving();
+    return true;
+  }
+
   if (ev.type === "dream_talk") {
     const { dialog, choice } = ctx;
     choice.open(["はい", "いいえ"], (sel) => {
@@ -678,9 +684,13 @@ export function runNpcEvent(act, ctx) {
   }
 
   if (ev.type === "kingyobachi_san_give") {
-    const { dialog, inventory } = ctx;
+    const { dialog, inventory, startDiving } = ctx;
     if (STATE.flags.kingyobachiSanGave) {
-      dialog.open([["ヨヨヨよ。"]]);
+      dialog.open([["肺いっぱいに空気を入れるんだ。"]], () => {
+        startDiving(() => {
+          dialog.open([["空気たのしんでる？"]]);
+        });
+      });
     } else {
       dialog.open([
         ["ヨヨヨよ。オレが見えるのか。"],
@@ -689,9 +699,51 @@ export function runNpcEvent(act, ctx) {
         STATE.flags.kingyobachiSanGave = true;
         inventory.addItem(ev.giveItem);
         playItemJingle();
-        dialog.open([["きんぎょばちを手に入れた。"]], null, "sign");
+        dialog.open([["きんぎょばちを手に入れた。"]], () => {
+          setTimeout(() => {
+            dialog.open([
+              ["ところで。"],
+              ["はやくこれをかぶってダイビングしたい！うずうずするぜ！"],
+              ["そういう顔だな。"],
+              ["あせるなよ。"],
+              ["肺いっぱいに空気を入れるんだ。"],
+            ], () => {
+              startDiving(() => {
+                dialog.open([["空気たのしんでる？"]]);
+              });
+            });
+          }, 1000);
+        }, "sign");
       });
     }
+    return true;
+  }
+
+  if (ev.type === "spacesisters_warp") {
+    const { dialog, startSpaceWarp } = ctx;
+    const pages = STATE.flags.spacesistersWarped
+      ? [["それじゃいってみよう！"], ["グッドバイヴレーション！"]]
+      : [["ワレワレハ、宇宙人ダ。"], ["なーんてね、ふふ。"], ["よくきたね。"], ["ぼくらは君たちが来るのをずっと待ってたのさ。"], ["つまりは、そうだな。"], ["君たちを、宇宙にご招待さ！"]];
+    dialog.open(pages, () => {
+      STATE.flags.spacesistersWarped = true;
+      startSpaceWarp();
+    });
+    return true;
+  }
+
+  if (ev.type === "spacesisters_hit") {
+    const { dialog } = ctx;
+    const UFO_SEQ_LEN = 8;
+    dialog.open([["あたり！"]], () => {
+      playTimeMachineShine();
+      act.vanishStart = performance.now();
+      act.solid = false;
+      act.talkHit = { x: 0, y: 0, w: 0, h: 0 };
+      STATE.flags.ufoStep = (STATE.flags.ufoStep || 0) + 1;
+      if (STATE.flags.ufoStep >= UFO_SEQ_LEN) {
+        STATE.flags.ufoComplete = true;
+      }
+    });
     return true;
   }
 

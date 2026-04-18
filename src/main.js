@@ -5,7 +5,7 @@ import { MAPS } from "./maps.js";
 import { makeColStore } from "./col.js";
 import { START_INVENTORY_NORMAL, itemName, itemBgmSrc, itemThrowDmg } from "./items.js";
 import { PICKUPS_BY_MAP } from "./pickups.js";
-import { NPCS_BY_MAP } from "./npcs.js";
+import { NPCS_BY_MAP, getUfoHouseNpcs } from "./npcs.js";
 import { REGISTRY } from "./registry.js";
 const { createInput, createBgm, createSea, createDialog, createChoice, createShop, createJumprope, createFade, createInventory, createToast, createFollowers, createBattleSystem, runNpcEvent } = REGISTRY;
 import { STATE } from "./state.js";
@@ -14,7 +14,7 @@ import { createTitle  }     from "./title.js";
 import { createCharSelect } from "./char_select.js";
 import { createLoading }    from "./loading.js";
 import { setupMobileController } from "./mobile_controller.js";
-import { playSuzu, playDoor, playZazza, playHoleFall, playHoleRoll, playConfirm, playClickOn, playTimeMachineShine, playWave, startHeartbeat, stopHeartbeat, playQuestJingleB, playPunch, startShootingBgm, stopShootingBgm, startAfloClubBgm, stopAfloClubBgm, stopJaws, playBattleWinJingle, getAfloClubKickPulseMs, unlockSeAudio, startRainLoop, stopRainLoop } from "./se.js";
+import { playSuzu, playDoor, playZazza, playHoleFall, playHoleRoll, playConfirm, playClickOn, playTimeMachineShine, playWave, startHeartbeat, stopHeartbeat, playQuestJingleB, playPunch, startShootingBgm, stopShootingBgm, startAfloClubBgm, stopAfloClubBgm, stopJaws, playBattleWinJingle, getAfloClubKickPulseMs, unlockSeAudio, startRainLoop, stopRainLoop, startDivingBgm, stopDivingBgm } from "./se.js";
 import { createMenu } from "./ui_menu.js";
 import { createTripEffect }     from "./trip_effect.js";
 import { createGoodTripEffect } from "./trip_effect_good.js";
@@ -22,6 +22,7 @@ import * as letterbox           from "./letterbox.js";
 import { createQuestAlert }     from "./ui_quest_alert.js";
 import { QUESTS }               from "./data/quests.js";
 import { createShooting, drawShootingBackdrop } from "./ui_shooting.js";
+import { createDiving, DIVE_W, DIVE_H } from "./ui_diving.js";
 import { gateNpc } from "./data/npcs/gate.js";
 
 const DEBUG  = true;
@@ -72,6 +73,7 @@ function nowMs() {
 
 // UI / FX
 const shooting  = createShooting({ BASE_W, BASE_H, input, sprites: SPRITES, getLeaderImg: () => leader?.img });
+const diving    = createDiving({ BASE_W, BASE_H, input, getLeaderImg: () => leader?.img, getHeadwearImg: () => SPRITES.kingyobachi, sprites: SPRITES });
 const dialog = createDialog({ BASE_W, BASE_H, input });
 const choice = createChoice({ BASE_W, BASE_H, input });
 const shop      = createShop({ BASE_W, BASE_H, input });
@@ -652,6 +654,7 @@ let actors = [];
 // 描画ソート用リスト（毎フレームクリアして再利用）
 const _groundList = [];
 const _upperList  = [];
+const _aboveTopList = [];
 // 描画アイテムプール（毎フレームのオブジェクト生成ゼロ）
 const _POOL_SIZE  = 100;
 const _renderPool = Array.from({ length: _POOL_SIZE }, () => ({}));
@@ -676,6 +679,7 @@ function _poolItem() {
     item.scale = undefined;
     item.filter = undefined;
     item.tint = undefined;
+    item.vanishStart = undefined;
     return item;
   }
   return {}; // フォールバック（超えることはほぼない）
@@ -730,6 +734,12 @@ function spawnActorsForMap(mapId) {
 
   const npcs = NPCS_BY_MAP?.[mapId] || [];
   for (const def of npcs) actors.push({ ...def, frame: 0, last: 0 });
+
+  const ufoMatch = mapId.match(/^umi_house(\d)$/);
+  if (ufoMatch) {
+    for (const def of getUfoHouseNpcs(+ufoMatch[1])) actors.push({ ...def, frame: 0, last: 0 });
+  }
+
   if (mapId === "shooting_lobby") {
     for (const a of actors) {
       if (!a.name?.startsWith("door_")) continue;
@@ -833,6 +843,18 @@ function spawnPickup(itemId, x, y) {
     sparkleColor: itemId === "iron_heart" ? "red" : "green",
     sparklePhase: Math.random() * Math.PI * 2,
   });
+}
+
+// ---- Space Warp FX ----
+let spaceWarpFx = { active: false, start: 0 };
+const WARP_SHAKE_MS = 800;
+const WARP_SPIN_MS  = 1200;
+const WARP_TOTAL_MS = WARP_SHAKE_MS + WARP_SPIN_MS;
+
+function startSpaceWarp() {
+  spaceWarpFx = { active: true, start: performance.now(), done: false };
+  input.lock();
+  playTimeMachineShine();
 }
 
 // ---- Toast (item use message) ----
@@ -1606,6 +1628,7 @@ function isSceneActive() {
   if (letterbox.isActive()) return true;
   if (battle.isActive()) return true;
   if (shooting.isActive()) return true;
+  if (diving.isActive()) return true;
   if (jumprope.isActive()) return true;
   if (shop.isActive()) return true;
   if (ending.isActive()) return true;
@@ -2158,6 +2181,18 @@ function loadMap(id, opt = null) {
     spawnActorsForMap(current.id);
     applyFlagsToActors(current.id);
 
+    const _ufoM = current.id.match(/^umi_house(\d)$/);
+    if (_ufoM && !STATE.flags.ufoComplete) {
+      const _ufoSeq = [2, 3, 1, 1, 3, 1, 2, 3];
+      const _step = STATE.flags.ufoStep || 0;
+      const _isCorrect = _step < _ufoSeq.length && _ufoSeq[_step] === +_ufoM[1];
+      if (_isCorrect && _step === _ufoSeq.length - 1) {
+        STATE.flags.ufoComplete = true;
+      } else if (!_isCorrect) {
+        STATE.flags.ufoStep = 0;
+      }
+    }
+
     if (opt?.isEnding || opt?.skipBgm) {
       // BGM は呼び出し元が管理
       if (current.id === "shooting_lobby") {
@@ -2336,6 +2371,46 @@ function drawTintedSprite(img, f, x, y, tint, spr = SPR, sprH = spr) {
 
 
 function drawEntry(o) {
+  if (o.vanishStart) {
+    const ve = (nowMs() - o.vanishStart) / 400;
+    if (ve >= 1) return;
+    const vp = ve * ve;
+    const sx = ((o.x - cam.x) | 0) + 8;
+    const sy = ((o.y - cam.y) | 0) + 8;
+    ctx.save();
+    ctx.globalAlpha = 1 - vp;
+    ctx.translate(sx, sy);
+    ctx.scale(1 - vp * 0.8, 1 + vp * 2);
+    ctx.translate(-sx, -sy);
+    const _vs = o.spr ?? SPR, _vh = o.sprH ?? _vs;
+    drawSprite(o.img, o.frame, o.x, o.y, _vs, _vh);
+    // スプライト形状だけ白く光らせる
+    tintCanvas.width = _vs; tintCanvas.height = _vh;
+    tintCtx.clearRect(0, 0, _vs, _vh);
+    tintCtx.globalCompositeOperation = "source-over";
+    tintCtx.drawImage(o.img, (o.frame * _vs) | 0, 0, _vs, _vh, 0, 0, _vs, _vh);
+    tintCtx.globalCompositeOperation = "source-in";
+    tintCtx.fillStyle = "#fff";
+    tintCtx.fillRect(0, 0, _vs, _vh);
+    tintCtx.globalCompositeOperation = "source-over";
+    ctx.globalCompositeOperation = "lighter";
+    ctx.globalAlpha = (1 - vp) * vp * 4;
+    ctx.drawImage(tintCanvas, (o.x - cam.x) | 0, (o.y - cam.y) | 0);
+    ctx.restore();
+    // パーティクル
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * Math.PI * 2 + ve * 3;
+      const r = ve * 20;
+      const px = sx + Math.cos(a) * r;
+      const py = sy + Math.sin(a) * r - ve * 12;
+      ctx.save();
+      ctx.globalAlpha = (1 - vp) * 0.9;
+      ctx.fillStyle = "#aef";
+      ctx.fillRect(px | 0, py | 0, 2, 2);
+      ctx.restore();
+    }
+    return;
+  }
   if (o.sparkle) {
     const sx = ((o.x - cam.x) | 0) + 8;
     const sy = ((o.y - cam.y) | 0) + 8;
@@ -2554,6 +2629,13 @@ function draw() {
     return;
   }
 
+  if (diving.isActive()) {
+    diving.draw(ctx);
+    questAlert.update(); drainQuestQueue();
+    questAlert.draw(ctx);
+    return;
+  }
+
   // ★ここは見た目用なので performance.now() でもOK（ゲーム進行の時間とは別）
   const tt = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
   const shouldDrawSea = current.id === "outdoor" || current.id === "mirai" || current.id === "kako" || !!waterMaskCanvas;
@@ -2600,9 +2682,11 @@ function draw() {
 
   _groundList.length = 0;
   _upperList.length  = 0;
+  _aboveTopList.length = 0;
   _poolIdx = 0;
   const groundList = _groundList;
   const upperList  = _upperList;
+  const aboveTopList = _aboveTopList;
   const spaceDanger = current.id === "space" && spaceO2 / SPACE_O2_MAX <= 0.2;
   const moonRot = current.id === "space" && spaceMoonAttach ? spaceMoonAngle + Math.PI / 2 : 0;
   const panicOx = (phase = 0) => spaceDanger ? (((Math.sin(tt / 45 + phase) * 1.8) | 0)) : 0;
@@ -2647,6 +2731,7 @@ function draw() {
     pushParty("leader", il);
   }
   for (const act of actors) {
+    if (act.vanishStart && (nowMs() - act.vanishStart) >= 400) { act.hidden = true; act.vanishStart = undefined; }
     if (act.hidden) continue;
     let bgmFadeAlpha = 1;
     if (act.showWhenBgm) {
@@ -2687,9 +2772,11 @@ function draw() {
     ia.markFromImg = act.markFromImg;
     ia.markAnimStart = act.markAnimStart;
     ia.markAnimUntil = act.markAnimUntil;
+    ia.vanishStart = act.vanishStart;
     ia.shadowImg = undefined; // 影は outdoor.png に合成済み
     ia.shadowOff = isCactus ? _cactusShadowOff : undefined;
-    if (charHeight.leader === "upper") upperList.push(ia);
+    if (act.aboveTop) aboveTopList.push(ia);
+    else if (charHeight.leader === "upper") upperList.push(ia);
     else                               groundList.push(ia);
   }
 
@@ -2770,6 +2857,8 @@ function draw() {
     drawMapImg(bgTopImg);
     if (shrineFade > 0) drawMapImg(bgShrineTopImg, shrineFade);
   }
+
+  for (let i = 0; i < aboveTopList.length; i++) drawEntry(aboveTopList[i]);
 
   drawRainScene(tt);
 
@@ -2946,6 +3035,67 @@ function draw() {
       const cb = redScreenOnEnd;
       redScreenOnEnd = null;
       cb();
+    }
+  }
+
+  // ---- Space Warp FX ----
+  if (spaceWarpFx.active) {
+    const we = performance.now() - spaceWarpFx.start;
+    if (we < WARP_SHAKE_MS) {
+      // Phase 1: 画面揺れ + 白フラッシュ増加
+      const p = we / WARP_SHAKE_MS;
+      const shakeX = ((Math.sin(we * 0.05) * 3 * p) | 0);
+      const shakeY = ((Math.cos(we * 0.07) * 3 * p) | 0);
+      ctx.save();
+      ctx.translate(shakeX, shakeY);
+      ctx.restore();
+      ctx.save();
+      ctx.globalAlpha = p * 0.4;
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(0, 0, BASE_W, BASE_H);
+      ctx.restore();
+    } else if (we < WARP_TOTAL_MS) {
+      // Phase 2: キャラ回転上昇 + 白フラッシュ
+      const p = (we - WARP_SHAKE_MS) / WARP_SPIN_MS;
+      const ep = p * p;
+      ctx.save();
+      ctx.fillStyle = "#fff";
+      ctx.globalAlpha = 0.4 + p * 0.6;
+      ctx.fillRect(0, 0, BASE_W, BASE_H);
+      ctx.restore();
+      const chars = [leader, p2, p3, p4];
+      for (let i = 0; i < 4; i++) {
+        const c = chars[i];
+        const cx = ((c.x - cam.x) | 0) + 8;
+        const cy = ((c.y - cam.y) | 0) + 8 - ep * 120 - i * 8 * ep;
+        const rot = p * Math.PI * 6 + i * 0.5;
+        const sc = Math.max(0, 1 - ep * 0.6);
+        ctx.save();
+        ctx.globalAlpha = 1 - ep;
+        ctx.translate(cx, cy);
+        ctx.rotate(rot);
+        ctx.scale(sc, sc);
+        ctx.drawImage(c.img, 0, 0, SPR, SPR, -8, -8, SPR, SPR);
+        ctx.restore();
+      }
+    } else if (!spaceWarpFx.done) {
+      // フェード開始、白は描き続ける
+      spaceWarpFx.done = true;
+      fade.startCutFade(nowMs(), {
+        outMs: 1, holdMs: 200, inMs: 500,
+        onBlack: () => {
+          spaceWarpFx.active = false;
+          loadMap("space");
+          input.unlock();
+        },
+      });
+    }
+    if (spaceWarpFx.done) {
+      ctx.save();
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(0, 0, BASE_W, BASE_H);
+      ctx.restore();
     }
   }
 
@@ -3405,6 +3555,22 @@ function tryInteract(t) {
           delete STATE.flags.pizzaAte;
           refreshPizzaJobMarkers();
         },
+        startSpaceWarp,
+        startDiving: (onDone) => {
+          bgmCtl.setOverride("about:blank");
+          setGameResolution(DIVE_W, DIVE_H);
+          startDivingBgm();
+          diving.start(() => {
+            stopDivingBgm();
+            bgmCtl.setOverride(null);
+            setGameResolution(BASE_W, BASE_H);
+            if (!STATE.flags.diveFirstStarted) {
+              STATE.flags.diveFirstStarted = true;
+              achieveQuest("18");
+            }
+            if (typeof onDone === "function") onDone();
+          });
+        },
       });
       if (handled) return;
 
@@ -3726,6 +3892,12 @@ function update(t) {
     return;
   }
 
+  // diving
+  if (diving.isActive()) {
+    diving.update();
+    return;
+  }
+
   // jumprope
   if (jumprope.isActive()) {
     jumprope.update();
@@ -3846,13 +4018,11 @@ function update(t) {
     return;
   }
 
-  // DEBUG: D で宇宙へワープ
+  // D で過去へワープ
   if (DEBUG && input.consume("d")) {
-    fade.startCutFade(t, {
-      outMs: 150,
-      holdMs: 80,
-      inMs: 300,
-      onBlack: () => { loadMap("space"); },
+    fade.startCutFade(nowMs(), {
+      outMs: 150, holdMs: 80, inMs: 300,
+      onBlack: () => { loadMap("kako"); },
     });
   }
 

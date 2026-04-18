@@ -1,6 +1,7 @@
 // npcs.js
 import { CONFIG } from "./config.js";
 import { SPRITES } from "./sprites.js";
+import { STATE }   from "./state.js";
 
 import { boardNpc }         from "./data/npcs/board.js";
 import { pizzashopNpc }     from "./data/npcs/pizzashop.js";
@@ -47,6 +48,8 @@ import { iceNpc }            from "./data/npcs/ice.js";
 import { yumaNpc }           from "./data/npcs/yuma.js";
 import { afloboyNpc }        from "./data/npcs/afloboy.js";
 import { dreamNpc }          from "./data/npcs/dream.js";
+import { grasanNpc }         from "./data/npcs/grasan.js";
+import { charaNpc }          from "./data/npcs/chara.js";
 
 const { NPC_FRAME_MS } = CONFIG;
 
@@ -84,16 +87,16 @@ export const NPCS_BY_MAP = {
     resolve({
       ...boardNpc,
       name: "board_vj_records",
-      x: 1820,
-      y: 695,
+      x: 1817,
+      y: 675,
       talkPages: [["すばらしき音楽事務所、ヴィニールジャンキーレコーディングス"]],
       talkType: "sign",
     }),
     resolve({
       ...boardNpc,
       name: "board_afroclub",
-      x: 2626,
-      y: 1031,
+      x: 2624,
+      y: 1015,
       talkPages: [["アフロ・クラブへようこそ"]],
       talkType: "sign",
     }),
@@ -125,6 +128,7 @@ export const NPCS_BY_MAP = {
     resolve({ ...fanNpc, name: "fan_2", x: 2299, y: 1133 }),
     resolve({ ...fanNpc, name: "fan_3", x: 1522, y: 875 }),
     resolve({ ...fanNpc, name: "fan_4", x: 1595, y: 928 }),
+    resolve({ ...fanNpc, name: "fan_5", x: 1843, y: 617, aboveTop: true }),
     resolve(koriNpc),
     resolve(moriGirlNpc),
     resolve(mizugiMNpc),
@@ -137,6 +141,8 @@ export const NPCS_BY_MAP = {
     resolve(yumaNpc),
     resolve(afloboyNpc),
     resolve(dreamNpc),
+    resolve(grasanNpc),
+    resolve(charaNpc),
     ...cactusNpcs.map(resolve),
   ].map((npc) => ({ ...npc, y: typeof npc.y === "number" ? npc.y + 1 : npc.y })),
 
@@ -241,6 +247,69 @@ export const NPCS_BY_MAP = {
 
   kako: [
     resolve(timemachineSlotNpc),
+    // 1段目
+    resolve({ ...yashiNpc, name: "kako_yashi_1",  x: 1242, y: 1413 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_2",  x: 1270, y: 1407 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_3",  x: 1298, y: 1415 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_4",  x: 1326, y: 1409 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_5",  x: 1354, y: 1416 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_6",  x: 1382, y: 1411 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_7",  x: 1410, y: 1408 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_8",  x: 1438, y: 1414 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_9",  x: 1466, y: 1410 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_10", x: 1494, y: 1417 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_11", x: 1522, y: 1406 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_12", x: 1550, y: 1412 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_13", x: 1578, y: 1418 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_14", x: 1606, y: 1409 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_15", x: 1634, y: 1415 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_16", x: 1662, y: 1407 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_17", x: 1690, y: 1413 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_18", x: 1718, y: 1416 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_19", x: 1746, y: 1408 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_20", x: 1774, y: 1411 }),
+    // 2段目
+    resolve({ ...yashiNpc, name: "kako_yashi_21", x: 1248, y: 1443 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_22", x: 1276, y: 1438 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_23", x: 1304, y: 1446 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_24", x: 1332, y: 1440 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_25", x: 1360, y: 1447 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_26", x: 1388, y: 1441 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_27", x: 1416, y: 1439 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_28", x: 1444, y: 1445 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_29", x: 1472, y: 1442 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_30", x: 1500, y: 1448 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_31", x: 1528, y: 1437 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_32", x: 1556, y: 1444 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_33", x: 1584, y: 1449 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_34", x: 1612, y: 1440 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_35", x: 1640, y: 1446 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_36", x: 1668, y: 1438 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_37", x: 1696, y: 1444 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_38", x: 1724, y: 1447 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_39", x: 1752, y: 1439 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_40", x: 1780, y: 1442 }),
+    // 3段目
+    resolve({ ...yashiNpc, name: "kako_yashi_41", x: 1245, y: 1474 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_42", x: 1273, y: 1469 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_43", x: 1301, y: 1477 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_44", x: 1329, y: 1471 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_45", x: 1357, y: 1478 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_46", x: 1385, y: 1472 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_47", x: 1413, y: 1470 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_48", x: 1441, y: 1476 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_49", x: 1469, y: 1473 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_50", x: 1497, y: 1479 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_51", x: 1525, y: 1468 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_52", x: 1553, y: 1475 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_53", x: 1581, y: 1480 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_54", x: 1609, y: 1471 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_55", x: 1637, y: 1477 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_56", x: 1665, y: 1469 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_57", x: 1693, y: 1475 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_58", x: 1721, y: 1478 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_59", x: 1749, y: 1470 }),
+    resolve({ ...yashiNpc, name: "kako_yashi_60", x: 1777, y: 1473 }),
   ],
 
   afloclub: [
@@ -273,3 +342,45 @@ export const NPCS_BY_MAP = {
     resolve(ponydeadyouthNpc),
   ],
 };
+
+const UFO_SEQ = [2, 3, 1, 1, 3, 1, 2, 3];
+const UFO_CX = 120, UFO_CY = 145;
+
+export function getUfoHouseNpcs(houseNum) {
+  const npcs = [];
+  if (STATE.flags.ufoComplete) {
+    if (houseNum === 3) {
+      npcs.push(
+        resolve({ kind: "npc", name: "spacesisters1_a", spriteKey: "spacesisters1", x: UFO_CX, y: UFO_CY - 16, talkHit: { x: 0, y: 0, w: 16, h: 16 }, solid: true, event: { type: "spacesisters_warp" } }),
+        resolve({ kind: "npc", name: "spacesisters1_b", spriteKey: "spacesisters1", x: UFO_CX - 24, y: UFO_CY + 14, talkHit: { x: 0, y: 0, w: 16, h: 16 }, solid: true, event: { type: "spacesisters_warp" } }),
+        resolve({ kind: "npc", name: "spacesisters1_c", spriteKey: "spacesisters1", x: UFO_CX + 24, y: UFO_CY + 14, talkHit: { x: 0, y: 0, w: 16, h: 16 }, solid: true, event: { type: "spacesisters_warp" } }),
+      );
+    }
+    return npcs;
+  }
+
+  const step = STATE.flags.ufoStep || 0;
+  const isCorrect = step < UFO_SEQ.length && UFO_SEQ[step] === houseNum;
+  const isLast = step === UFO_SEQ.length - 1;
+  if (isCorrect && isLast) {
+    npcs.push(
+      resolve({ kind: "npc", name: "spacesisters1_a", spriteKey: "spacesisters1", x: UFO_CX, y: UFO_CY - 12, talkHit: { x: 0, y: 0, w: 16, h: 16 }, solid: true, talkPages: [["……"]] }),
+      resolve({ kind: "npc", name: "spacesisters1_b", spriteKey: "spacesisters1", x: UFO_CX - 16, y: UFO_CY + 10, talkHit: { x: 0, y: 0, w: 16, h: 16 }, solid: true, talkPages: [["……"]] }),
+      resolve({ kind: "npc", name: "spacesisters1_c", spriteKey: "spacesisters1", x: UFO_CX + 16, y: UFO_CY + 10, talkHit: { x: 0, y: 0, w: 16, h: 16 }, solid: true, talkPages: [["……"]] }),
+    );
+  } else if (isCorrect) {
+    npcs.push(resolve({
+      kind: "npc", name: "spacesisters1_hit", spriteKey: "spacesisters1",
+      x: UFO_CX, y: UFO_CY, talkHit: { x: 0, y: 0, w: 16, h: 16 }, solid: true,
+      event: { type: "spacesisters_hit" },
+    }));
+  } else {
+    npcs.push(resolve({
+      kind: "npc", name: "ufo_hazure_board", spriteKey: "board",
+      x: UFO_CX, y: UFO_CY, talkHit: { x: 0, y: 0, w: 16, h: 14 }, solid: true,
+      talkType: "sign",
+      talkPages: [["ハ　ズ　レ"]],
+    }));
+  }
+  return npcs;
+}

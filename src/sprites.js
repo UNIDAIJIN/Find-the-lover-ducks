@@ -60,6 +60,8 @@ export const SPRITES = {
   yuma: loadSprite("assets/sprites/yuma.png"),
   afloboy: loadSprite("assets/sprites/afloboy.png"),
   dream: loadSprite("assets/sprites/dream.png"),
+  grasan: loadSprite("assets/sprites/grasan.png"),
+  chara: loadSprite("assets/sprites/chara.png"),
   ice: loadSprite("assets/sprites/ice.png"),
   pizza_sign: loadSprite("assets/sprites/pizza_sign.png"),
   fan: loadSprite("assets/sprites/fan.png"),
@@ -133,4 +135,17 @@ export const SPRITES = {
   yashi:   loadSprite("assets/sprites/yashi.png"),
   yashi2:  loadSprite("assets/sprites/yashi2.png"),
   yashi3:  loadSprite("assets/sprites/yashi3.png"),
+
+  spacesisters1: loadSprite("assets/sprites/spacesisters1.png"),
+
+  dive_tank:  loadSprite("assets/sprites/dive_tank.png"),
+  dive_fin:   loadSprite("assets/sprites/dive_fin.png"),
+  dive_light: loadSprite("assets/sprites/dive_light.png"),
+  dive_spear: loadSprite("assets/sprites/dive_spear.png"),
+  dive_swim:  loadSprite("assets/sprites/dive_swim.png"),
+  dive_go:    loadSprite("assets/sprites/dive_go.png"),
+  dive_jelly:    loadSprite("assets/sprites/dive_jelly.png"),
+  dive_urchin:   loadSprite("assets/sprites/dive_urchin.png"),
+  dive_treasure: loadSprite("assets/sprites/dive_treasure.png"),
+  dive_wall:     loadSprite("assets/sprites/dive_wall.png"),
 };
