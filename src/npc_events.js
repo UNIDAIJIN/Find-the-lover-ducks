@@ -719,6 +719,22 @@ export function runNpcEvent(act, ctx) {
     return true;
   }
 
+  if (ev.type === "sogankyo") {
+    const { choice, dialog, startKakoMovie } = ctx;
+    choice.open(["はい", "いいえ"], (idx) => {
+      if (typeof choice.close === "function") choice.close();
+      if (idx !== 0) return;
+      if (STATE.money < 100) {
+        dialog.open([["おかねがたりません。"]], null, "sign");
+        return;
+      }
+      STATE.money -= 100;
+      playCoin();
+      setTimeout(() => startKakoMovie(), 1000);
+    }, "100ENをいれてください。", { instant: true });
+    return true;
+  }
+
   if (ev.type === "spacesisters_warp") {
     const { dialog, startSpaceWarp } = ctx;
     const pages = STATE.flags.spacesistersWarped

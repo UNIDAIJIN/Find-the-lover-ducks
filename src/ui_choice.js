@@ -47,13 +47,13 @@ export function createChoice({ BASE_W, BASE_H, input } = {}) {
     return charIndex >= String(question).length;
   }
 
-  function open(newOptions, cb, q = null) {
+  function open(newOptions, cb, q = null, opts = {}) {
     active     = true;
     options    = Array.isArray(newOptions) ? newOptions : [];
     cursor     = 0;
     onSelect   = typeof cb === "function" ? cb : null;
     question   = q || null;
-    charIndex  = 0;
+    charIndex  = opts.instant ? String(q || "").length : 0;
     lastCharMs = Date.now();
     input.clear();
   }

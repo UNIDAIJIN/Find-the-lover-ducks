@@ -76,6 +76,7 @@ export const SPRITES = {
   kori: loadSprite("assets/sprites/kori.png"),
   cat1: loadSprite("assets/sprites/cat_g.png"),
   misaki: loadSprite("assets/sprites/misaki.png"),
+  sogankyo: loadSprite("assets/sprites/sogankyo.png"),
   seats: loadSprite("assets/sprites/seats.png"),
 
   // hole マップ
@@ -137,6 +138,7 @@ export const SPRITES = {
   yashi3:  loadSprite("assets/sprites/yashi3.png"),
 
   spacesisters1: loadSprite("assets/sprites/spacesisters1.png"),
+  dinosour: loadSprite("assets/sprites/dinosour.png"),
 
   dive_tank:  loadSprite("assets/sprites/dive_tank.png"),
   dive_fin:   loadSprite("assets/sprites/dive_fin.png"),

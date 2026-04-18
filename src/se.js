@@ -1148,6 +1148,114 @@ export function stopShootingBgm() {
   }
 }
 
+// ---- ダイビングBGM: 水中ぽこぽこ音 ----
+let _divingScheduler = null;
+
+function schedBubble(t, freq) {
+  const ctx = getCtx();
+  const osc = ctx.createOscillator();
+  const g = ctx.createGain();
+  osc.connect(g); g.connect(ctx.destination);
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(freq, t);
+  osc.frequency.exponentialRampToValueAtTime(freq * 0.6, t + 0.15);
+  g.gain.setValueAtTime(0.12, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+  osc.start(t); osc.stop(t + 0.22);
+}
+
+function schedDrip(t) {
+  const ctx = getCtx();
+  const osc = ctx.createOscillator();
+  const g = ctx.createGain();
+  osc.connect(g); g.connect(ctx.destination);
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(1200 + Math.random() * 600, t);
+  osc.frequency.exponentialRampToValueAtTime(400, t + 0.08);
+  g.gain.setValueAtTime(0.06, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+  osc.start(t); osc.stop(t + 0.12);
+}
+
+export function playSpearShot() {
+  const ctx = getCtx();
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
+  const t = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  const g = ctx.createGain();
+  osc.connect(g); g.connect(ctx.destination);
+  osc.type = "sawtooth";
+  osc.frequency.setValueAtTime(800, t);
+  osc.frequency.exponentialRampToValueAtTime(200, t + 0.12);
+  g.gain.setValueAtTime(0.14, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+  osc.start(t); osc.stop(t + 0.13);
+}
+
+export function playDiveHit() {
+  const ctx = getCtx();
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
+  const t = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  const g = ctx.createGain();
+  osc.connect(g); g.connect(ctx.destination);
+  osc.type = "square";
+  osc.frequency.setValueAtTime(300, t);
+  osc.frequency.exponentialRampToValueAtTime(100, t + 0.15);
+  g.gain.setValueAtTime(0.15, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+  osc.start(t); osc.stop(t + 0.16);
+}
+
+export function playDiveResult(ok) {
+  const ctx = getCtx();
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
+  const t = ctx.currentTime;
+  const notes = ok ? [523, 659, 784, 1047] : [400, 350, 300, 200];
+  notes.forEach((freq, i) => {
+    const st = t + i * 0.1;
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.connect(g); g.connect(ctx.destination);
+    osc.type = ok ? "triangle" : "square";
+    osc.frequency.value = freq;
+    g.gain.setValueAtTime(0.15, st);
+    g.gain.exponentialRampToValueAtTime(0.001, st + (i === 3 ? 0.35 : 0.12));
+    osc.start(st); osc.stop(st + 0.4);
+  });
+}
+
+export function startDivingBgm() {
+  stopDivingBgm();
+  const ctx = getCtx();
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
+  const stepDur = 0.18;
+  let nextTime = ctx.currentTime + 0.05;
+  let stepIdx = 0;
+  const bubbleFreqs = [320, 400, 480, 360, 520, 280];
+  _divingScheduler = setInterval(() => {
+    const ctx2 = getCtx();
+    while (nextTime < ctx2.currentTime + 0.15) {
+      const s = stepIdx % 16;
+      if (s === 0 || s === 6 || s === 10 || s === 14) {
+        schedBubble(nextTime, bubbleFreqs[stepIdx % bubbleFreqs.length]);
+      }
+      if (s === 3 || s === 11) {
+        schedDrip(nextTime);
+      }
+      nextTime += stepDur;
+      stepIdx++;
+    }
+  }, 80);
+}
+
+export function stopDivingBgm() {
+  if (_divingScheduler !== null) {
+    clearInterval(_divingScheduler);
+    _divingScheduler = null;
+  }
+}
+
 const AFLO_BASS_NOTES = [55.0, 65.41, 73.42, 82.41];
 const AFLO_BASS_PAT   = [0,-1,0,-1, 1,-1,0,-1, 2,-1,1,-1, 3,-1,1,-1];
 
@@ -1219,4 +1327,103 @@ export function getAfloClubKickPulseMs() {
   if (!_afloClubKickAt) return 999999;
   const now = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
   return now - _afloClubKickAt;
+}
+
+// ---- 恐竜シーン SE ----
+export function playDinoStep(vol = 1) {
+  const ctx = getCtx();
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
+  const t = ctx.currentTime;
+  // 低音ドシン
+  const osc = ctx.createOscillator();
+  const g = ctx.createGain();
+  osc.connect(g); g.connect(ctx.destination);
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(55, t);
+  osc.frequency.exponentialRampToValueAtTime(30, t + 0.25);
+  g.gain.setValueAtTime(0.25 * vol, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+  osc.start(t); osc.stop(t + 0.32);
+  // ノイズ成分
+  const buf = ctx.createBuffer(1, ctx.sampleRate * 0.15 | 0, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 3);
+  const ns = ctx.createBufferSource();
+  const ng = ctx.createGain();
+  ns.buffer = buf; ns.connect(ng); ng.connect(ctx.destination);
+  ng.gain.setValueAtTime(0.12 * vol, t);
+  ng.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+  ns.start(t); ns.stop(t + 0.16);
+}
+
+export function playBirdCall() {
+  const ctx = getCtx();
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
+  const t = ctx.currentTime;
+  const freqs = [2200, 2600, 2400];
+  freqs.forEach((f, i) => {
+    const st = t + i * 0.12;
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.connect(g); g.connect(ctx.destination);
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(f, st);
+    osc.frequency.exponentialRampToValueAtTime(f * 0.85, st + 0.08);
+    g.gain.setValueAtTime(0.06, st);
+    g.gain.exponentialRampToValueAtTime(0.001, st + 0.1);
+    osc.start(st); osc.stop(st + 0.12);
+  });
+}
+
+let waterfallNode = null;
+let waterfallGain = null;
+export function startWaterfall(vol = 0.12) {
+  const ctx = getCtx();
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
+  if (waterfallNode) return;
+  const len = ctx.sampleRate * 2;
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+  const ns = ctx.createBufferSource();
+  ns.buffer = buf;
+  ns.loop = true;
+  const lp = ctx.createBiquadFilter();
+  lp.type = "lowpass"; lp.frequency.value = 1200;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(vol, ctx.currentTime);
+  ns.connect(lp); lp.connect(g); g.connect(ctx.destination);
+  ns.start();
+  waterfallNode = ns;
+  waterfallGain = g;
+}
+export function setWaterfallVol(vol) {
+  if (waterfallGain) {
+    const ctx = getCtx();
+    waterfallGain.gain.setTargetAtTime(vol, ctx.currentTime, 0.1);
+  }
+}
+export function stopWaterfall() {
+  if (waterfallNode) {
+    waterfallNode.stop();
+    waterfallNode = null;
+    waterfallGain = null;
+  }
+}
+
+export function playWingFlap() {
+  const ctx = getCtx();
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
+  const t = ctx.currentTime;
+  const buf = ctx.createBuffer(1, ctx.sampleRate * 0.08 | 0, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 2);
+  const ns = ctx.createBufferSource();
+  const lp = ctx.createBiquadFilter();
+  const g = ctx.createGain();
+  lp.type = "bandpass"; lp.frequency.value = 800; lp.Q.value = 1.5;
+  ns.buffer = buf; ns.connect(lp); lp.connect(g); g.connect(ctx.destination);
+  g.gain.setValueAtTime(0.08, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+  ns.start(t); ns.stop(t + 0.1);
 }

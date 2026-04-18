@@ -14,7 +14,7 @@ import { createTitle  }     from "./title.js";
 import { createCharSelect } from "./char_select.js";
 import { createLoading }    from "./loading.js";
 import { setupMobileController } from "./mobile_controller.js";
-import { playSuzu, playDoor, playZazza, playHoleFall, playHoleRoll, playConfirm, playClickOn, playTimeMachineShine, playWave, startHeartbeat, stopHeartbeat, playQuestJingleB, playPunch, startShootingBgm, stopShootingBgm, startAfloClubBgm, stopAfloClubBgm, stopJaws, playBattleWinJingle, getAfloClubKickPulseMs, unlockSeAudio, startRainLoop, stopRainLoop, startDivingBgm, stopDivingBgm } from "./se.js";
+import { playSuzu, playDoor, playZazza, playHoleFall, playHoleRoll, playConfirm, playClickOn, playTimeMachineShine, playWave, startHeartbeat, stopHeartbeat, playQuestJingleB, playPunch, startShootingBgm, stopShootingBgm, startAfloClubBgm, stopAfloClubBgm, stopJaws, playBattleWinJingle, getAfloClubKickPulseMs, unlockSeAudio, startRainLoop, stopRainLoop, startDivingBgm, stopDivingBgm, playDinoStep, playBirdCall, playWingFlap, startWaterfall, setWaterfallVol, stopWaterfall } from "./se.js";
 import { createMenu } from "./ui_menu.js";
 import { createTripEffect }     from "./trip_effect.js";
 import { createGoodTripEffect } from "./trip_effect_good.js";
@@ -142,6 +142,7 @@ let seaholeCutscene = { active: false, shadowX: BASE_W, charOffsetX: 0 };
 let orcaRide = { active: false, startMs: 0, durationMs: 15000, ending: false };
 let mechaEvolution = { active: false, phase: "idle", startMs: 0, fromImg: null, toImg: null };
 let theaterScene = { active: false, startMs: 0, exitWaitStartMs: 0, phase: "intro", messageShown: false };
+let kakoMovieScene = { active: false, startMs: 0, exitWaitStartMs: 0, phase: "intro", messageShown: false };
 const RAIN_DROP_COUNT = 84;
 const RAIN_DURATION_MS = 60000;
 let rainScene = {
@@ -311,6 +312,157 @@ function drawTheaterScene(tt) {
   }
   ctx.restore();
 
+}
+
+// ---- kako 恐竜ムービー ----
+const DINO_W = 192, DINO_H = 180;
+const DINO_APPEAR_MS  = 4000;  // 恐竜登場まで
+const DINO_LINGER_MS  = 10000; // 去った後の余韻
+const STEP_PX = 20;
+const DINO_STEP_INTERVAL = 2800;
+const DINO_BIRD_INTERVAL = 2500;
+const DINO_WING_INTERVAL = 1800;
+
+function drawDinoScene(tt) {
+  const elapsed = tt - kakoMovieScene.startMs;
+  const fadeIn = Math.min(1, elapsed / 1500);
+
+  // 恐竜の歩行サイクル（着地タイミング計算）
+  const dinoActive = elapsed >= DINO_APPEAR_MS;
+  const dinoElapsed = elapsed - DINO_APPEAR_MS;
+  const dinoExitSteps = (BASE_W + 40 + 160) / STEP_PX;
+  const dinoExitMs = dinoExitSteps * DINO_STEP_INTERVAL;
+  const dinoGone = dinoActive && dinoElapsed >= dinoExitMs;
+  const fadeOut = dinoGone ? Math.max(0, 1 - (dinoElapsed - dinoExitMs) / DINO_LINGER_MS) : 1;
+  const stepCycle = dinoActive ? ((elapsed - DINO_APPEAR_MS) % DINO_STEP_INTERVAL) / DINO_STEP_INTERVAL : 0;
+  const landAt = 0.3 + 0.15;
+  const landWindow = 0.1;
+  const isLanding = dinoActive && stepCycle >= landAt && stepCycle < landAt + landWindow;
+  const landT = isLanding ? (stepCycle - landAt) / landWindow : 1;
+  const shakeAmt = isLanding ? (1 - landT) * 3 * fadeOut : 0;
+  const shakeX = shakeAmt * Math.sin(tt * 0.3) | 0;
+  const shakeY = shakeAmt | 0;
+
+  ctx.save();
+  if (dinoActive) ctx.translate(shakeX, shakeY);
+  ctx.globalAlpha = fadeIn;
+
+  // 空（緑がかった青）
+  const skyGrad = ctx.createLinearGradient(0, 0, 0, BASE_H);
+  skyGrad.addColorStop(0, "#5ab8a0");
+  skyGrad.addColorStop(0.5, "#7dd4b8");
+  skyGrad.addColorStop(1, "#a8e6cf");
+  ctx.fillStyle = skyGrad;
+  ctx.fillRect(0, 0, BASE_W, BASE_H);
+
+  // 雲
+  ctx.fillStyle = "rgba(255,255,255,0.3)";
+  const cw1 = 40 + Math.sin(tt / 3000) * 5;
+  ctx.fillRect((30 + elapsed * 0.003) % (BASE_W + 60) - 30, 25, cw1 | 0, 8);
+  ctx.fillRect((120 + elapsed * 0.005) % (BASE_W + 60) - 30, 15, 30, 6);
+  ctx.fillRect((80 + elapsed * 0.002) % (BASE_W + 60) - 30, 40, 35, 7);
+
+  // 火山シルエット（三角、てっぺん平ら、やや右寄り）
+  ctx.fillStyle = "rgba(35,80,60,0.45)";
+  ctx.beginPath();
+  ctx.moveTo(60, BASE_H);
+  ctx.lineTo(140, 85); ctx.lineTo(155, 85);
+  ctx.lineTo(235, BASE_H);
+  ctx.closePath(); ctx.fill();
+
+  // 地面（ヤシの下に敷く）
+  const treeY = BASE_H - 5;
+  ctx.fillStyle = "#2e6b48";
+  ctx.fillRect(0, treeY + 20, BASE_W, BASE_H - treeY);
+  ctx.fillStyle = "#3a7a55";
+  ctx.fillRect(0, treeY + 10, BASE_W, 14);
+
+  // 恐竜（ヤシの奥）
+  const dinoImg = SPRITES.dinosour;
+  if (dinoImg?.naturalWidth && dinoActive) {
+    const rise = 0.3, fall = 0.15;
+    let liftPhase, moveInStep;
+    if (stepCycle < rise) {
+      const t = stepCycle / rise;
+      const ease = t * t * (3 - 2 * t);
+      liftPhase = ease;
+      moveInStep = ease * 0.8;
+    } else if (stepCycle < rise + fall) {
+      const t = (stepCycle - rise) / fall;
+      liftPhase = 1 - t;
+      moveInStep = 0.8 + t * 0.2;
+    } else {
+      liftPhase = 0;
+      moveInStep = 1.0;
+    }
+    const stepCount = (elapsed - DINO_APPEAR_MS) / DINO_STEP_INTERVAL;
+    const fullSteps = Math.floor(stepCount);
+    const dx = BASE_W + 40 - (fullSteps + moveInStep) * STEP_PX;
+    const dy = treeY - 130;
+    const bobY = liftPhase * -8;
+    const tilt = liftPhase * 0.015;
+    const dw = 144, dh = 128;
+    ctx.globalAlpha = fadeIn;
+    ctx.save();
+    ctx.translate((dx + dw / 2) | 0, (dy + dh + bobY) | 0);
+    ctx.rotate(tilt);
+    ctx.drawImage(dinoImg, 0, 0, DINO_W, DINO_H, (-dw / 2) | 0, -dh, dw, dh);
+    ctx.restore();
+  }
+
+  // ヤシの森（手前、恐竜を覆う）
+  const yashiImg = SPRITES.yashi;
+  if (yashiImg?.naturalWidth) {
+    const yf = ((tt / 400) | 0) % 2;
+    // 最奥の層（隙間埋め）
+    ctx.globalAlpha = fadeIn * 0.4;
+    for (let i = 0; i < 30; i++) {
+      const tx = i * 9 - 10 + Math.sin(i * 3.1) * 3;
+      const ty = treeY - 40 + Math.sin(i * 0.9 + 2.0) * 3;
+      ctx.drawImage(yashiImg, yf * 64, 0, 64, 128, tx, ty, 22, 44);
+    }
+    // 奥の層
+    ctx.globalAlpha = fadeIn * 0.55;
+    for (let i = 0; i < 26; i++) {
+      const tx = i * 10 - 8 + Math.sin(i * 2.3) * 3;
+      const ty = treeY - 50 + Math.sin(i * 1.3 + 0.5) * 3;
+      ctx.drawImage(yashiImg, yf * 64, 0, 64, 128, tx, ty, 28, 56);
+    }
+    // 中間層
+    ctx.globalAlpha = fadeIn * 0.7;
+    for (let i = 0; i < 28; i++) {
+      const tx = i * 9 - 6 + Math.sin(i * 1.9 + 1.0) * 4;
+      const ty = treeY - 60 + Math.sin(i * 1.7) * 4;
+      ctx.drawImage(yashiImg, yf * 64, 0, 64, 128, tx, ty, 34, 68);
+    }
+    // 手前層（大きめ、明るい）
+    ctx.globalAlpha = fadeIn * 0.9;
+    for (let i = 0; i < 24; i++) {
+      const tx = i * 11 - 5 + Math.sin(i * 2.7 + 2.0) * 5;
+      const ty = treeY - 72 + Math.sin(i * 1.1 + 0.8) * 5;
+      ctx.drawImage(yashiImg, yf * 64, 0, 64, 128, tx, ty, 42, 84);
+    }
+  }
+
+  ctx.restore();
+
+  // SE タイミング（着地に合わせる）
+  const stepBeat = (elapsed / DINO_STEP_INTERVAL) | 0;
+  const stepVol = dinoGone ? fadeOut : 1;
+  if (stepVol > 0.05 && isLanding && stepBeat !== kakoMovieScene._lastStep) {
+    kakoMovieScene._lastStep = stepBeat;
+    playDinoStep(stepVol);
+  }
+  const birdBeat = (elapsed / DINO_BIRD_INTERVAL) | 0;
+  if (birdBeat !== kakoMovieScene._lastBird) {
+    kakoMovieScene._lastBird = birdBeat;
+    playBirdCall();
+  }
+  const wingBeat = (elapsed / DINO_WING_INTERVAL) | 0;
+  if (wingBeat !== kakoMovieScene._lastWing && elapsed > 500) {
+    kakoMovieScene._lastWing = wingBeat;
+    playWingFlap();
+  }
 }
 
 function startMechaEvolutionScene() {
@@ -2096,6 +2248,7 @@ function loadMap(id, opt = null) {
   afloBlackout = { active: false, phase: "idle", phaseStart: 0 };
   timeMachineFx = { active: false, start: 0, until: 0, onDone: null };
   theaterScene = { active: id === "theater", startMs: 0, exitWaitStartMs: 0, phase: "intro", messageShown: false };
+  kakoMovieScene = { active: false, startMs: 0, exitWaitStartMs: 0, phase: "intro", messageShown: false };
   timeMachineEnterMsA = 0;
   timeMachineEnterMsB = 0;
   ignoredDoorId = opt?.doorId ?? null;
@@ -2135,7 +2288,6 @@ function loadMap(id, opt = null) {
 
     // クエスト11: チキンカレーのエフェクト中にプールに入る
     if (id === "pool" && goodTrip.isActive()) achieveQuest("11");
-    if (id === "kako") achieveQuest("22");
 
     current.bgW = (def.bgW || bgImg.naturalWidth) | 0;
     current.bgH = (def.bgH || bgImg.naturalHeight) | 0;
@@ -3099,6 +3251,11 @@ function draw() {
     }
   }
 
+  // ---- kako 恐竜ムービーオーバーレイ ----
+  if (kakoMovieScene.active) {
+    drawDinoScene(tt);
+  }
+
   fade.draw(ctx);
 
   // ---- 負け演出コミックポップ ----
@@ -3279,6 +3436,18 @@ function draw() {
         ctx.fillStyle = "#fff";
         ctx.fillText(dug ? "dig(done)" : "dig", tr.x - cam.x, tr.y - cam.y - 1);
       }
+    }
+
+    // movieTrigger（マゼンタ）
+    const _mt = MAPS[current?.id]?.movieTrigger;
+    if (_mt) {
+      ctx.strokeStyle = "rgba(255,0,255,0.9)";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(_mt.x - cam.x, _mt.y - cam.y, _mt.w, _mt.h);
+      ctx.fillStyle = "rgba(255,0,255,0.25)";
+      ctx.fillRect(_mt.x - cam.x, _mt.y - cam.y, _mt.w, _mt.h);
+      ctx.fillStyle = "#fff";
+      ctx.fillText("movie", _mt.x - cam.x, _mt.y - cam.y - 1);
     }
 
     ctx.restore();
@@ -3556,6 +3725,11 @@ function tryInteract(t) {
           refreshPizzaJobMarkers();
         },
         startSpaceWarp,
+        startKakoMovie: () => {
+          kakoMovieScene = { active: true, startMs: nowMs(), exitWaitStartMs: 0, phase: "intro", messageShown: false, _lastStep: -1, _lastBird: -1, _lastWing: -1 };
+          bgmCtl.setOverride("about:blank");
+          startWaterfall();
+        },
         startDiving: (onDone) => {
           bgmCtl.setOverride("about:blank");
           setGameResolution(DIVE_W, DIVE_H);
@@ -3971,6 +4145,38 @@ function update(t) {
     }
     if (theaterScene.phase === "await_exit" && t - theaterScene.exitWaitStartMs >= 5000 && input.consume("z")) {
       fade.startMapFade("outdoor", { doorId: 34 }, t, loadMap);
+    }
+    updateCam();
+    return;
+  }
+
+  // kako dino movie
+  if (kakoMovieScene.active) {
+    input.consume("x");
+    input.consume("ArrowUp"); input.consume("ArrowDown");
+    input.consume("ArrowLeft"); input.consume("ArrowRight");
+    leader.frame = 0;
+    p2.frame = p3.frame = p4.frame = 0;
+    const _dinoElapsed = t - kakoMovieScene.startMs;
+    const _dinoTotalMs = DINO_APPEAR_MS + ((BASE_W + 200) / STEP_PX) * DINO_STEP_INTERVAL + DINO_LINGER_MS;
+    if (kakoMovieScene.phase === "intro" && _dinoElapsed >= _dinoTotalMs) {
+      kakoMovieScene.phase = "await_exit";
+      kakoMovieScene.active = false;
+      stopWaterfall();
+      bgmCtl.setOverride(null);
+      input.lock();
+      setTimeout(() => {
+        input.unlock();
+        dialog.open([
+          ["すごいものをみてしまった。"],
+        ], () => {
+          input.lock();
+          setTimeout(() => {
+            input.unlock();
+            achieveQuest("22");
+          }, 1000);
+        }, "sign");
+      }, 2000);
     }
     updateCam();
     return;
