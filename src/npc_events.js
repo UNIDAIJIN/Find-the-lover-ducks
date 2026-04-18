@@ -720,7 +720,7 @@ export function runNpcEvent(act, ctx) {
   }
 
   if (ev.type === "sogankyo") {
-    const { choice, dialog, startKakoMovie } = ctx;
+    const { choice, dialog, fade, nowMs, startKakoMovie } = ctx;
     choice.open(["はい", "いいえ"], (idx) => {
       if (typeof choice.close === "function") choice.close();
       if (idx !== 0) return;
@@ -730,7 +730,12 @@ export function runNpcEvent(act, ctx) {
       }
       STATE.money -= 100;
       playCoin();
-      setTimeout(() => startKakoMovie(), 1000);
+      setTimeout(() => {
+        fade.startCutFade(nowMs(), {
+          outMs: 600, holdMs: 1200, inMs: 800,
+          onBlack: () => startKakoMovie(),
+        });
+      }, 800);
     }, "100ENをいれてください。", { instant: true });
     return true;
   }

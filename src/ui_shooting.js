@@ -340,6 +340,7 @@ export function createShooting({ BASE_W, BASE_H, input, sprites, getLeaderImg } 
               enemyBullets = [];
               phase = "result";
               resultTimer = 0;
+              input.clear();
             } else {
               spawnWave();
             }
@@ -360,7 +361,7 @@ export function createShooting({ BASE_W, BASE_H, input, sprites, getLeaderImg } 
     }
 
     // ゲームオーバー
-    if (lives <= 0) { phase = "result"; resultTimer = 0; }
+    if (lives <= 0) { phase = "result"; resultTimer = 0; input.clear(); }
   }
 
   function playerHit() {

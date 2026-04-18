@@ -25,8 +25,8 @@ export const outdoorMap = {
     {
       id:        3,
       to:        "vj_room01",
-      trigger:   { x: 1787, y: 678, w: 16, h: 8 },
-      entryAt:   { x: 1787, y: 670 },
+      trigger:   { x: 1836, y: 678, w: 16, h: 8 },
+      entryAt:   { x: 1836, y: 670 },
       entryWalk: { dx: 0, dy: 1, frames: 20 },
     },
     {

@@ -19,12 +19,31 @@ export function createBgm({
 
   let unlocked = false;
 
+  const MAIN_BGM_PREFIX = "assets/audio/";
+  const MAIN_BGMS = new Set([
+    "assets/audio/bgm0.mp3",
+    "assets/audio/duckA.mp3",
+    "assets/audio/duckB.mp3",
+    "assets/audio/duckC.mp3",
+    "assets/audio/duckD.mp3",
+    "assets/audio/duckE.mp3",
+    "assets/audio/duckF.mp3",
+    "assets/audio/duckG-good.mp3",
+    "assets/audio/duckG-bad.mp3",
+    "assets/audio/duckH.mp3",
+    "assets/audio/duckI.mp3",
+    "assets/audio/duckJ.mp3",
+  ]);
+
   // エリア標準BGM / 上書きBGM
   let mapSrc = defaultSrc;
   let overrideSrc = null;
+  let lastMainSrc = defaultSrc;
 
   // 実際にAudio要素にロード済みのsrc
   let currentSrc = null;
+
+  function isMainBgm(src) { return MAIN_BGMS.has(src); }
 
   function desiredSrc() {
     return overrideSrc || mapSrc;
@@ -273,11 +292,18 @@ export function createBgm({
   function setMap(src) {
     mapSrc = src || mapSrc;
     overrideSrc = null;
+    if (isMainBgm(mapSrc)) lastMainSrc = mapSrc;
     apply(desiredSrc());
   }
 
   function setOverride(src) {
-    overrideSrc = src || null;
+    if (src) {
+      if (isMainBgm(src)) lastMainSrc = src;
+      overrideSrc = src;
+    } else {
+      overrideSrc = null;
+      mapSrc = lastMainSrc || mapSrc;
+    }
     apply(desiredSrc());
   }
 
@@ -290,6 +316,7 @@ export function createBgm({
     getMapSrc: () => mapSrc,
     getOverrideSrc: () => overrideSrc,
     getCurrentSrc: () => currentSrc,
+    getLastMainSrc: () => lastMainSrc,
     setUnderwater,
     setReverb,
     startTripPitch,
