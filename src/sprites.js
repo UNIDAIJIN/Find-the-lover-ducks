@@ -77,6 +77,8 @@ export const SPRITES = {
   cat1: loadSprite("assets/sprites/cat_g.png"),
   misaki: loadSprite("assets/sprites/misaki.png"),
   sogankyo: loadSprite("assets/sprites/sogankyo.png"),
+  kako_yashi: loadSprite("assets/sprites/kako_yashi.png"),
+  sogankyo_mask: loadSprite("assets/sprites/sogankyo_mask.png"),
   seats: loadSprite("assets/sprites/seats.png"),
 
   // hole マップ

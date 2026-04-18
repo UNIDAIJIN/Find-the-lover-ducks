@@ -418,33 +418,47 @@ function drawDinoScene(tt) {
     ctx.globalAlpha = fadeIn * 0.4;
     for (let i = 0; i < 30; i++) {
       const tx = i * 9 - 10 + Math.sin(i * 3.1) * 3;
-      const ty = treeY - 40 + Math.sin(i * 0.9 + 2.0) * 3;
+      const ty = treeY - 60 + Math.sin(i * 0.9 + 2.0) * 3;
       ctx.drawImage(yashiImg, yf * 64, 0, 64, 128, tx, ty, 22, 44);
     }
     // 奥の層
     ctx.globalAlpha = fadeIn * 0.55;
     for (let i = 0; i < 26; i++) {
       const tx = i * 10 - 8 + Math.sin(i * 2.3) * 3;
-      const ty = treeY - 50 + Math.sin(i * 1.3 + 0.5) * 3;
+      const ty = treeY - 70 + Math.sin(i * 1.3 + 0.5) * 3;
       ctx.drawImage(yashiImg, yf * 64, 0, 64, 128, tx, ty, 28, 56);
     }
     // 中間層
     ctx.globalAlpha = fadeIn * 0.7;
     for (let i = 0; i < 28; i++) {
       const tx = i * 9 - 6 + Math.sin(i * 1.9 + 1.0) * 4;
-      const ty = treeY - 60 + Math.sin(i * 1.7) * 4;
+      const ty = treeY - 80 + Math.sin(i * 1.7) * 4;
       ctx.drawImage(yashiImg, yf * 64, 0, 64, 128, tx, ty, 34, 68);
     }
     // 手前層（大きめ、明るい）
     ctx.globalAlpha = fadeIn * 0.9;
     for (let i = 0; i < 24; i++) {
       const tx = i * 11 - 5 + Math.sin(i * 2.7 + 2.0) * 5;
-      const ty = treeY - 72 + Math.sin(i * 1.1 + 0.8) * 5;
+      const ty = treeY - 92 + Math.sin(i * 1.1 + 0.8) * 5;
       ctx.drawImage(yashiImg, yf * 64, 0, 64, 128, tx, ty, 42, 84);
     }
   }
 
   ctx.restore();
+
+  // 双眼鏡オーバーレイ（常に不透明）
+  const maskImg = SPRITES.sogankyo_mask;
+  if (maskImg?.naturalWidth) {
+    ctx.save();
+    ctx.globalAlpha = 1;
+    ctx.drawImage(maskImg, 0, 0, BASE_W, BASE_H);
+    ctx.fillStyle = "rgb(20,20,20)";
+    ctx.fillRect(0, 0, BASE_W, 4);
+    ctx.fillRect(0, BASE_H - 4, BASE_W, 4);
+    ctx.fillRect(0, 0, 4, BASE_H);
+    ctx.fillRect(BASE_W - 4, 0, 4, BASE_H);
+    ctx.restore();
+  }
 
   // SE タイミング（着地に合わせる）
   const stepBeat = (elapsed / DINO_STEP_INTERVAL) | 0;
@@ -4170,11 +4184,7 @@ function update(t) {
         dialog.open([
           ["すごいものをみてしまった。"],
         ], () => {
-          input.lock();
-          setTimeout(() => {
-            input.unlock();
-            achieveQuest("22");
-          }, 1000);
+          achieveQuest("22");
         }, "sign");
       }, 2000);
     }
