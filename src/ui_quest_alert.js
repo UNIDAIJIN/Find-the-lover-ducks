@@ -54,6 +54,8 @@ export function createQuestAlert({ BASE_W } = {}) {
     y = y | 0;
 
     ctx.save();
+    const prevSkipTextShadow = ctx._skipTextShadow;
+    ctx._skipTextShadow = true;
 
     // 影
     ctx.fillStyle = "rgba(0,0,0,0.45)";
@@ -83,13 +85,12 @@ export function createQuestAlert({ BASE_W } = {}) {
     ctx.textBaseline = "top";
     ctx.textAlign    = "left";
     const lx = X + Math.round((W - ctx.measureText(label).width) / 2);
-    ctx.fillStyle = "rgba(0,0,0,0.3)";
-    ctx.fillText(label, lx + 1, y + 7); // 影
     ctx.fillStyle = "#1a1000";
     ctx.fillText(label, lx, y + 6);
 
     ctx.textAlign    = "left";
     ctx.textBaseline = "top";
+    ctx._skipTextShadow = prevSkipTextShadow;
     ctx.restore();
   }
 

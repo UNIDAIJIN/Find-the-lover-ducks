@@ -1,12 +1,14 @@
 // ui_choice.js
-import { playTypingVoice } from "./se.js";
+import { playTypingVoice, playCursor, playConfirm } from "./se.js";
 
-export function createChoice({ BASE_W, BASE_H, input } = {}) {
+export function createChoice({ BASE_W, BASE_H, input, dialog } = {}) {
   let active = false;
   let options = [];
   let cursor = 0;
   let onSelect = null;
   let question = null;
+  let voice = "default";
+  let highlights = [];
 
   // タイプライター
   const CHAR_MS  = 60;
@@ -53,6 +55,8 @@ export function createChoice({ BASE_W, BASE_H, input } = {}) {
     cursor     = 0;
     onSelect   = typeof cb === "function" ? cb : null;
     question   = q || null;
+    voice      = opts.voice || (dialog && typeof dialog.getVoice === "function" ? dialog.getVoice() : "default");
+    highlights = opts.highlights || [];
     charIndex  = opts.instant ? String(q || "").length : 0;
     lastCharMs = Date.now();
     input.clear();
@@ -79,7 +83,7 @@ export function createChoice({ BASE_W, BASE_H, input } = {}) {
         lastCharMs += add * CHAR_MS;
         const total = String(question).length;
         if (charIndex > total) charIndex = total;
-        if (!isTypingDone()) playTypingVoice("default");
+        if (!isTypingDone()) playTypingVoice(voice);
       }
 
       // タイプ中は Z で即完了
@@ -89,16 +93,18 @@ export function createChoice({ BASE_W, BASE_H, input } = {}) {
       return;
     }
 
+    const prev = cursor;
     if (question) {
-      // 横並び：左右キーで選択
       if (input.consume("ArrowLeft"))  cursor = Math.max(0, cursor - 1);
       if (input.consume("ArrowRight")) cursor = Math.min((options.length | 0) - 1, cursor + 1);
     } else {
       if (input.consume("ArrowUp"))   cursor = Math.max(0, cursor - 1);
       if (input.consume("ArrowDown")) cursor = Math.min((options.length | 0) - 1, cursor + 1);
     }
+    if (cursor !== prev) playCursor();
 
     if (input.consume("z")) {
+      playConfirm();
       const cb  = onSelect;
       const idx = cursor | 0;
       close();
@@ -107,9 +113,10 @@ export function createChoice({ BASE_W, BASE_H, input } = {}) {
     }
 
     if (input.consume("x")) {
+      playConfirm();
       const cb = onSelect;
       close();
-      if (cb) cb(1); // キャンセル＝いいえ
+      if (cb) cb(1);
     }
   }
 
@@ -135,8 +142,36 @@ export function createChoice({ BASE_W, BASE_H, input } = {}) {
     ctx.textBaseline = "top";
 
     // 質問テキスト（タイプライター）
-    const visible = String(question).slice(0, charIndex);
-    ctx.fillText(visible, r.x + pad, r.y + 9);
+    const full = String(question);
+    const visible = full.slice(0, charIndex);
+    if (highlights.length > 0) {
+      const colors = new Array(full.length).fill("#fff");
+      for (const h of highlights) {
+        let si = 0;
+        while (true) {
+          const idx = full.indexOf(h.text, si);
+          if (idx < 0) break;
+          for (let j = idx; j < idx + h.text.length; j++) {
+            if (h.rainbow) {
+              const hue = ((j - idx) / h.text.length * 360 + (Date.now() / 10)) % 360;
+              colors[j] = `hsl(${hue},90%,65%)`;
+            } else {
+              colors[j] = h.color || "#f44";
+            }
+          }
+          si = idx + h.text.length;
+        }
+      }
+      let dx = r.x + pad;
+      for (let i = 0; i < visible.length; i++) {
+        ctx.fillStyle = colors[i];
+        ctx.fillText(visible[i], dx, r.y + 9);
+        dx += ctx.measureText(visible[i]).width;
+      }
+      ctx.fillStyle = "#fff";
+    } else {
+      ctx.fillText(visible, r.x + pad, r.y + 9);
+    }
 
     // タイプ完了後のみ選択肢を表示
     if (!isTypingDone()) return;
@@ -155,7 +190,9 @@ export function createChoice({ BASE_W, BASE_H, input } = {}) {
         ctx.fillStyle = "#fff";
         ctx.fillRect(cx, cy - 1, boxW[i], 13);
         ctx.fillStyle = "#000";
+        ctx._skipTextShadow = true;
         ctx.fillText(labels[i], cx + hPad, cy);
+        ctx._skipTextShadow = false;
         ctx.fillStyle = "#fff";
       } else {
         ctx.fillText(labels[i], cx + hPad, cy);

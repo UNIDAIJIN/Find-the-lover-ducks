@@ -4,13 +4,13 @@
 
 export const hisaroSunloverEvent = {
   type:      "hisaro_sunlover",
-  lines:     ["ここは日サロ「サン・ラヴァー」さ。", "きみもやいてくかい？"],
+  lines:     ["ここは日サロ「サン・ラヴァー」さ。きみもやいてくかい？"],
   options:   ["はい", "いいえ"],
   fadeOutMs: 350,
   holdMs:    3000,
   fadeInMs:  350,
   partySkin: "t2",
-  onYesDialog:     [["いいじゃないか。", "にあっているぜ。"]],
-  onYesFinalPages: [["よし、じゃあしばらく", "そこでそうしていな。"]],
+  onYesDialog:     [["いいじゃないか。にあっているぜ。"]],
+  onYesFinalPages: [["よし、じゃあしばらくそこでそうしていな。"]],
   onNoDialog:      [["おまえたちみたいなもやしにはおにあいさ。"]],
 };

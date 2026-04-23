@@ -3,7 +3,7 @@ export const shamanNpc = {
   name:      "shaman",
   spriteKey: "shaman",
   x:         120,
-  y:         160,
+  y:         130,
   talkHit:   { x: 0, y: 0, w: 16, h: 16 },
   solid:     true,
   event: {

@@ -8,6 +8,38 @@ let _rainNoise = null;
 let _rainGain = null;
 let _rainHp = null;
 let _rainLp = null;
+let _seasideNodes = null;
+let _seasideGain = null;
+
+const SAMPLE_SE_MASTER = 0.72;
+const SAMPLE_SE_SCALE = {
+  "se_suzu.mp3": 0.35,
+  "se_crash.mp3": 2.6,
+  "se_encount.mp3": 2.1,
+  "se_hit.mp3": 1.45,
+  "se_koke.mp3": 0.9,
+  "se_battle_in.mp3": 0.8,
+  "se_chibi.mp3": 0.8,
+};
+const GENERATED_SE_MASTER = 0.72;
+const GENERATED_BGM_MASTER = 0.72;
+const AMBIENT_BGM_MASTER = 0.78;
+
+function sampleSeLevel(name, vol) {
+  return Math.min(2.2, vol * SAMPLE_SE_MASTER * (SAMPLE_SE_SCALE[name] ?? 1));
+}
+
+function generatedSeLevel(vol) {
+  return vol * GENERATED_SE_MASTER;
+}
+
+function generatedBgmLevel(vol) {
+  return vol * GENERATED_BGM_MASTER;
+}
+
+function ambientBgmLevel(vol) {
+  return vol * AMBIENT_BGM_MASTER;
+}
 
 function getCtx() {
   if (!_ctx) {
@@ -80,12 +112,96 @@ function ensureRainLoop() {
 export function startRainLoop() {
   const ctx = ensureRainLoop();
   if (ctx.state === "suspended") ctx.resume().catch(() => {});
-  _rainGain.gain.setTargetAtTime(0.045, ctx.currentTime, 0.45);
+  _rainGain.gain.setTargetAtTime(ambientBgmLevel(0.045), ctx.currentTime, 0.45);
 }
 
 export function stopRainLoop() {
   if (!_rainGain || !_ctx) return;
   _rainGain.gain.setTargetAtTime(0.0001, _ctx.currentTime, 0.6);
+}
+
+export function startSeasideBgm(fadeMs = 3200) {
+  stopSeasideBgm(0);
+  const ctx = getCtx();
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
+
+  const master = ctx.createGain();
+  master.gain.setValueAtTime(0.0001, ctx.currentTime);
+  master.connect(ctx.destination);
+
+  const len = ctx.sampleRate * 3;
+  const noiseBuf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const data = noiseBuf.getChannelData(0);
+  for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+
+  const waves = ctx.createBufferSource();
+  waves.buffer = noiseBuf;
+  waves.loop = true;
+  const waveLp = ctx.createBiquadFilter();
+  waveLp.type = "lowpass";
+  waveLp.frequency.value = 620;
+  const waveHp = ctx.createBiquadFilter();
+  waveHp.type = "highpass";
+  waveHp.frequency.value = 120;
+  const waveGain = ctx.createGain();
+  waveGain.gain.value = 0.075;
+  const waveLfo = ctx.createOscillator();
+  waveLfo.type = "sine";
+  waveLfo.frequency.value = 0.08;
+  const waveLfoGain = ctx.createGain();
+  waveLfoGain.gain.value = 0.035;
+  waveLfo.connect(waveLfoGain);
+  waveLfoGain.connect(waveGain.gain);
+  waves.connect(waveHp);
+  waveHp.connect(waveLp);
+  waveLp.connect(waveGain);
+  waveGain.connect(master);
+
+  const wind = ctx.createBufferSource();
+  wind.buffer = noiseBuf;
+  wind.loop = true;
+  const windBp = ctx.createBiquadFilter();
+  windBp.type = "bandpass";
+  windBp.frequency.value = 1050;
+  windBp.Q.value = 0.65;
+  const windGain = ctx.createGain();
+  windGain.gain.value = 0.032;
+  const windLfo = ctx.createOscillator();
+  windLfo.type = "sine";
+  windLfo.frequency.value = 0.045;
+  const windLfoGain = ctx.createGain();
+  windLfoGain.gain.value = 220;
+  windLfo.connect(windLfoGain);
+  windLfoGain.connect(windBp.frequency);
+  wind.connect(windBp);
+  windBp.connect(windGain);
+  windGain.connect(master);
+
+  waves.start();
+  wind.start();
+  waveLfo.start();
+  windLfo.start();
+  const target = ambientBgmLevel(0.50);
+  master.gain.setTargetAtTime(target, ctx.currentTime, Math.max(0.05, fadeMs / 3000));
+  _seasideGain = master;
+  _seasideNodes = [waves, wind, waveLfo, windLfo, master];
+}
+
+export function stopSeasideBgm(fadeMs = 900) {
+  if (!_seasideNodes || !_ctx) return;
+  const ctx = _ctx;
+  if (_seasideGain) {
+    _seasideGain.gain.setTargetAtTime(0.0001, ctx.currentTime, Math.max(0.03, fadeMs / 3000));
+  }
+  const nodes = _seasideNodes;
+  _seasideNodes = null;
+  _seasideGain = null;
+  setTimeout(() => {
+    for (const n of nodes) {
+      try { if (typeof n.stop === "function") n.stop(); } catch (_) {}
+      try { if (typeof n.disconnect === "function") n.disconnect(); } catch (_) {}
+    }
+  }, Math.max(0, fadeMs + 120));
 }
 
 async function loadBuffer(name) {
@@ -109,7 +225,7 @@ function play(name, vol) {
     const src  = ctx.createBufferSource();
     src.buffer = buf;
     const gain = ctx.createGain();
-    gain.gain.value = vol;
+    gain.gain.value = sampleSeLevel(name, vol);
     src.connect(gain);
     gain.connect(ctx.destination);
     src.start();
@@ -141,7 +257,7 @@ export function playCursor() {
   bp.Q.value = 1.8;
 
   const ng = ctx.createGain();
-  ng.gain.setValueAtTime(0.55, t);
+  ng.gain.setValueAtTime(generatedSeLevel(0.55), t);
   ng.gain.exponentialRampToValueAtTime(0.001, t + 0.022);
 
   noise.connect(bp); bp.connect(ng); ng.connect(ctx.destination);
@@ -154,9 +270,58 @@ export function playCursor() {
   osc.type = "square";
   osc.frequency.setValueAtTime(1600, t);
   osc.frequency.exponentialRampToValueAtTime(700, t + 0.018);
-  og.gain.setValueAtTime(0.08, t);
+  og.gain.setValueAtTime(generatedSeLevel(0.08), t);
   og.gain.exponentialRampToValueAtTime(0.001, t + 0.018);
   osc.start(t); osc.stop(t + 0.02);
+}
+
+export function playAlienTypingNoise(seed = 0) {
+  const ctx = getCtx();
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
+  const t = ctx.currentTime;
+  const dur = 0.045;
+  const bufLen = Math.max(1, (ctx.sampleRate * dur) | 0);
+  const noiseBuf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
+  const data = noiseBuf.getChannelData(0);
+  for (let i = 0; i < bufLen; i++) {
+    const e = 1 - i / bufLen;
+    data[i] = (Math.random() * 2 - 1) * e * e;
+  }
+
+  const noise = ctx.createBufferSource();
+  noise.buffer = noiseBuf;
+
+  const bp = ctx.createBiquadFilter();
+  bp.type = "bandpass";
+  bp.frequency.setValueAtTime(360 + (seed % 7) * 90, t);
+  bp.frequency.exponentialRampToValueAtTime(180 + (seed % 5) * 45, t + dur);
+  bp.Q.value = 8;
+
+  const crush = ctx.createWaveShaper();
+  const curve = new Float32Array(256);
+  for (let i = 0; i < curve.length; i++) {
+    const x = (i / (curve.length - 1)) * 2 - 1;
+    curve[i] = Math.sign(x) * Math.pow(Math.abs(x), 0.42);
+  }
+  crush.curve = curve;
+  crush.oversample = "none";
+
+  const ng = ctx.createGain();
+  ng.gain.setValueAtTime(generatedSeLevel(0.06), t);
+  ng.gain.exponentialRampToValueAtTime(0.001, t + dur);
+
+  const osc = ctx.createOscillator();
+  const og = ctx.createGain();
+  osc.type = "sawtooth";
+  osc.frequency.setValueAtTime(54 + (seed % 4) * 7, t);
+  osc.frequency.exponentialRampToValueAtTime(31 + (seed % 3) * 5, t + dur);
+  og.gain.setValueAtTime(generatedSeLevel(0.018), t);
+  og.gain.exponentialRampToValueAtTime(0.001, t + dur);
+
+  noise.connect(bp); bp.connect(crush); crush.connect(ng); ng.connect(ctx.destination);
+  osc.connect(og); og.connect(ctx.destination);
+  noise.start(t); noise.stop(t + dur);
+  osc.start(t); osc.stop(t + dur);
 }
 
 // ---- 決定音: ピコン（2音の上昇）----
@@ -173,7 +338,7 @@ export function playConfirm() {
     osc.connect(g); g.connect(ctx.destination);
     osc.type = "triangle";
     osc.frequency.value = freq;
-    g.gain.setValueAtTime(0.22, st);
+    g.gain.setValueAtTime(generatedSeLevel(0.22), st);
     g.gain.exponentialRampToValueAtTime(0.001, st + decay);
     osc.start(st); osc.stop(st + decay + 0.01);
   });
@@ -198,7 +363,7 @@ export function playClickOn() {
   osc.type = "square";
   osc.frequency.setValueAtTime(980, t);
   osc.frequency.exponentialRampToValueAtTime(420, t + 0.03);
-  g.gain.setValueAtTime(0.16, t);
+  g.gain.setValueAtTime(generatedSeLevel(0.16), t);
   g.gain.exponentialRampToValueAtTime(0.001, t + 0.035);
 
   osc.start(t);
@@ -219,7 +384,7 @@ export function playTimeMachineShine() {
     osc.frequency.setValueAtTime(1800 + i * 120, st);
     osc.frequency.exponentialRampToValueAtTime(2600 + i * 140, st + 0.08);
     g.gain.setValueAtTime(0.001, st);
-    g.gain.linearRampToValueAtTime(0.07, st + 0.01);
+    g.gain.linearRampToValueAtTime(generatedSeLevel(0.07), st + 0.01);
     g.gain.exponentialRampToValueAtTime(0.001, st + 0.12);
     osc.start(st);
     osc.stop(st + 0.13);
@@ -244,7 +409,7 @@ export function playVictory() {
     osc.connect(g); g.connect(ctx.destination);
     osc.type = "triangle";
     osc.frequency.setValueAtTime(freq, st);
-    g.gain.setValueAtTime(0.16, st);
+    g.gain.setValueAtTime(generatedSeLevel(0.16), st);
     g.gain.exponentialRampToValueAtTime(0.001, st + dur);
     osc.start(st);
     osc.stop(st + dur + 0.01);
@@ -304,7 +469,7 @@ export function playBuzzer() {
     osc.type = "square";
     osc.frequency.setValueAtTime(freq, st);
     osc.frequency.exponentialRampToValueAtTime(Math.max(80, freq * 0.75), st + dur);
-    g.gain.setValueAtTime(0.12, st);
+    g.gain.setValueAtTime(generatedSeLevel(0.12), st);
     g.gain.exponentialRampToValueAtTime(0.001, st + dur);
     osc.start(st);
     osc.stop(st + dur + 0.01);
@@ -739,14 +904,15 @@ function _playThump(actx, t, freq, gain, dur) {
 export function startHeartbeat(bpm = 68, volume = 0.35) {
   stopHeartbeat();
   const intervalMs = (60 / bpm) * 1000;
+  const mixVolume = generatedBgmLevel(volume);
 
   function beat() {
     const actx = getCtx();
     if (!actx) return;
     if (actx.state === "suspended") actx.resume().catch(() => {});
     const t = actx.currentTime;
-    _playThump(actx, t,        62, volume * 1.57, 0.15); // lub
-    _playThump(actx, t + 0.18, 68, volume * 1.09, 0.12); // dub
+    _playThump(actx, t,        62, mixVolume * 1.57, 0.15); // lub
+    _playThump(actx, t + 0.18, 68, mixVolume * 1.09, 0.12); // dub
   }
 
   beat();
@@ -767,7 +933,7 @@ export function playJaws() {
   stopJaws();
   _jawsAudio = new Audio("assets/audio/bgm_jaws.mp3");
   _jawsAudio.loop = true;
-  _jawsAudio.volume = 0.8;
+  _jawsAudio.volume = 0.9;
   _jawsAudio.play().catch(() => {});
 }
 
@@ -781,6 +947,10 @@ export function stopJaws() {
 
 // ---- ぐしゃ ----
 export function playCrush() {
+  play("se_crash.mp3", 1.0);
+}
+
+export function playGlassShatter() {
   play("se_crash.mp3", 1.0);
 }
 
@@ -1034,13 +1204,14 @@ const LEAD_PAT = [-1,-1,4,-1, -1,6,-1,-1, -1,4,-1,-1, 7,-1,-1,-1];
 
 function schedKick(t, vol = 0.7) {
   const ctx = getCtx();
+  const mixVol = generatedBgmLevel(vol);
   const osc = ctx.createOscillator();
   const g   = ctx.createGain();
   osc.connect(g); g.connect(ctx.destination);
   osc.type = "sine";
   osc.frequency.setValueAtTime(160, t);
   osc.frequency.exponentialRampToValueAtTime(30, t + 0.06);
-  g.gain.setValueAtTime(vol, t);
+  g.gain.setValueAtTime(mixVol, t);
   g.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
   osc.start(t); osc.stop(t + 0.30);
 
@@ -1051,7 +1222,7 @@ function schedKick(t, vol = 0.7) {
   for (let i = 0; i < bl; i++) nd[i] = Math.random() * 2 - 1;
   const ns = ctx.createBufferSource(); ns.buffer = nb;
   const ng = ctx.createGain();
-  ng.gain.setValueAtTime(0.3, t);
+  ng.gain.setValueAtTime(generatedBgmLevel(0.3), t);
   ng.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
   ns.connect(ng); ng.connect(ctx.destination);
   ns.start(t); ns.stop(t + 0.04);
@@ -1067,7 +1238,7 @@ function schedHihat(t, open = false) {
   const ns = ctx.createBufferSource(); ns.buffer = nb;
   const hp = ctx.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 7000;
   const g  = ctx.createGain();
-  g.gain.setValueAtTime(open ? 0.18 : 0.10, t);
+  g.gain.setValueAtTime(generatedBgmLevel(open ? 0.18 : 0.10), t);
   g.gain.exponentialRampToValueAtTime(0.001, t + dur);
   ns.connect(hp); hp.connect(g); g.connect(ctx.destination);
   ns.start(t); ns.stop(t + dur + 0.005);
@@ -1084,7 +1255,7 @@ function schedBass(t, freq) {
   lp.frequency.setValueAtTime(800, t);
   lp.frequency.exponentialRampToValueAtTime(200, t + STEP_DUR * 1.8);
   lp.Q.value = 8;
-  g.gain.setValueAtTime(0.28, t);
+  g.gain.setValueAtTime(generatedBgmLevel(0.28), t);
   g.gain.exponentialRampToValueAtTime(0.001, t + STEP_DUR * 1.9);
   osc.connect(lp); lp.connect(g); g.connect(ctx.destination);
   osc.start(t); osc.stop(t + STEP_DUR * 2);
@@ -1096,7 +1267,7 @@ function schedLead(t, freq) {
   const g   = ctx.createGain();
   osc.type = "triangle";
   osc.frequency.value = freq * 4; // 4倍音（高域）
-  g.gain.setValueAtTime(0.12, t);
+  g.gain.setValueAtTime(generatedBgmLevel(0.12), t);
   g.gain.exponentialRampToValueAtTime(0.001, t + STEP_DUR * 1.5);
   osc.connect(g); g.connect(ctx.destination);
   osc.start(t); osc.stop(t + STEP_DUR * 1.6);
@@ -1159,7 +1330,7 @@ function schedBubble(t, freq) {
   osc.type = "sine";
   osc.frequency.setValueAtTime(freq, t);
   osc.frequency.exponentialRampToValueAtTime(freq * 0.6, t + 0.15);
-  g.gain.setValueAtTime(0.12, t);
+  g.gain.setValueAtTime(generatedBgmLevel(0.12), t);
   g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
   osc.start(t); osc.stop(t + 0.22);
 }
@@ -1172,7 +1343,7 @@ function schedDrip(t) {
   osc.type = "sine";
   osc.frequency.setValueAtTime(1200 + Math.random() * 600, t);
   osc.frequency.exponentialRampToValueAtTime(400, t + 0.08);
-  g.gain.setValueAtTime(0.06, t);
+  g.gain.setValueAtTime(generatedBgmLevel(0.06), t);
   g.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
   osc.start(t); osc.stop(t + 0.12);
 }
@@ -1268,7 +1439,7 @@ function schedAfloKick(t) {
   osc.type = "sine";
   osc.frequency.setValueAtTime(110, t);
   osc.frequency.exponentialRampToValueAtTime(28, t + 0.09);
-  g.gain.setValueAtTime(0.9, t);
+  g.gain.setValueAtTime(generatedBgmLevel(0.9), t);
   g.gain.exponentialRampToValueAtTime(0.001, t + 0.34);
   osc.start(t); osc.stop(t + 0.36);
 }
@@ -1284,7 +1455,7 @@ function schedAfloBass(t, freq) {
   lp.frequency.setValueAtTime(320, t);
   lp.frequency.exponentialRampToValueAtTime(120, t + STEP_DUR * 1.8);
   lp.Q.value = 10;
-  g.gain.setValueAtTime(0.22, t);
+  g.gain.setValueAtTime(generatedBgmLevel(0.22), t);
   g.gain.exponentialRampToValueAtTime(0.001, t + STEP_DUR * 1.9);
   osc.connect(lp); lp.connect(g); g.connect(ctx.destination);
   osc.start(t); osc.stop(t + STEP_DUR * 2);
@@ -1409,6 +1580,322 @@ export function stopWaterfall() {
     waterfallNode = null;
     waterfallGain = null;
   }
+}
+
+// ---- 電話着信音: プルルルルル ----
+let _phoneRingTimer = null;
+let _phoneRingGain = null;
+export function startPhoneRing() {
+  stopPhoneRing();
+  const ctx = getCtx();
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
+  const master = ctx.createGain();
+  master.connect(ctx.destination);
+  _phoneRingGain = master;
+  const ring = () => {
+    if (!_phoneRingGain) return;
+    const t = ctx.currentTime;
+    for (let i = 0; i < 6; i++) {
+      const st = t + i * 0.12;
+      const osc = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.connect(g); osc2.connect(g); g.connect(master);
+      osc.type = "sine";
+      osc2.type = "sine";
+      osc.frequency.value = 480;
+      osc2.frequency.value = 620;
+      g.gain.setValueAtTime(0.12, st);
+      g.gain.setValueAtTime(0.12, st + 0.05);
+      g.gain.setValueAtTime(0.001, st + 0.06);
+      osc.start(st); osc.stop(st + 0.06);
+      osc2.start(st); osc2.stop(st + 0.06);
+    }
+  };
+  ring();
+  _phoneRingTimer = setInterval(ring, 1400);
+}
+export function stopPhoneRing() {
+  if (_phoneRingTimer !== null) {
+    clearInterval(_phoneRingTimer);
+    _phoneRingTimer = null;
+  }
+  if (_phoneRingGain) {
+    _phoneRingGain.gain.setValueAtTime(0, getCtx().currentTime);
+    _phoneRingGain = null;
+  }
+}
+
+// ---- 電話応答: ピ ----
+export function playPhonePick() {
+  const ctx = getCtx();
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
+  const t = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  const g = ctx.createGain();
+  osc.connect(g); g.connect(ctx.destination);
+  osc.type = "sine";
+  osc.frequency.value = 1800;
+  g.gain.setValueAtTime(0.15, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+  osc.start(t); osc.stop(t + 0.13);
+}
+
+// ---- 電話切断: ガチャン ----
+export function playPhoneHang() {
+  const ctx = getCtx();
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
+  const t = ctx.currentTime;
+  const len = ctx.sampleRate * 0.06 | 0;
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  const bp = ctx.createBiquadFilter();
+  bp.type = "bandpass"; bp.frequency.value = 2800; bp.Q.value = 2;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.5, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+  src.connect(bp); bp.connect(g); g.connect(ctx.destination);
+  src.start(t); src.stop(t + 0.06);
+  const osc = ctx.createOscillator();
+  const og = ctx.createGain();
+  osc.connect(og); og.connect(ctx.destination);
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(180, t);
+  osc.frequency.exponentialRampToValueAtTime(60, t + 0.04);
+  og.gain.setValueAtTime(0.2, t);
+  og.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+  osc.start(t); osc.stop(t + 0.05);
+}
+
+// ---- メロスピBGM ----
+let _metalScheduler = null;
+
+const FACTORY_BPM = 100;
+const FACTORY_STEP = 60 / FACTORY_BPM / 4;
+let _factoryNodes = null;
+
+export function startMetalBgm() {
+  stopMetalBgm();
+  const ctx = getCtx();
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
+
+  const master = ctx.createGain();
+  master.gain.value = generatedBgmLevel(0.3);
+  master.connect(ctx.destination);
+
+  // low drone hum (electrical)
+  const drone = ctx.createOscillator();
+  const droneG = ctx.createGain();
+  drone.type = "sawtooth";
+  drone.frequency.value = 55;
+  const droneLp = ctx.createBiquadFilter();
+  droneLp.type = "lowpass"; droneLp.frequency.value = 200;
+  drone.connect(droneLp); droneLp.connect(droneG); droneG.connect(master);
+  droneG.gain.value = 0.12;
+  drone.start();
+
+  // filtered noise (machinery hiss)
+  const noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+  const nd = noiseBuf.getChannelData(0);
+  for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+  const noise = ctx.createBufferSource();
+  noise.buffer = noiseBuf; noise.loop = true;
+  const bp = ctx.createBiquadFilter();
+  bp.type = "bandpass"; bp.frequency.value = 1200; bp.Q.value = 2;
+  const noiseG = ctx.createGain();
+  noiseG.gain.value = 0.04;
+  noise.connect(bp); bp.connect(noiseG); noiseG.connect(master);
+  noise.start();
+
+  // dissonant tritone swell (tension)
+  const tens1 = ctx.createOscillator();
+  const tens2 = ctx.createOscillator();
+  const tensG = ctx.createGain();
+  tens1.type = "sine"; tens1.frequency.value = 82.41;
+  tens2.type = "sine"; tens2.frequency.value = 116.54;
+  const tensLfo = ctx.createOscillator();
+  const tensLfoG = ctx.createGain();
+  tensLfo.type = "sine"; tensLfo.frequency.value = 0.15;
+  tensLfoG.gain.value = 0.04;
+  tensLfo.connect(tensLfoG); tensLfoG.connect(tensG.gain);
+  tens1.connect(tensG); tens2.connect(tensG); tensG.connect(master);
+  tensG.gain.value = 0.0;
+  tens1.start(); tens2.start(); tensLfo.start();
+
+  // rhythmic clank
+  let nextTime = ctx.currentTime + 0.05;
+  let stepIdx = 0;
+  const pattern = [1,0,0,0, 0,0,1,0, 0,1,0,0, 0,0,0,1];
+
+  _metalScheduler = setInterval(() => {
+    const ctx2 = getCtx();
+    while (nextTime < ctx2.currentTime + LOOKAHEAD) {
+      const s = stepIdx % 16;
+      if (pattern[s]) {
+        const bl = ctx2.sampleRate * 0.03 | 0;
+        const cb = ctx2.createBuffer(1, bl, ctx2.sampleRate);
+        const cd = cb.getChannelData(0);
+        for (let i = 0; i < bl; i++) cd[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bl, 3);
+        const cs = ctx2.createBufferSource(); cs.buffer = cb;
+        const hp = ctx2.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 3000;
+        const cg = ctx2.createGain();
+        cg.gain.setValueAtTime(0.15, nextTime);
+        cg.gain.exponentialRampToValueAtTime(0.001, nextTime + 0.03);
+        cs.connect(hp); hp.connect(cg); cg.connect(master);
+        cs.start(nextTime); cs.stop(nextTime + 0.035);
+      }
+      if (s === 0 || s === 8) {
+        const osc = ctx2.createOscillator();
+        const g = ctx2.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(90, nextTime);
+        osc.frequency.exponentialRampToValueAtTime(40, nextTime + 0.08);
+        osc.connect(g); g.connect(master);
+        g.gain.setValueAtTime(0.1, nextTime);
+        g.gain.exponentialRampToValueAtTime(0.001, nextTime + 0.15);
+        osc.start(nextTime); osc.stop(nextTime + 0.16);
+      }
+      // warning pulse (every 32 steps on step 12)
+      if (stepIdx % 32 === 12) {
+        const wo = ctx2.createOscillator();
+        const wg = ctx2.createGain();
+        wo.type = "square";
+        wo.frequency.setValueAtTime(440, nextTime);
+        wo.frequency.exponentialRampToValueAtTime(220, nextTime + 0.12);
+        wo.connect(wg); wg.connect(master);
+        wg.gain.setValueAtTime(0.04, nextTime);
+        wg.gain.exponentialRampToValueAtTime(0.001, nextTime + 0.12);
+        wo.start(nextTime); wo.stop(nextTime + 0.13);
+      }
+      nextTime += FACTORY_STEP;
+      stepIdx++;
+    }
+  }, SCHED_INT);
+
+  _factoryNodes = [drone, noise, tens1, tens2, tensLfo, master];
+}
+
+export function stopMetalBgm() {
+  if (_metalScheduler !== null) {
+    clearInterval(_metalScheduler);
+    _metalScheduler = null;
+  }
+  if (_factoryNodes) {
+    _factoryNodes.forEach(n => { try { n.stop(); } catch(e) {} n.disconnect(); });
+    _factoryNodes = null;
+  }
+}
+
+let _chaosMetalScheduler = null;
+let _chaosMetalNodes = null;
+
+export function startChaosMetalBgm() {
+  stopChaosMetalBgm();
+  const ctx = getCtx();
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
+
+  const master = ctx.createGain();
+  master.gain.value = generatedBgmLevel(0.22);
+  master.connect(ctx.destination);
+
+  const droneA = ctx.createOscillator();
+  const droneB = ctx.createOscillator();
+  const droneG = ctx.createGain();
+  const droneLp = ctx.createBiquadFilter();
+  droneA.type = "sine";
+  droneB.type = "triangle";
+  droneA.frequency.value = 55;
+  droneB.frequency.value = 82.5;
+  droneLp.type = "lowpass";
+  droneLp.frequency.value = 260;
+  droneA.connect(droneLp); droneB.connect(droneLp); droneLp.connect(droneG); droneG.connect(master);
+  droneG.gain.value = 0.085;
+  droneA.start(); droneB.start();
+
+  const lfo = ctx.createOscillator();
+  const lfoG = ctx.createGain();
+  lfo.type = "sine";
+  lfo.frequency.value = 0.18;
+  lfoG.gain.value = 0.014;
+  lfo.connect(lfoG); lfoG.connect(droneG.gain);
+  lfo.start();
+
+  const noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+  const nd = noiseBuf.getChannelData(0);
+  for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+  const noise = ctx.createBufferSource();
+  noise.buffer = noiseBuf;
+  noise.loop = true;
+  const bp = ctx.createBiquadFilter();
+  bp.type = "bandpass";
+  bp.frequency.value = 1900;
+  bp.Q.value = 0.85;
+  const noiseG = ctx.createGain();
+  noiseG.gain.value = 0.018;
+  noise.connect(bp); bp.connect(noiseG); noiseG.connect(master);
+  noise.start();
+
+  const tone = ctx.createOscillator();
+  const toneG = ctx.createGain();
+  const toneBp = ctx.createBiquadFilter();
+  tone.type = "sine";
+  tone.frequency.value = 330;
+  toneBp.type = "bandpass";
+  toneBp.frequency.value = 330;
+  toneBp.Q.value = 8;
+  toneG.gain.value = 0.01;
+  tone.connect(toneBp); toneBp.connect(toneG); toneG.connect(master);
+  tone.start();
+
+  _chaosMetalNodes = [droneA, droneB, lfo, noise, tone, droneLp, droneG, lfoG, bp, noiseG, toneBp, toneG, master];
+}
+
+export function stopChaosMetalBgm() {
+  if (_chaosMetalScheduler !== null) {
+    clearInterval(_chaosMetalScheduler);
+    _chaosMetalScheduler = null;
+  }
+  if (_chaosMetalNodes) {
+    _chaosMetalNodes.forEach(n => { try { n.stop(); } catch(e) {} try { n.disconnect(); } catch(e) {} });
+    _chaosMetalNodes = null;
+  }
+}
+
+// ---- だだーん！（重厚な登場音）----
+export function playDadaan() {
+  const ctx = getCtx();
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
+  const t = ctx.currentTime;
+  // 低音ドン×2
+  [[0, 80], [0.15, 60]].forEach(([delay, freq]) => {
+    const st = t + delay;
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.connect(g); g.connect(ctx.destination);
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(freq, st);
+    osc.frequency.exponentialRampToValueAtTime(30, st + 0.3);
+    g.gain.setValueAtTime(0.4, st);
+    g.gain.exponentialRampToValueAtTime(0.001, st + 0.4);
+    osc.start(st); osc.stop(st + 0.42);
+  });
+  // ノイズバースト
+  const len = ctx.sampleRate * 0.2 | 0;
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  const lp = ctx.createBiquadFilter();
+  lp.type = "lowpass"; lp.frequency.value = 400;
+  const ng = ctx.createGain();
+  ng.gain.setValueAtTime(0.3, t);
+  ng.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+  src.connect(lp); lp.connect(ng); ng.connect(ctx.destination);
+  src.start(t); src.stop(t + 0.2);
 }
 
 export function playWingFlap() {

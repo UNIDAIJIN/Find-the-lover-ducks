@@ -176,6 +176,18 @@ export const NPCS_BY_MAP = {
     resolve(redDoorVjRoom01Npc),
   ],
 
+  space_boss: [
+    resolve({ kind: "npc", name: "sb_ss1", spriteKey: "spacesisters1", x: 1024, y: 736, solid: true, noWalk: true, talkPages: [["ここまできたね！"]] }),
+  ],
+
+  vj_factry: [
+    resolve({ kind: "npc", name: "factry_left_door", spriteKey: null, x: 39, y: 160, spr: 0, sprH: 0, solid: false, noWalk: true, animMs: Infinity, talkHit: { x: 0, y: 0, w: 16, h: 8 }, talkPages: [["ここは入れない。"]], talkType: "sign" }),
+    resolve({ kind: "npc", name: "factry_ss1", spriteKey: "spacesisters1", x: 79, y: 131, solid: true, noWalk: true, talkPages: [["やっほー！"]] }),
+    resolve({ kind: "npc", name: "factry_ss2", spriteKey: "spacesisters1", x: 107, y: 131, solid: true, noWalk: true, talkPages: [["げんきー？"]] }),
+    resolve({ kind: "npc", name: "factry_minami", spriteKey: "minami", x: 135, y: 131, solid: true, noWalk: true, event: { type: "factry_minami" } }),
+    resolve({ kind: "npc", name: "factry_ss3", spriteKey: "spacesisters1", x: 163, y: 131, solid: true, noWalk: true, talkPages: [["いぇーい！"]] }),
+  ],
+
   vj_room02: [
     resolve(natsumiRoom02Npc),
     resolve(rikuRoom02Npc),
@@ -288,7 +300,7 @@ const UFO_CX = 120, UFO_CY = 145;
 export function getUfoHouseNpcs(houseNum) {
   const npcs = [];
   if (STATE.flags.ufoComplete) {
-    if (houseNum === 3) {
+    if (houseNum === 3 && !STATE.flags.galaxyLastBattle) {
       npcs.push(
         resolve({ kind: "npc", name: "spacesisters1_a", spriteKey: "spacesisters1", x: UFO_CX, y: UFO_CY - 16, talkHit: { x: 0, y: 0, w: 16, h: 16 }, solid: true, event: { type: "spacesisters_warp" } }),
         resolve({ kind: "npc", name: "spacesisters1_b", spriteKey: "spacesisters1", x: UFO_CX - 24, y: UFO_CY + 14, talkHit: { x: 0, y: 0, w: 16, h: 16 }, solid: true, event: { type: "spacesisters_warp" } }),

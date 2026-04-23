@@ -208,7 +208,9 @@ export function createMenu({
       // テキスト
       ctx.fillStyle = sel ? "#000" : "#fff";
       const tw = ctx.measureText(TABS[i]).width;
+      if (sel) ctx._skipTextShadow = true;
       ctx.fillText(TABS[i], (tx + (TAB_W - tw) / 2) | 0, ty + 3);
+      if (sel) ctx._skipTextShadow = false;
     }
   }
 
@@ -306,6 +308,7 @@ export function createMenu({
 
         const textColor = isCur ? "#000" : (done ? "#fff" : "#555");
         ctx.fillStyle = textColor;
+        if (isCur) ctx._skipTextShadow = true;
         ctx.fillText(q.id,                       numX,    yy);
         ctx.fillText(done ? q.title : "？？？",  titleX,  yy);
 
@@ -334,6 +337,7 @@ export function createMenu({
           ctx.fillText(condText, condX - scrollX + loopW, yy);
         }
         ctx.restore();
+        if (isCur) ctx._skipTextShadow = false;
       }
 
       // スクロールバー（白い四角が位置を示す）

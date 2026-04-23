@@ -213,14 +213,8 @@ export function createCharSelect({ BASE_W, BASE_H, input, sprites }) {
     }
   }
 
-  // 黒アウトライン付きテキスト
-  function strokeText(ctx, text, x, y) {
-    ctx.fillStyle = "#000";
-    ctx.fillText(text, x - 1, y);
-    ctx.fillText(text, x + 1, y);
-    ctx.fillText(text, x, y - 1);
-    ctx.fillText(text, x, y + 1);
-  }
+  // 黒アウトライン付きテキスト（グローバル影に移行したため no-op）
+  function strokeText(_ctx, _text, _x, _y) {}
 
   function drawUI(ctx, t, alpha) {
     ctx.save();

@@ -40,6 +40,8 @@ import { shootingLobbyMap }   from "./data/maps/shooting_lobby.js";
 import { digitmoreMap }       from "./data/maps/digitmore.js";
 import { pizzaMap }           from "./data/maps/pizza.js";
 import { cdshopMap }          from "./data/maps/cdshop.js";
+import { vjFactryMap }        from "./data/maps/vj_factry.js";
+import { spaceBossMap }       from "./data/maps/space_boss.js";
 
 // ---- util: ダミー画像（1px） ----
 const BLACK_1PX =
@@ -80,6 +82,7 @@ export const MAPS = {
   mirai:     miraiMap,
   kako:      kakoMap,
   space:     spaceMap,
+  space_boss: spaceBossMap,
   umi_house1: umiHouse1Map,
   umi_house2: umiHouse2Map,
   umi_house3: umiHouse3Map,
@@ -87,8 +90,9 @@ export const MAPS = {
   inugoya:    inugoyaMap,
   indoor_01: indoor01Map,
   pool:      poolMap,
-  vj_room01: vjRoom01Map,
-  vj_room02: vjRoom02Map,
+  vj_room01:  vjRoom01Map,
+  vj_room02:  vjRoom02Map,
+  vj_factry:  vjFactryMap,
   shooting_lobby: shootingLobbyMap,
   digitmore: digitmoreMap,
   pizza:     pizzaMap,

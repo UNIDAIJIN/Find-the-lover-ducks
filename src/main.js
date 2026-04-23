@@ -14,7 +14,7 @@ import { createTitle  }     from "./title.js";
 import { createCharSelect } from "./char_select.js";
 import { createLoading }    from "./loading.js";
 import { setupMobileController } from "./mobile_controller.js";
-import { playSuzu, playDoor, playZazza, playHoleFall, playHoleRoll, playConfirm, playClickOn, playTimeMachineShine, playWave, startHeartbeat, stopHeartbeat, playQuestJingleB, playPunch, startShootingBgm, stopShootingBgm, startAfloClubBgm, stopAfloClubBgm, stopJaws, playBattleWinJingle, getAfloClubKickPulseMs, unlockSeAudio, startRainLoop, stopRainLoop, startDivingBgm, stopDivingBgm, playDinoStep, playBirdCall, playWingFlap, startWaterfall, setWaterfallVol, stopWaterfall } from "./se.js";
+import { playSuzu, playDoor, playZazza, playHoleFall, playHoleRoll, playConfirm, playClickOn, playCursor, playTimeMachineShine, playWave, startHeartbeat, stopHeartbeat, playQuestJingleB, playPunch, startShootingBgm, stopShootingBgm, startAfloClubBgm, stopAfloClubBgm, stopJaws, playBattleWinJingle, getAfloClubKickPulseMs, unlockSeAudio, startRainLoop, stopRainLoop, startSeasideBgm, stopSeasideBgm, startDivingBgm, stopDivingBgm, playDinoStep, playBirdCall, playWingFlap, startWaterfall, setWaterfallVol, stopWaterfall, startPhoneRing, stopPhoneRing, playPhonePick, playPhoneHang, playDadaan, startMetalBgm, stopMetalBgm, startChaosMetalBgm, stopChaosMetalBgm, playAlienTypingNoise, playGlassShatter } from "./se.js";
 import { createMenu } from "./ui_menu.js";
 import { createTripEffect }     from "./trip_effect.js";
 import { createGoodTripEffect } from "./trip_effect_good.js";
@@ -23,6 +23,7 @@ import { createQuestAlert }     from "./ui_quest_alert.js";
 import { QUESTS }               from "./data/quests.js";
 import { createShooting, drawShootingBackdrop } from "./ui_shooting.js";
 import { createDiving, DIVE_W, DIVE_H } from "./ui_diving.js";
+import { createPhoneBrawl, PHONE_BRAWL_W, PHONE_BRAWL_H } from "./ui_phone_brawl.js";
 import { gateNpc } from "./data/npcs/gate.js";
 
 const DEBUG  = true;
@@ -33,6 +34,24 @@ const ctx = canvas.getContext("2d");
 const trip     = createTripEffect();
 const goodTrip = createGoodTripEffect({ useCssFilter: MOBILE });
 ctx.imageSmoothingEnabled = false;
+
+// 文字に紺色の +1,+1 影を付与（ミニゲーム等で this._skipTextShadow = true にすれば無効）
+const TEXT_SHADOW_COLOR = "#0a1a4d";
+const _origFillText = CanvasRenderingContext2D.prototype.fillText;
+CanvasRenderingContext2D.prototype.fillText = function(text, x, y, maxWidth) {
+  if (this._skipTextShadow) {
+    return maxWidth !== undefined
+      ? _origFillText.call(this, text, x, y, maxWidth)
+      : _origFillText.call(this, text, x, y);
+  }
+  const origStyle = this.fillStyle;
+  this.fillStyle = TEXT_SHADOW_COLOR;
+  if (maxWidth !== undefined) _origFillText.call(this, text, x + 1, y + 1, maxWidth);
+  else _origFillText.call(this, text, x + 1, y + 1);
+  this.fillStyle = origStyle;
+  if (maxWidth !== undefined) _origFillText.call(this, text, x, y, maxWidth);
+  else _origFillText.call(this, text, x, y);
+};
 
 const { SCALE, SPR, SPEED, FRAME_MS, GAP2, GAP3, GAP4, NPC_FRAME_MS, DOOR_COOLDOWN_MS, MAP_FADE_OUT_MS, MAP_FADE_IN_MS } = CONFIG;
 // ゲーム本編は常に 192×180（タイトル/セレクト/エンディングは CONFIG.BASE_W/H = 256×240）
@@ -74,8 +93,38 @@ function nowMs() {
 // UI / FX
 const shooting  = createShooting({ BASE_W, BASE_H, input, sprites: SPRITES, getLeaderImg: () => leader?.img });
 const diving    = createDiving({ BASE_W, BASE_H, input, getLeaderImg: () => leader?.img, getHeadwearImg: () => SPRITES.kingyobachi, sprites: SPRITES });
+const phoneBrawl = createPhoneBrawl({
+  input,
+  inputTarget: window,
+  gameOverAction: "close",
+  endTiming: "confirm",
+  sprites: {
+    playerBase: SPRITES.earth,
+    enemyBaseParts: {
+      low: SPRITES.urabossLow,
+      mid: SPRITES.urabossMid,
+      top: SPRITES.urabossTop,
+    },
+    enemy: SPRITES.phoneBrawlEnemy,
+    curry: SPRITES.curry,
+    pepper: SPRITES.pepper,
+    gyoza: SPRITES.gyoza,
+    cards: {
+      runner: [SPRITES.p1, SPRITES.p2, SPRITES.p3, SPRITES.p4],
+      guard: SPRITES.nidhogg2,
+      bruiser: SPRITES.phoneBrawl3,
+      blaster: SPRITES.angler,
+      sniper: SPRITES.ryousan,
+      medic: SPRITES.lee,
+      swarm: SPRITES.phoneBrawl7,
+      frost: [SPRITES.cactus, SPRITES.cactus, SPRITES.cactus_hat],
+      spark: [SPRITES.ac_1, SPRITES.ac_2, SPRITES.ac_3, SPRITES.ac_4, SPRITES.ac_5, SPRITES.afloboy2],
+      mechanic: SPRITES.yahhy,
+    },
+  },
+});
 const dialog = createDialog({ BASE_W, BASE_H, input });
-const choice = createChoice({ BASE_W, BASE_H, input });
+const choice = createChoice({ BASE_W, BASE_H, input, dialog });
 const shop      = createShop({ BASE_W, BASE_H, input });
 const jumprope  = createJumprope({ BASE_W, BASE_H, input, getParty: () => ({ leader, p2, p3, p4 }), yahhyImg: SPRITES.yahhy });
 const fade = createFade({ BASE_W, BASE_H, canvas, input, mapOutMs: MAP_FADE_OUT_MS, mapInMs: MAP_FADE_IN_MS });
@@ -88,6 +137,28 @@ if (typeof dialog.getRect === "function" && typeof choice.setAnchorRect === "fun
 // ---- BGM (externalized) ----
 const BGM_VOLUME = 0.35;
 const bgmCtl = createBgm({ defaultSrc: "assets/audio/bgm0.mp3", volume: BGM_VOLUME });
+let bgmFadeStopTimer = null;
+
+function fadeOutBgmToSilence(durationMs = 1200) {
+  if (bgmFadeStopTimer) {
+    clearInterval(bgmFadeStopTimer);
+    bgmFadeStopTimer = null;
+  }
+  const audio = bgmCtl.audio;
+  const startMs = nowMs();
+  const startVol = audio.volume || BGM_VOLUME;
+  bgmFadeStopTimer = setInterval(() => {
+    const p = Math.min(1, (nowMs() - startMs) / durationMs);
+    const eased = p * p * (3 - 2 * p);
+    audio.volume = startVol * (1 - eased);
+    if (p >= 1) {
+      clearInterval(bgmFadeStopTimer);
+      bgmFadeStopTimer = null;
+      bgmCtl.setOverride("about:blank");
+      audio.volume = BGM_VOLUME;
+    }
+  }, 16);
+}
 // BATTLE_BGM_SRC は使用せず Web Audio API のハートビートに変更
 
 // ---- Sea (externalized) ----
@@ -135,6 +206,9 @@ const SHRINE_FADE_SPEED = 1 / 6; // ~6フレームでフェード完了（重い
 // モバイル用：白フラッシュで瞬時スイッチ
 let shrineWhite = { phase: "off", alpha: 0, targetMode: false }; // phase: 'off'|'fade-in'|'fade-out'
 let redScreenStart = -1;
+let _shakeUntil = 0;
+let _shakeIntensity = 3;
+let _spaceBossRantShake = false;
 let redScreenOnEnd = null;
 const RED_TO_BLACK_MS = 4000;
 const SHADOW_W = 130;
@@ -231,6 +305,286 @@ function drawCenteredChar(img, x, y, scale = 4, frame = 0) {
   const w = spr * scale;
   const h = spr * scale;
   ctx.drawImage(img, frame * spr, 0, spr, spr, (x - w / 2) | 0, (y - h / 2) | 0, w | 0, h | 0);
+}
+
+function drawCenteredCharRotated(img, x, y, scale = 1, frame = 0, rotation = 0) {
+  if (!img?.naturalWidth) return;
+  const spr = 16;
+  const w = spr * scale;
+  const h = spr * scale;
+  ctx.save();
+  ctx.translate(x | 0, y | 0);
+  ctx.rotate(rotation);
+  ctx.drawImage(img, frame * spr, 0, spr, spr, (-w / 2) | 0, (-h / 2) | 0, w | 0, h | 0);
+  ctx.restore();
+}
+
+function startSpaceBossMoonScene() {
+  input.lock();
+  spaceBossWhiteReunion = null;
+  spaceBossMoonScene = {
+    startMs: nowMs(),
+    stars: Array.from({ length: 120 }, () => ({
+      x: Math.random() * BASE_W,
+      y: Math.random() * BASE_H,
+      r: Math.random() < 0.16 ? 2 : 1,
+      a: 0.28 + Math.random() * 0.72,
+      phase: Math.random() * Math.PI * 2,
+    })),
+  };
+}
+
+function quadPoint(a, b, c, t) {
+  const mt = 1 - t;
+  return mt * mt * a + 2 * mt * t * b + t * t * c;
+}
+
+function drawSpaceBossMoonScene(tt) {
+  const scene = spaceBossMoonScene;
+  if (!scene) return;
+  const elapsed = tt - scene.startMs;
+  ctx.save();
+  ctx.fillStyle = "#02040d";
+  ctx.fillRect(0, 0, BASE_W, BASE_H);
+
+  for (const s of scene.stars || []) {
+    const tw = 0.55 + 0.45 * Math.sin(elapsed / 720 + s.phase);
+    ctx.globalAlpha = s.a * tw;
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(s.x | 0, s.y | 0, s.r, s.r);
+  }
+  ctx.globalAlpha = 1;
+
+  const moonX = -22;
+  const moonY = BASE_H - 70;
+  const moonSize = 96;
+  if (SPRITES.moon?.naturalWidth > 0) {
+    ctx.drawImage(SPRITES.moon, moonX, moonY, moonSize, moonSize);
+  } else {
+    ctx.fillStyle = "#d8d8d0";
+    ctx.beginPath();
+    ctx.arc(moonX + moonSize / 2, moonY + moonSize / 2, moonSize / 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  const local = elapsed - 500;
+  const p = Math.min(1, Math.max(0, local / 2300));
+  if (local >= 0 && local <= 2600) {
+    const x0 = -18, y0 = BASE_H - 66;
+    const x1 = 62, y1 = 28;
+    const x2 = BASE_W + 24, y2 = 44;
+    ctx.globalCompositeOperation = "screen";
+    for (let i = 0; i < 18; i += 1) {
+      const tp = Math.max(0, p - i * 0.012);
+      const alpha = (1 - i / 18) * Math.sin(Math.min(1, p) * Math.PI) * 0.85;
+      if (tp <= 0 || alpha <= 0) continue;
+      const x = quadPoint(x0, x1, x2, tp);
+      const y = quadPoint(y0, y1, y2, tp);
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = i < 3 ? "#ffffff" : "#8fdfff";
+      ctx.fillRect(x | 0, y | 0, i < 3 ? 3 : 2, i < 3 ? 3 : 1);
+    }
+    const hx = quadPoint(x0, x1, x2, p);
+    const hy = quadPoint(y0, y1, y2, p);
+    ctx.globalAlpha = Math.sin(Math.min(1, p) * Math.PI);
+    ctx.fillStyle = "#fff";
+    ctx.fillRect((hx - 2) | 0, (hy - 2) | 0, 4, 4);
+  }
+
+  const blackoutP = Math.max(0, Math.min(1, (elapsed - 5200) / 1400));
+  if (blackoutP > 0) {
+    ctx.globalCompositeOperation = "source-over";
+    ctx.globalAlpha = blackoutP * blackoutP * (3 - 2 * blackoutP);
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, BASE_W, BASE_H);
+  }
+  ctx.restore();
+}
+
+function updateSpaceBossMoonScene(tt) {
+  const scene = spaceBossMoonScene;
+  if (!scene) return;
+  const elapsed = tt - scene.startMs;
+  if (!scene.seasideBgmStarted && elapsed >= 6600) {
+    scene.seasideBgmStarted = true;
+    startSeasideBgm(3200);
+  }
+  if (!scene.outdoorStarted && elapsed >= 9800) {
+    scene.outdoorStarted = true;
+    startSpaceBossOutdoorEpilogueScene();
+  }
+}
+
+function startSpaceBossOutdoorEpilogueScene() {
+  input.lock();
+  spaceBossMoonScene = null;
+  setGameResolution(CONFIG.BASE_W, CONFIG.BASE_H);
+  partyVisible = false;
+  loadMap("outdoor", { spawnAt: { x: 2151 - 8, y: 2578 - 8 }, skipBgm: true });
+  spaceBossOutdoorEpilogue = {
+    fadeStartMs: null,
+    fadeMs: 5200,
+    waitStartMs: null,
+    waitMs: 5000,
+  };
+}
+
+function debugJumpToSpaceBossOutdoorEpilogue() {
+  input.lock();
+  ending.stop();
+  bgmCtl.audio.loop = true;
+  bgmCtl.setOverride("about:blank");
+  startSeasideBgm(1000);
+  startSpaceBossOutdoorEpilogueScene();
+}
+
+function updateSpaceBossOutdoorEpilogue(tt) {
+  const scene = spaceBossOutdoorEpilogue;
+  if (!scene) return;
+  if (!mapReady) return;
+  if (scene.fadeStartMs == null) {
+    scene.fadeStartMs = tt;
+    updateCam();
+  }
+  if (scene.waitStartMs == null && tt - scene.fadeStartMs >= scene.fadeMs) {
+    scene.waitStartMs = tt;
+  }
+  if (!scene.creditsStarted && scene.waitStartMs != null && tt - scene.waitStartMs >= scene.waitMs) {
+    scene.creditsStarted = true;
+    input.clear();
+    input.unlock();
+    ending.startCredits(tt);
+  }
+}
+
+function drawSpaceBossOutdoorEpilogueOverlay(tt) {
+  const scene = spaceBossOutdoorEpilogue;
+  if (!scene) return;
+  const start = scene.fadeStartMs ?? tt;
+  const p = Math.max(0, Math.min(1, (tt - start) / scene.fadeMs));
+  const eased = p * p * (3 - 2 * p);
+  const alpha = 1 - eased;
+  if (alpha <= 0) return;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = "#000";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.restore();
+}
+
+function drawSpaceBossOutdoorDeadParty() {
+  if (!spaceBossOutdoorEpilogue) return;
+  const cx = canvas.width / 2;
+  const cy = canvas.height / 2;
+  const bodies = [
+    { img: SPRITES.p1_dead, x: cx + 52, y: cy - 30, rot: -Math.PI / 2 },
+    { img: SPRITES.p2_dead, x: cx + 78, y: cy - 6, rot: -Math.PI / 2 },
+    { img: SPRITES.p3_dead, x: cx + 28, y: cy + 12, rot: -Math.PI / 2 },
+    { img: SPRITES.p4_dead, x: cx + 61, y: cy + 28, rot: -Math.PI / 2 },
+  ];
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+  for (const body of bodies) {
+    if (!body.img?.naturalWidth) continue;
+    ctx.save();
+    ctx.translate(body.x | 0, body.y | 0);
+    ctx.rotate(body.rot);
+    ctx.drawImage(body.img, -8, -8, 16, 16);
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
+function spaceBossWhiteReunionLayout() {
+  const cx = BASE_W / 2;
+  const partyY = BASE_H / 2 - 4;
+  const ssY = partyY - 32;
+  return {
+    cx,
+    partyY,
+    ssY,
+    ss: { x: cx, y: ssY },
+    party: [
+      { key: "p1", img: SPRITES.p1, x: cx - 30, y: partyY, vx: -136, vy: -92, rot: -9.6 },
+      { key: "p2", img: SPRITES.p2, x: cx - 10, y: partyY, vx: -80, vy: 128, rot: 8.8 },
+      { key: "p3", img: SPRITES.p3, x: cx + 10, y: partyY, vx: 86, vy: -118, rot: -8.2 },
+      { key: "p4", img: SPRITES.p4, x: cx + 30, y: partyY, vx: 142, vy: 96, rot: 9.4 },
+    ],
+  };
+}
+
+function drawSpaceBossWhiteReunionScene(tt) {
+  const start = spaceBossWhiteReunion?.startMs || tt;
+  const fadeIn = Math.max(0, Math.min(1, (tt - start) / 1100));
+  const alpha = fadeIn * fadeIn * (3 - 2 * fadeIn);
+  const layout = spaceBossWhiteReunionLayout();
+  const fx = spaceBossWhiteReunion || {};
+  const heartFx = fx.heartFx;
+  const waveFx = fx.waveFx;
+  ctx.save();
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, BASE_W, BASE_H);
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = "rgba(0,0,0,0.08)";
+  for (const m of layout.party) {
+    if (waveFx) continue;
+    ctx.fillRect((m.x - 6) | 0, (m.y + 8) | 0, 12, 2);
+  }
+  ctx.fillRect((layout.ss.x - 7) | 0, (layout.ss.y + 8) | 0, 14, 2);
+  drawCenteredChar(SPRITES.spacesisters1, layout.ss.x, layout.ss.y, 1, 0);
+  if (waveFx) {
+    const p = Math.max(0, Math.min(1, (tt - waveFx.startMs) / waveFx.duration));
+    const eased = p * p * (3 - 2 * p);
+    for (const m of layout.party) {
+      const spin = m.rot * eased;
+      const lift = Math.sin(p * Math.PI) * 18;
+      drawCenteredCharRotated(m.img, m.x + m.vx * eased, m.y + m.vy * eased - lift, 1, Math.floor(tt / 110) % 2, spin);
+    }
+  } else {
+    for (const m of layout.party) drawCenteredChar(m.img, m.x, m.y, 1, 0);
+  }
+
+  if (heartFx) {
+    const elapsed = tt - heartFx.startMs;
+    const flashP = Math.max(0, Math.min(1, elapsed / 420));
+    const moveP = Math.max(0, Math.min(1, (elapsed - 320) / 1350));
+    const eased = 1 - Math.pow(1 - moveP, 3);
+    const from = { x: layout.party[0].x, y: layout.party[0].y - 14 };
+    const to = { x: layout.ss.x, y: layout.ss.y - 9 };
+    const x = from.x + (to.x - from.x) * eased;
+    const y = from.y + (to.y - from.y) * eased - Math.sin(moveP * Math.PI) * 8;
+    ctx.save();
+    ctx.globalCompositeOperation = "screen";
+    ctx.globalAlpha = (1 - flashP) * 0.68;
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, BASE_W, BASE_H);
+    ctx.globalAlpha = 0.32 + Math.sin(tt / 80) * 0.08;
+    ctx.fillStyle = "#ff4a4a";
+    ctx.beginPath();
+    ctx.arc(x, y, 12 + Math.sin(tt / 120) * 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    drawIronHeartMark(x, y, tt);
+  }
+
+  if (waveFx) {
+    const p = Math.max(0, Math.min(1, (tt - waveFx.startMs) / waveFx.duration));
+    const radius = 6 + p * 150;
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, 1 - p);
+    ctx.strokeStyle = "#f7f2e8";
+    ctx.lineWidth = 2 + p * 6;
+    ctx.beginPath();
+    ctx.arc(layout.ss.x, layout.ss.y, radius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = Math.max(0, 0.36 * (1 - p));
+    ctx.fillStyle = "#fff";
+    ctx.beginPath();
+    ctx.arc(layout.ss.x, layout.ss.y, radius * 0.55, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+  ctx.restore();
 }
 
 function drawTheaterScene(tt) {
@@ -688,6 +1042,1245 @@ function setGameResolution(w, h) {
   fitCanvas();
 }
 
+function startPhoneBrawl(onDone, options = {}) {
+  if (phoneBrawl.isActive()) return;
+  stopChaosMetalBgm();
+  bgmCtl.setOverride("about:blank");
+  setGameResolution(PHONE_BRAWL_W, PHONE_BRAWL_H);
+  phoneBrawl.start((result) => {
+    bgmCtl.setOverride(null);
+    setGameResolution(BASE_W, BASE_H);
+    input.clear();
+    if (typeof onDone === "function") onDone(result);
+  }, options);
+}
+
+function startSpaceBossFirstBattle() {
+  if (current.id !== "space_boss" || phoneBrawl.isActive()) return;
+  sbLastBattleStarted = true;
+  for (const act of actors) {
+    if (act.name?.startsWith("sb_party_")) act.hidden = true;
+  }
+  input.unlock();
+  startPhoneBrawl((result) => {
+    if (current.id !== "space_boss") return;
+    stopHeartbeat();
+    startSpaceBossReunionEvent();
+  }, { playerDeckIds: "n2_msitp", giveUpAction: "interventionReturn", internalBgm: false });
+}
+
+function startSpaceBossFirstBattleGameOverDebug() {
+  if (current.id !== "space_boss" || phoneBrawl.isActive()) return;
+  sbLastBattleStarted = true;
+  restoreSpaceBossPreBattleLayout();
+  for (const act of actors) {
+    if (act.name?.startsWith("sb_party_")) act.hidden = true;
+  }
+  input.unlock();
+  startPhoneBrawl((result) => {
+    if (current.id !== "space_boss") return;
+    stopHeartbeat();
+    startSpaceBossReunionEvent();
+  }, {
+    playerDeckIds: "n2_msitp",
+    giveUpAction: "interventionReturn",
+    internalBgm: false,
+    startAtGameOver: "intervention",
+  });
+}
+
+function startSpaceBossBossSpeech(onDone) {
+  if (current.id !== "space_boss") {
+    onDone?.();
+    return;
+  }
+  input.lock();
+  _spaceBossRantShake = false;
+  const now = nowMs();
+  sbBossType = {
+    lines: SPACE_BOSS_BOSS_LINES,
+    lineIndex: 0,
+    charIndex: 0,
+    lastCharAt: now - SPACE_BOSS_TYPE_CHAR_MS,
+    lineDoneAt: 0,
+    onDone,
+  };
+}
+
+function getSpaceBossTypeLine(fx) {
+  if (fx.phase === "draft" || fx.phase === "erase") return SPACE_BOSS_BOSS_RETYPE_DRAFT;
+  if (fx.phase === "final") return SPACE_BOSS_BOSS_RETYPE_FINAL;
+  if (fx.phase === "after") return SPACE_BOSS_BOSS_AFTER_LINE;
+  if (fx.phase === "mimic1") return SPACE_BOSS_BOSS_MIMIC_LINES[0];
+  if (fx.phase === "mimic2") return SPACE_BOSS_BOSS_MIMIC_LINES[1];
+  if (fx.phase === "like") return SPACE_BOSS_BOSS_LIKE_LINE;
+  if (fx.phase === "know") return SPACE_BOSS_BOSS_KNOW_LINE;
+  if (fx.phase === "glitchPreface") return SPACE_BOSS_BOSS_GLITCH_PREFACE_LINES[fx.prefaceIndex | 0] || "";
+  if (fx.phase === "glitchChoice") return SPACE_BOSS_BOSS_GLITCH_QUESTION;
+  if (fx.phase === "choiceRant") return SPACE_BOSS_BOSS_CHOICE_RANT_LINES[fx.rantIndex | 0] || "";
+  if (fx.phase === "postChoiceTransition") return fx.visibleLine || "";
+  return fx.lines[fx.lineIndex] || "";
+}
+
+function updateSpaceBossBossSpeech(t) {
+  if (!sbBossType) return;
+  const fx = sbBossType;
+  if (fx.phase === "postChoiceTransition") {
+    if (!fx.transitionStarted && t >= fx.transitionAt) {
+      fx.transitionStarted = true;
+      const done = fx.onDone;
+      sbBossType = null;
+      input.lock();
+      _spaceBossRantShake = false;
+      startBattleTransition(() => {
+        bgmCtl.unlock();
+        bgmCtl.setOverride("about:blank");
+        stopChaosMetalBgm();
+        startHeartbeat(68, BGM_VOLUME);
+        if (typeof done === "function") done();
+        else input.unlock();
+      });
+    }
+    return;
+  }
+
+  const line = getSpaceBossTypeLine(fx);
+  const chars = [...line];
+  if (fx.phase === "erase") {
+    if (t - fx.lastCharAt >= SPACE_BOSS_TYPE_BACKSPACE_MS) {
+      fx.charIndex = Math.max(0, fx.charIndex - 1);
+      fx.lastCharAt = t;
+      playAlienTypingNoise(900 + fx.charIndex);
+      if (fx.charIndex <= 0) {
+        fx.phase = "final";
+        fx.lineDoneAt = 0;
+        fx.lastCharAt = t - SPACE_BOSS_TYPE_CHAR_MS;
+      }
+    }
+    return;
+  }
+
+  if (fx.charIndex < chars.length) {
+    if (t - fx.lastCharAt >= SPACE_BOSS_TYPE_CHAR_MS) {
+      const ch = chars[fx.charIndex];
+      fx.charIndex += 1;
+      fx.lastCharAt = t;
+      if (ch !== " " && ch !== "　") {
+        playAlienTypingNoise(fx.charIndex + fx.lineIndex * 17);
+      }
+    }
+    return;
+  }
+
+  if (!fx.lineDoneAt) fx.lineDoneAt = t;
+  if (fx.phase === "draft") {
+    if (t - fx.lineDoneAt < SPACE_BOSS_TYPE_RETYPE_PAUSE_MS) return;
+    fx.phase = "erase";
+    fx.charIndex = chars.length;
+    fx.lineDoneAt = 0;
+    fx.lastCharAt = t;
+    return;
+  }
+  if (fx.phase === "mimic1") {
+    if (t - fx.lineDoneAt < SPACE_BOSS_TYPE_LINE_HOLD_MS) return;
+    fx.phase = "mimic2";
+    fx.charIndex = 0;
+    fx.lineDoneAt = 0;
+    fx.lastCharAt = t - SPACE_BOSS_TYPE_CHAR_MS;
+    return;
+  }
+  if (fx.phase === "glitchPreface") {
+    if (t - fx.lineDoneAt < SPACE_BOSS_TYPE_LINE_HOLD_MS) return;
+    fx.prefaceIndex = (fx.prefaceIndex | 0) + 1;
+    fx.charIndex = 0;
+    fx.lineDoneAt = 0;
+    fx.lastCharAt = t - SPACE_BOSS_TYPE_CHAR_MS;
+    if (fx.prefaceIndex >= SPACE_BOSS_BOSS_GLITCH_PREFACE_LINES.length) {
+      fx.phase = "glitchChoice";
+      fx.prefaceIndex = 0;
+    }
+    return;
+  }
+  if (fx.phase === "choiceRant") {
+    if (t - fx.lineDoneAt < SPACE_BOSS_TYPE_RANT_HOLD_MS) return;
+    fx.rantIndex = (fx.rantIndex | 0) + 1;
+    if (fx.rantIndex >= SPACE_BOSS_BOSS_CHOICE_RANT_LINES.length) {
+      fx.phase = "postChoiceTransition";
+      fx.visibleLine = SPACE_BOSS_BOSS_CHOICE_RANT_LINES[SPACE_BOSS_BOSS_CHOICE_RANT_LINES.length - 1];
+      fx.charIndex = [...fx.visibleLine].length;
+      fx.lineDoneAt = 0;
+      fx.transitionAt = t + SPACE_BOSS_TYPE_TRANSITION_HOLD_MS;
+      return;
+    }
+    fx.charIndex = 0;
+    fx.lineDoneAt = 0;
+    fx.lastCharAt = t - SPACE_BOSS_TYPE_CHAR_MS;
+    return;
+  }
+
+  const isFinalMainLine = !fx.phase && fx.lineIndex >= fx.lines.length - 1;
+  const isFinalRetypedLine = fx.phase === "final";
+  const isAfterLine = fx.phase === "after";
+  const isMimicFinalLine = fx.phase === "mimic2";
+  const isLikeLine = fx.phase === "like";
+  const isKnowLine = fx.phase === "know";
+  const isGlitchChoiceLine = fx.phase === "glitchChoice";
+  if (isGlitchChoiceLine) {
+    if (!fx.waitingChoice) {
+      fx.waitingChoice = true;
+      fx.choiceIndex = 0;
+      input.unlock();
+      input.clear();
+    }
+    const prevChoice = fx.choiceIndex | 0;
+    if (input.consume("ArrowLeft") || input.consume("ArrowUp")) fx.choiceIndex = Math.max(0, prevChoice - 1);
+    if (input.consume("ArrowRight") || input.consume("ArrowDown")) fx.choiceIndex = Math.min(SPACE_BOSS_BOSS_CHOICES.length - 1, (fx.choiceIndex | 0) + 1);
+    if ((fx.choiceIndex | 0) !== prevChoice) {
+      playCursor();
+    }
+    if (input.consume("x")) fx.choiceIndex = 1;
+    else if (!input.consume("z")) return;
+    playConfirm();
+    fx.choiceResult = SPACE_BOSS_BOSS_CHOICES[fx.choiceIndex];
+    _spaceBossRantShake = true;
+    input.lock();
+    fx.phase = "choiceRant";
+    fx.rantIndex = 0;
+    fx.charIndex = 0;
+    fx.lineDoneAt = 0;
+    fx.waitingChoice = false;
+    fx.lastCharAt = t - SPACE_BOSS_TYPE_CHAR_MS;
+    return;
+  }
+  if (isFinalMainLine || isFinalRetypedLine || isAfterLine || isMimicFinalLine || isLikeLine || isKnowLine) {
+    if (!fx.waitingForAdvance) {
+      fx.waitingForAdvance = true;
+      input.unlock();
+      input.clear();
+    }
+    if (!input.consume("z")) return;
+    if (isFinalMainLine) {
+      input.lock();
+      fx.phase = "draft";
+      fx.charIndex = 0;
+      fx.lineDoneAt = 0;
+      fx.waitingForAdvance = false;
+      fx.lastCharAt = t - SPACE_BOSS_TYPE_CHAR_MS;
+      return;
+    }
+    if (isFinalRetypedLine) {
+      input.lock();
+      fx.phase = "after";
+      fx.charIndex = 0;
+      fx.lineDoneAt = 0;
+      fx.waitingForAdvance = false;
+      fx.lastCharAt = t - SPACE_BOSS_TYPE_CHAR_MS;
+      return;
+    }
+    if (isAfterLine) {
+      input.lock();
+      fx.phase = "mimic1";
+      fx.charIndex = 0;
+      fx.lineDoneAt = 0;
+      fx.waitingForAdvance = false;
+      fx.lastCharAt = t - SPACE_BOSS_TYPE_CHAR_MS;
+      return;
+    }
+    if (isMimicFinalLine) {
+      input.lock();
+      fx.phase = "like";
+      fx.charIndex = 0;
+      fx.lineDoneAt = 0;
+      fx.waitingForAdvance = false;
+      fx.lastCharAt = t - SPACE_BOSS_TYPE_CHAR_MS;
+      return;
+    }
+    if (isLikeLine) {
+      input.lock();
+      fx.phase = "know";
+      fx.charIndex = 0;
+      fx.lineDoneAt = 0;
+      fx.waitingForAdvance = false;
+      fx.lastCharAt = t - SPACE_BOSS_TYPE_CHAR_MS;
+      return;
+    }
+    if (isKnowLine) {
+      input.lock();
+      fx.phase = "glitchPreface";
+      fx.prefaceIndex = 0;
+      fx.charIndex = 0;
+      fx.lineDoneAt = 0;
+      fx.waitingForAdvance = false;
+      fx.lastCharAt = t - SPACE_BOSS_TYPE_CHAR_MS;
+      return;
+    }
+    const done = fx.onDone;
+    sbBossType = null;
+    if (typeof done === "function") done();
+    else input.unlock();
+    return;
+  }
+
+  const hold = SPACE_BOSS_TYPE_LINE_HOLD_MS;
+  if (t - fx.lineDoneAt < hold) return;
+
+  fx.lineIndex += 1;
+  fx.charIndex = 0;
+  fx.lineDoneAt = 0;
+  fx.lastCharAt = t - SPACE_BOSS_TYPE_CHAR_MS;
+}
+
+function startSpaceBossReunionEvent() {
+  if (current.id !== "space_boss") return;
+  bgmCtl.setOverride("assets/audio/duckC.mp3");
+  restoreSpaceBossPreBattleLayout();
+  input.lock();
+  setTimeout(() => startSpaceBossCactusIntro(() => {
+    input.unlock();
+    dialog.open([["またせたな、アミーゴ！"]], () => {
+      dialog.open([["みんなを集めるのに時間がかかっちまった！"]], () => {
+        input.lock();
+        startSpaceBossCactusLeadHop(() => {
+          input.unlock();
+          dialog.open([["みんなー！"]], () => {
+            input.lock();
+            startSpaceBossCactusFriendsIntro(() => {
+              startSpaceBossCactusHatHop(() => {
+                input.unlock();
+                dialog.open([["俺たちだけじゃないぜ！"]], () => {
+                  input.lock();
+                  setTimeout(() => {
+                    startSpaceBossAlliesIntro(() => {
+                      startSpaceBossAllMembersAnim(() => {
+                        startSpaceBossSpacesistersHop(() => {
+                          input.unlock();
+                          dialog.open([
+                            ["間に合ってよかったよ！"],
+                            ["さぁ、力を合わせてあいつを倒すんだ！"],
+                          ], () => {
+                            input.lock();
+                            startSpaceBossAllMembersHop(() => {
+                              input.unlock();
+                              dialog.open([["うおーーー！"]], null, "talk", 0, {
+                                position: "top",
+                                textScale: 2,
+                                align: "center",
+                                valign: "center",
+                                highlights: [{ text: "うおーーー！", rainbow: true }],
+                                onFinalAdvance: () => {
+                                  input.lock();
+                                  startBattleTransition(() => startSpaceBossFinalBattle());
+                                  dialog.close();
+                                },
+                              });
+                            });
+                          }, "talk", 0, { position: "top" });
+                        });
+                      });
+                    });
+                  }, 1000);
+                }, "talk", 0, { position: "top" });
+              });
+            });
+          }, "talk", 0, { position: "top" });
+        });
+      }, "talk", 0, { position: "top" });
+    }, "talk", 0, { position: "top" });
+  }), 1000);
+}
+
+function startSpaceBossCactusLeadHop(onDone) {
+  if (!sbCactusIntro?.cactus) {
+    onDone?.();
+    return;
+  }
+  const cactus = sbCactusIntro.cactus;
+  sbCactusIntro.phase = "leadHop";
+  sbCactusIntro.done = false;
+  sbCactusIntro.phaseStartMs = nowMs();
+  sbCactusIntro.leadHop = {
+    act: cactus,
+    x: cactus.x,
+    y: cactus.y,
+  };
+  sbCactusIntro.onDone = onDone;
+}
+
+function updateSpaceBossCactusLeadHop(t, fx) {
+  const hop = fx.leadHop;
+  if (!hop?.act) {
+    const done = fx.onDone;
+    fx.phase = "hold";
+    fx.done = true;
+    fx.onDone = null;
+    fx.leadHop = null;
+    if (typeof done === "function") done();
+    return;
+  }
+  const local = t - fx.phaseStartMs;
+  const hopMs = 360;
+  const total = hopMs * 2;
+  const p = Math.min(1, local / total);
+  const hopPhase = (local % hopMs) / hopMs;
+  const lift = Math.sin(hopPhase * Math.PI) * 24 * (1 - p * 0.08);
+  hop.act.x = hop.x;
+  hop.act.y = hop.y - lift;
+  hop.act.alpha = 1;
+  hop.act.scale = 1;
+  hop.act.frame = Math.floor(local / 105) % 2;
+  if (local >= total) {
+    hop.act.y = hop.y;
+    hop.act.frame = 0;
+    const done = fx.onDone;
+    fx.phase = "hold";
+    fx.done = true;
+    fx.onDone = null;
+    fx.leadHop = null;
+    if (typeof done === "function") done();
+  }
+}
+
+function restoreSpaceBossPreBattleLayout() {
+  const party = actors.filter((act) => act.name?.startsWith("sb_party_"));
+  const px = leader.x;
+  const py = leader.y;
+  for (let i = 0; i < party.length; i++) {
+    party[i].hidden = false;
+    party[i].glow = true;
+    party[i].solid = false;
+    party[i].x = px - 30 + i * 20;
+    party[i].y = py + 60;
+  }
+  const ss = actors.find((act) => act.name === "sb_ss1");
+  if (ss) ss.hidden = true;
+  updateCam();
+}
+
+function startSpaceBossCactusIntro(onDone) {
+  const now = nowMs();
+  const holeX = 26;
+  const holeY = 92;
+  const targetX = BASE_W / 2;
+  const targetY = BASE_H / 2 + 20;
+  let cactus = actors.find((act) => act.name === "sb_cactus_intro");
+  if (!cactus) {
+    cactus = {
+      kind: "npc",
+      name: "sb_cactus_intro",
+      img: SPRITES.cactus,
+      x: cam.x + holeX - 8,
+      y: cam.y + holeY - 8,
+      spr: SPR,
+      sprH: SPR,
+      frame: 0,
+      last: 0,
+      solid: false,
+      noWalk: true,
+      animMs: Infinity,
+      talkHit: { x: 0, y: 0, w: 0, h: 0 },
+    };
+    actors.push(cactus);
+  }
+  cactus.hidden = false;
+  cactus.glow = false;
+  cactus.alpha = 0;
+  cactus.scale = 0.35;
+  cactus.frame = 0;
+  cactus.x = cam.x + holeX - 8;
+  cactus.y = cam.y + holeY - 8;
+  cactus.animMs = Infinity;
+  sbCactusIntro = {
+    startMs: now,
+    phase: "hole",
+    holeX,
+    holeY,
+    startX: cam.x + holeX - 8,
+    startY: cam.y + holeY - 8,
+    targetX: cam.x + targetX - 8,
+    targetY: cam.y + targetY - 8,
+    cactus,
+    onDone,
+  };
+}
+
+function showSpaceBossPartyExclamations(char = "!", duration = 1200) {
+  const now = nowMs();
+  const party = actors.filter((act) => act.name?.startsWith("sb_party_") && !act.hidden);
+  const targets = party.length ? party : [leader, p2, p3, p4];
+  for (const m of targets) {
+    exclamations.push({
+      sx: ((m.x + 8) - cam.x) | 0,
+      sy: (m.y - cam.y) | 0,
+      startMs: now,
+      duration,
+      char,
+      color: char === "?" ? "#fff" : "#e00",
+      opaque: true,
+    });
+  }
+}
+
+function updateSpaceBossCactusIntro(t) {
+  if (!sbCactusIntro) return;
+  const fx = sbCactusIntro;
+  const cactus = fx.cactus;
+  if (!cactus || current.id !== "space_boss") {
+    sbCactusIntro = null;
+    return;
+  }
+  if (fx.phase === "leadHop") {
+    updateSpaceBossCactusLeadHop(t, fx);
+    return;
+  }
+  if (fx.phase === "friends") {
+    updateSpaceBossCactusFriendsIntro(t, fx);
+    return;
+  }
+  if (fx.phase === "hatHop") {
+    updateSpaceBossCactusHatHop(t, fx);
+    return;
+  }
+  if (fx.phase === "allMembersAnim") {
+    updateSpaceBossAllMembersAnim(t, fx);
+    return;
+  }
+  if (fx.phase === "allMembersHop") {
+    updateSpaceBossAllMembersHop(t, fx);
+    return;
+  }
+  if (fx.phase === "spacesistersHop") {
+    updateSpaceBossSpacesistersHop(t, fx);
+    return;
+  }
+  if (fx.phase === "allies") {
+    updateSpaceBossAlliesIntro(t, fx);
+    return;
+  }
+  const elapsed = t - fx.startMs;
+  if (fx.phase === "hole") {
+    cactus.alpha = 0;
+    cactus.x = fx.startX;
+    cactus.y = fx.startY;
+    if (!fx.questionShown && elapsed >= 1000) {
+      fx.questionShown = true;
+      showSpaceBossPartyExclamations("?", 1800);
+    }
+    if (elapsed >= 4000) {
+      fx.phase = "jump";
+      fx.phaseStartMs = t;
+    }
+    return;
+  }
+  if (fx.phase === "jump") {
+    const p = Math.min(1, (t - fx.phaseStartMs) / 820);
+    const eased = 1 - Math.pow(1 - p, 3);
+    const hop = Math.sin(p * Math.PI) * 42;
+    cactus.alpha = Math.min(1, p * 3);
+    cactus.scale = 0.72 + eased * 0.28;
+    cactus.x = fx.startX + (fx.targetX - fx.startX) * eased;
+    cactus.y = fx.startY + (fx.targetY - fx.startY) * eased - hop;
+    cactus.frame = 0;
+    if (p >= 1) {
+      fx.phase = "landWait";
+      fx.phaseStartMs = t;
+      cactus.x = fx.targetX;
+      cactus.y = fx.targetY;
+      cactus.scale = 1;
+      cactus.alpha = 1;
+      cactus.frame = 0;
+    }
+    return;
+  }
+  if (fx.phase === "landWait") {
+    cactus.x = fx.targetX;
+    cactus.y = fx.targetY;
+    cactus.scale = 1;
+    cactus.alpha = 1;
+    cactus.frame = 0;
+    if (t - fx.phaseStartMs >= 1000) {
+      fx.phase = "animate";
+      fx.phaseStartMs = t;
+    }
+    return;
+  }
+  if (fx.phase === "animate") {
+    const local = t - fx.phaseStartMs;
+    cactus.x = fx.targetX;
+    cactus.y = fx.targetY + (Math.sin(local / 120 * Math.PI) < 0 ? 1 : 0);
+    cactus.scale = 1;
+    cactus.alpha = 1;
+    cactus.frame = Math.floor(local / 120) % 2;
+    if (local >= 720) {
+      cactus.frame = 0;
+      cactus.y = fx.targetY;
+      cactus.animMs = Infinity;
+      fx.phase = "postSurpriseWait";
+      fx.phaseStartMs = t;
+      if (!fx.cactusSurpriseShown) {
+        fx.cactusSurpriseShown = true;
+        showSpaceBossPartyExclamations("!", 1200);
+      }
+    }
+    return;
+  }
+  if (fx.phase === "postSurpriseWait") {
+    cactus.x = fx.targetX;
+    cactus.y = fx.targetY;
+    cactus.scale = 1;
+    cactus.alpha = 1;
+    cactus.frame = 0;
+    if (t - fx.phaseStartMs >= 1000) {
+      const done = fx.onDone;
+      fx.phase = "hold";
+      fx.done = true;
+      fx.onDone = null;
+      if (typeof done === "function") done();
+    }
+  }
+}
+
+function startSpaceBossCactusFriendsIntro(onDone) {
+  if (!sbCactusIntro) {
+    onDone?.();
+    return;
+  }
+  const now = nowMs();
+  const holeX = sbCactusIntro.holeX;
+  const holeY = sbCactusIntro.holeY;
+  const startX = cam.x + holeX - 8;
+  const startY = cam.y + holeY - 8;
+  const centerX = cam.x + BASE_W / 2 - 8;
+  const centerY = cam.y + BASE_H / 2 + 48;
+  const offsets = [
+    [-50, -10], [-30, -22], [-10, -14], [12, -24], [34, -10],
+    [-42, 16], [-20, 28], [4, 22], [28, 28], [48, 12],
+  ];
+  const friends = offsets.map(([ox, oy], i) => {
+    const isHat = i === offsets.length - 1;
+    const act = actors.find((a) => a.name === `sb_cactus_friend_${i}`) || {
+      kind: "npc",
+      name: `sb_cactus_friend_${i}`,
+      img: isHat ? SPRITES.cactus_hat : SPRITES.cactus,
+      x: startX,
+      y: startY,
+      spr: SPR,
+      sprH: SPR,
+      frame: 0,
+      last: 0,
+      solid: false,
+      noWalk: true,
+      animMs: Infinity,
+      talkHit: { x: 0, y: 0, w: 0, h: 0 },
+    };
+    if (!actors.includes(act)) actors.push(act);
+    act.img = isHat ? SPRITES.cactus_hat : SPRITES.cactus;
+    act.hidden = false;
+    act.alpha = 0;
+    act.scale = 0.35;
+    act.glow = false;
+    act.frame = 0;
+    act.x = startX;
+    act.y = startY;
+    act.animMs = Infinity;
+    return {
+      act,
+      delay: i * 86,
+      sx: startX,
+      sy: startY,
+      tx: centerX + ox,
+      ty: centerY + oy,
+    };
+  });
+  sbCactusIntro.phase = "friends";
+  sbCactusIntro.done = false;
+  sbCactusIntro.phaseStartMs = now;
+  sbCactusIntro.friends = friends;
+  sbCactusIntro.onDone = onDone;
+}
+
+function startSpaceBossCactusHatHop(onDone) {
+  if (!sbCactusIntro) {
+    onDone?.();
+    return;
+  }
+  const hat = actors.find((a) => a.name === "sb_cactus_friend_9") || actors.find((a) => a.img === SPRITES.cactus_hat);
+  if (!hat) {
+    onDone?.();
+    return;
+  }
+  sbCactusIntro.phase = "hatHop";
+  sbCactusIntro.done = false;
+  sbCactusIntro.phaseStartMs = nowMs();
+  sbCactusIntro.hatHop = {
+    act: hat,
+    x: hat.x,
+    y: hat.y,
+  };
+  sbCactusIntro.onDone = onDone;
+}
+
+function updateSpaceBossCactusHatHop(t, fx) {
+  const hop = fx.hatHop;
+  if (!hop?.act) {
+    const done = fx.onDone;
+    fx.phase = "hold";
+    fx.done = true;
+    fx.onDone = null;
+    if (typeof done === "function") done();
+    return;
+  }
+  const local = t - fx.phaseStartMs;
+  const hopMs = 360;
+  const total = hopMs * 2;
+  const p = Math.min(1, local / total);
+  const hopPhase = (local % hopMs) / hopMs;
+  const lift = Math.sin(hopPhase * Math.PI) * 24 * (1 - p * 0.08);
+  hop.act.x = hop.x;
+  hop.act.y = hop.y - lift;
+  hop.act.alpha = 1;
+  hop.act.scale = 1;
+  hop.act.frame = Math.floor(local / 105) % 2;
+  if (local >= total) {
+    hop.act.y = hop.y;
+    hop.act.frame = 0;
+    const done = fx.onDone;
+    fx.phase = "hold";
+    fx.done = true;
+    fx.onDone = null;
+    if (typeof done === "function") done();
+  }
+}
+
+function startSpaceBossAllMembersAnim(onDone) {
+  if (!sbCactusIntro) {
+    onDone?.();
+    return;
+  }
+  const members = getSpaceBossVisibleRallyMembers();
+  if (!members.length) {
+    onDone?.();
+    return;
+  }
+  sbCactusIntro.phase = "allMembersAnim";
+  sbCactusIntro.done = false;
+  sbCactusIntro.phaseStartMs = nowMs();
+  sbCactusIntro.allMembersAnim = members.map((act) => ({
+    act,
+    x: act.x,
+    y: act.y,
+  }));
+  sbCactusIntro.onDone = onDone;
+}
+
+function getSpaceBossVisibleRallyMembers() {
+  return actors
+    .filter((act) =>
+      act.name === "sb_cactus_intro" ||
+      act.name?.startsWith("sb_cactus_friend_") ||
+      act.name?.startsWith("sb_ally_") ||
+      act.name?.startsWith("sb_party_"))
+    .filter((act) => !act.hidden);
+}
+
+function updateSpaceBossAllMembersAnim(t, fx) {
+  const local = t - fx.phaseStartMs;
+  const duration = 720;
+  for (const m of fx.allMembersAnim || []) {
+    if (!m.act) continue;
+    m.act.x = m.x;
+    m.act.y = m.y + (Math.sin(local / 120 * Math.PI) < 0 ? 1 : 0);
+    m.act.alpha = 1;
+    m.act.scale = 1;
+    m.act.frame = Math.floor(local / 120) % 2;
+  }
+  if (local >= duration) {
+    for (const m of fx.allMembersAnim || []) {
+      if (!m.act) continue;
+      m.act.x = m.x;
+      m.act.y = m.y;
+      m.act.frame = 0;
+    }
+    const done = fx.onDone;
+    fx.phase = "hold";
+    fx.done = true;
+    fx.onDone = null;
+    fx.allMembersAnim = null;
+    if (typeof done === "function") done();
+  }
+}
+
+function startSpaceBossAllMembersHop(onDone) {
+  if (!sbCactusIntro) {
+    onDone?.();
+    return;
+  }
+  const members = getSpaceBossVisibleRallyMembers();
+  if (!members.length) {
+    onDone?.();
+    return;
+  }
+  sbCactusIntro.phase = "allMembersHop";
+  sbCactusIntro.done = false;
+  sbCactusIntro.phaseStartMs = nowMs();
+  sbCactusIntro.allMembersHop = members.map((act) => ({
+    act,
+    x: act.x,
+    y: act.y,
+  }));
+  sbCactusIntro.onDone = onDone;
+}
+
+function updateSpaceBossAllMembersHop(t, fx) {
+  const local = t - fx.phaseStartMs;
+  const hopMs = 360;
+  const total = hopMs * 2;
+  const p = Math.min(1, local / total);
+  const hopPhase = (local % hopMs) / hopMs;
+  const lift = Math.sin(hopPhase * Math.PI) * 24 * (1 - p * 0.08);
+  for (const m of fx.allMembersHop || []) {
+    if (!m.act) continue;
+    m.act.x = m.x;
+    m.act.y = m.y - lift;
+    m.act.alpha = 1;
+    m.act.scale = 1;
+    m.act.frame = Math.floor(local / 105) % 2;
+  }
+  if (local >= total) {
+    for (const m of fx.allMembersHop || []) {
+      if (!m.act) continue;
+      m.act.x = m.x;
+      m.act.y = m.y;
+      m.act.frame = 0;
+    }
+    const done = fx.onDone;
+    fx.phase = "hold";
+    fx.done = true;
+    fx.onDone = null;
+    fx.allMembersHop = null;
+    if (typeof done === "function") done();
+  }
+}
+
+function startSpaceBossSpacesistersHop(onDone) {
+  if (!sbCactusIntro) {
+    onDone?.();
+    return;
+  }
+  const act = actors.find((a) => a.name === "sb_ally_spacesisters1");
+  if (!act) {
+    onDone?.();
+    return;
+  }
+  sbCactusIntro.phase = "spacesistersHop";
+  sbCactusIntro.done = false;
+  sbCactusIntro.phaseStartMs = nowMs();
+  sbCactusIntro.spacesistersHop = {
+    act,
+    x: act.x,
+    y: act.y,
+  };
+  sbCactusIntro.onDone = onDone;
+}
+
+function updateSpaceBossSpacesistersHop(t, fx) {
+  const hop = fx.spacesistersHop;
+  if (!hop?.act) {
+    const done = fx.onDone;
+    fx.phase = "hold";
+    fx.done = true;
+    fx.onDone = null;
+    if (typeof done === "function") done();
+    return;
+  }
+  const local = t - fx.phaseStartMs;
+  const hopMs = 360;
+  const total = hopMs * 2;
+  const p = Math.min(1, local / total);
+  const hopPhase = (local % hopMs) / hopMs;
+  const lift = Math.sin(hopPhase * Math.PI) * 24 * (1 - p * 0.08);
+  hop.act.x = hop.x;
+  hop.act.y = hop.y - lift;
+  hop.act.alpha = 1;
+  hop.act.scale = 1;
+  hop.act.frame = Math.floor(local / 105) % 2;
+  if (local >= total) {
+    hop.act.y = hop.y;
+    hop.act.frame = 0;
+    const done = fx.onDone;
+    fx.phase = "hold";
+    fx.done = true;
+    fx.onDone = null;
+    if (typeof done === "function") done();
+  }
+}
+
+function updateSpaceBossCactusFriendsIntro(t, fx) {
+  const jumpMs = 560;
+  const landWaitMs = 1000;
+  const animMs = 420;
+  let allDone = true;
+  for (const f of fx.friends || []) {
+    const local = t - fx.phaseStartMs - f.delay;
+    const act = f.act;
+    if (local < 0) {
+      act.alpha = 0;
+      act.x = f.sx;
+      act.y = f.sy;
+      allDone = false;
+      continue;
+    }
+    const p = Math.min(1, local / jumpMs);
+    const eased = 1 - Math.pow(1 - p, 3);
+    const hop = Math.sin(p * Math.PI) * 40;
+    act.alpha = Math.min(1, p * 4);
+    act.scale = 0.62 + eased * 0.38;
+    act.x = f.sx + (f.tx - f.sx) * eased;
+    act.y = f.sy + (f.ty - f.sy) * eased - hop;
+    act.frame = local < jumpMs + landWaitMs ? 0 : Math.floor((local - jumpMs - landWaitMs) / 105) % 2;
+    if (local < jumpMs + landWaitMs + animMs) {
+      allDone = false;
+    } else {
+      act.x = f.tx;
+      act.y = f.ty;
+      act.alpha = 1;
+      act.scale = 1;
+      act.frame = 0;
+    }
+  }
+  if (allDone) {
+    const done = fx.onDone;
+    fx.phase = "hold";
+    fx.done = true;
+    fx.onDone = null;
+    if (typeof done === "function") done();
+  }
+}
+
+function startSpaceBossAlliesIntro(onDone) {
+  if (!sbCactusIntro) {
+    onDone?.();
+    return;
+  }
+  const now = nowMs();
+  const startX = cam.x + sbCactusIntro.holeX - 8;
+  const startY = cam.y + sbCactusIntro.holeY - 8;
+  const centerX = cam.x + BASE_W / 2 - 8;
+  const centerY = cam.y + BASE_H / 2 + 42;
+  const defs = [
+    { key: "nidhogg2", img: SPRITES.nidhogg2, ox: -68, oy: -34, spr: 32, sprH: 32 },
+    { key: "chinanago_on_0", img: SPRITES.chinanago_on, ox: -76, oy: -4 },
+    { key: "chinanago_on_1", img: SPRITES.chinanago_on, ox: -56, oy: 10 },
+    { key: "chinanago_on_2", img: SPRITES.chinanago_on, ox: -36, oy: -2 },
+    { key: "lucha", img: SPRITES.lucha, ox: 64, oy: 10 },
+    { key: "yahhy", img: SPRITES.yahhy, ox: 42, oy: -12 },
+    { key: "spacesisters1", img: SPRITES.spacesisters1, ox: 18, oy: -36 },
+    { key: "kingyobachi_san", img: SPRITES.kingyobachi_san, ox: -62, oy: 28, spr: 16, sprH: 32 },
+    { key: "lee", img: SPRITES.lee, ox: 58, oy: 34 },
+  ];
+  const allies = defs.map((def, i) => {
+    const name = `sb_ally_${def.key}`;
+    let act = actors.find((a) => a.name === name);
+    if (!act) {
+      act = {
+        kind: "npc",
+        name,
+        img: def.img,
+        x: startX,
+        y: startY,
+        spr: def.spr ?? SPR,
+        sprH: def.sprH ?? def.spr ?? SPR,
+        frame: 0,
+        last: 0,
+        solid: false,
+        noWalk: true,
+        animMs: Infinity,
+        talkHit: { x: 0, y: 0, w: 0, h: 0 },
+      };
+      actors.push(act);
+    }
+    act.img = def.img;
+    act.spr = def.spr ?? SPR;
+    act.sprH = def.sprH ?? def.spr ?? SPR;
+    act.hidden = false;
+    act.alpha = 0;
+    act.scale = 0.35;
+    act.glow = false;
+    act.frame = 0;
+    act.x = startX;
+    act.y = startY;
+    act.animMs = Infinity;
+    return {
+      act,
+      delay: i * 92,
+      sx: startX,
+      sy: startY,
+      tx: centerX + def.ox,
+      ty: centerY + def.oy,
+    };
+  });
+  sbCactusIntro.phase = "allies";
+  sbCactusIntro.done = false;
+  sbCactusIntro.phaseStartMs = now;
+  sbCactusIntro.allies = allies;
+  sbCactusIntro.onDone = onDone;
+}
+
+function updateSpaceBossAlliesIntro(t, fx) {
+  const jumpMs = 620;
+  const landWaitMs = 220;
+  const animMs = 420;
+  let allDone = true;
+  for (const f of fx.allies || []) {
+    const local = t - fx.phaseStartMs - f.delay;
+    const act = f.act;
+    if (local < 0) {
+      act.alpha = 0;
+      act.x = f.sx;
+      act.y = f.sy;
+      allDone = false;
+      continue;
+    }
+    const p = Math.min(1, local / jumpMs);
+    const eased = 1 - Math.pow(1 - p, 3);
+    const hop = Math.sin(p * Math.PI) * 44;
+    act.alpha = Math.min(1, p * 4);
+    act.scale = 0.62 + eased * 0.38;
+    act.x = f.sx + (f.tx - f.sx) * eased;
+    act.y = f.sy + (f.ty - f.sy) * eased - hop;
+    act.frame = local < jumpMs + landWaitMs ? 0 : Math.floor((local - jumpMs - landWaitMs) / 105) % 2;
+    if (local < jumpMs + landWaitMs + animMs) {
+      allDone = false;
+    } else {
+      act.x = f.tx;
+      act.y = f.ty;
+      act.alpha = 1;
+      act.scale = 1;
+      act.frame = 0;
+    }
+  }
+  if (allDone) {
+    const done = fx.onDone;
+    fx.phase = "hold";
+    fx.done = true;
+    fx.onDone = null;
+    if (typeof done === "function") done();
+  }
+}
+
+function animateSpaceBossPartyRush(onDone) {
+  const party = actors.filter((act) => act.name?.startsWith("sb_party_"));
+  if (!party.length) {
+    onDone?.();
+    return;
+  }
+  const targets = [
+    { x: leader.x - 36, y: leader.y + 44 },
+    { x: leader.x - 12, y: leader.y + 58 },
+    { x: leader.x + 12, y: leader.y + 58 },
+    { x: leader.x + 36, y: leader.y + 44 },
+  ];
+  const starts = party.map((act, i) => {
+    const target = targets[i % targets.length];
+    const side = i < 2 ? -1 : 1;
+    act.hidden = false;
+    act.glow = true;
+    act.solid = false;
+    act.x = target.x + side * (180 + i * 16);
+    act.y = target.y + 36 + i * 5;
+    return { act, sx: act.x, sy: act.y, tx: target.x, ty: target.y };
+  });
+  const startMs = nowMs();
+  const duration = 900;
+  const timer = setInterval(() => {
+    if (current.id !== "space_boss") {
+      clearInterval(timer);
+      return;
+    }
+    const p = Math.min(1, (nowMs() - startMs) / duration);
+    const eased = 1 - Math.pow(1 - p, 3);
+    const hop = Math.sin(p * Math.PI) * 26;
+    for (const s of starts) {
+      s.act.x = s.sx + (s.tx - s.sx) * eased;
+      s.act.y = s.sy + (s.ty - s.sy) * eased - hop;
+    }
+    updateCam();
+    if (p >= 1) {
+      clearInterval(timer);
+      for (const s of starts) {
+        s.act.x = s.tx;
+        s.act.y = s.ty;
+      }
+      onDone?.();
+    }
+  }, 16);
+}
+
+function startSpaceBossFinalBattle() {
+  if (current.id !== "space_boss" || phoneBrawl.isActive()) return;
+  sbCactusIntro = null;
+  input.unlock();
+  startPhoneBrawl((result) => {
+    if (result?.result === "victory" || result === "victory") {
+      startSpaceBossWinEvent();
+      return;
+    }
+    returnToTitleAfterLastBattleGameOver();
+  });
+}
+
+function startSpaceBossWinEvent() {
+  if (current.id !== "space_boss") return;
+  STATE.flags.galaxyBossDefeated = true;
+  bgmCtl.setOverride("assets/audio/duckE.mp3");
+  spaceBossWhiteReunion = { startMs: nowMs() };
+  partyVisible = false;
+  input.lock();
+  setTimeout(() => {
+    input.unlock();
+    dialog.open([
+      ["すごいすごい！"],
+      ["本当にすごいよきみたち！"],
+      ["ついにやったんだ！"],
+      ["はぁ、、、。"],
+      ["感動でなんにも言えないや。"],
+      ["ありがとう。"],
+      ["きみたちのおかげで、たくさんの世界が救われた。"],
+    ], () => {
+      dialog.open([
+        ["・・・・・・。"],
+        ["うん。"],
+      ], () => {
+        startSpaceBossReturnHomeSequence(() => {
+          input.lock();
+          setTimeout(() => {
+            input.unlock();
+            dialog.open([
+              ["さ。"],
+              ["かえろっか。"],
+            ], () => {
+              startSpaceBossAfterHeartReturnSequence();
+            }, "talk");
+          }, 3000);
+        });
+      }, "talk");
+    }, "talk");
+  }, 6100);
+}
+
+function startSpaceBossReturnHomeSequence(onDone = startSpaceBossAfterHeartReturnSequence) {
+  input.lock();
+  setTimeout(() => {
+    input.unlock();
+    dialog.open([["それから、"]], () => {
+      startSpaceBossHeartReturnSequence(onDone);
+    }, "talk");
+  }, 1000);
+}
+
+function startSpaceBossHeartReturnSequence(onDone = startSpaceBossAfterHeartReturnSequence) {
+  input.lock();
+  if (spaceBossWhiteReunion) {
+    spaceBossWhiteReunion.heartFx = { startMs: nowMs(), duration: 1700 };
+  }
+  setTimeout(() => {
+    input.unlock();
+    dialog.open([["これは返してもらわなきゃね。"]], () => {
+      input.lock();
+      setTimeout(() => {
+        input.unlock();
+        dialog.open([
+          ["また別の時空のきみたちが見つけられるように、"],
+          ["ほろびた世界に隠しておかなきゃいけないからさ。"],
+        ], () => {
+          onDone?.();
+        }, "talk");
+      }, 1000);
+    }, "talk");
+  }, 1850);
+}
+
+function startSpaceBossAfterHeartReturnSequence() {
+  dialog.open([
+    ["みんながまってる。"],
+  ], () => {
+    input.lock();
+    setTimeout(() => {
+      input.unlock();
+      dialog.open([
+        ["タイムマシン？帰る時は必要ないよ。"],
+        ["あれはこのパターンの世界で作ったものじゃないから、もう使えないのさ。"],
+        ["それに、宇宙から未来に帰るのって、実はけっこう簡単なんだよ。"],
+      ], () => {
+        input.lock();
+        setTimeout(() => {
+          input.unlock();
+          dialog.open([["さってっと、"]], () => {
+            dialog.open([
+              ["いくよ、"],
+              ["そりゃーーーー！"],
+            ], () => {
+              startSpaceBossReturnWave();
+            }, "talk");
+          }, "talk");
+        }, 3000);
+      }, "talk");
+    }, 2000);
+  }, "talk");
+}
+
+function startSpaceBossReturnWave() {
+  input.lock();
+  if (spaceBossWhiteReunion) {
+    spaceBossWhiteReunion.heartFx = null;
+    spaceBossWhiteReunion.waveFx = { startMs: nowMs(), duration: 1800 };
+  }
+  setTimeout(() => {
+    fadeOutBgmToSilence(1400);
+    startSpaceBossMoonScene();
+  }, 1900);
+}
+
+function triggerSpaceBossEnding() {
+  input.lock();
+  bgmCtl.setOverride("about:blank");
+  fade.startIrisFade(nowMs(), {
+    outMs: 800,
+    holdMs: 500,
+    inMs: 300,
+    cx: (leader.x - cam.x + SPR / 2) | 0,
+    cy: (leader.y - cam.y + SPR / 2) | 0,
+    onBlack: () => {
+      spaceBossWhiteReunion = null;
+      setGameResolution(CONFIG.BASE_W, CONFIG.BASE_H);
+      partyVisible = false;
+      loadMap("vj_room02", { isEnding: true });
+    },
+    onEnd: () => {
+      pendingEndingFadeIn = true;
+    },
+  });
+}
+
+function returnToTitleAfterLastBattleGameOver() {
+  input.lock();
+  bgmCtl.setOverride("about:blank");
+  fade.startCutFade(nowMs(), {
+    outMs: 1,
+    holdMs: 250,
+    inMs: 400,
+    onBlack: () => {
+      partyVisible = true;
+      loadMap("moritasaki_room", { skipBgm: true });
+      setGameResolution(CONFIG.BASE_W, CONFIG.BASE_H);
+    },
+    onEnd: () => {
+      input.unlock();
+      input.clear();
+      startTitle();
+    },
+  });
+}
+
 function buildWaterMask(img, color) {
   const [tr, tg, tb] = color;
   const mc = document.createElement("canvas");
@@ -843,9 +2436,11 @@ function _poolItem() {
     item.metImg = undefined;
     item.alpha = undefined;
     item.scale = undefined;
+    item.rotation = undefined;
     item.filter = undefined;
     item.tint = undefined;
     item.vanishStart = undefined;
+    item.ironHeartMark = undefined;
     return item;
   }
   return {}; // フォールバック（超えることはほぼない）
@@ -905,6 +2500,19 @@ function spawnActorsForMap(mapId) {
   if (ufoMatch) {
     for (const def of getUfoHouseNpcs(+ufoMatch[1])) actors.push({ ...def, frame: 0, last: 0 });
   }
+  if (mapId === "vj_factry" && STATE.flags.galaxyLastBattle) {
+    actors = actors.filter(a => !a.name?.startsWith("factry_ss"));
+  }
+  if (mapId === "kako" && STATE.flags.galaxyLastBattle) {
+    const ss = [
+      { name: "kako_ss1", x: 1705, y: 1287 },
+      { name: "kako_ss2", x: 1689, y: 1311 },
+      { name: "kako_ss3", x: 1721, y: 1311 },
+    ];
+    for (const s of ss) {
+      actors.push({ kind: "npc", name: s.name, img: SPRITES.spacesisters1, x: s.x, y: s.y, spr: SPR, sprH: SPR, frame: 0, last: 0, solid: true, noWalk: true, animMs: NPC_FRAME_MS, talkHit: { x: 0, y: 0, w: 16, h: 14 }, event: { type: "kako_sisters_warp" } });
+    }
+  }
 
   if (mapId === "shooting_lobby") {
     for (const a of actors) {
@@ -938,6 +2546,17 @@ function spawnActorsForMap(mapId) {
   if (STATE.achievedQuests.size >= 20) {
     const a = actors.find(a => a.id === "keeper");
     if (a) { a.x = 1613; a.y = 2709; }
+  }
+  if (STATE.flags.galaxyMaou) {
+    actors = actors.filter(a => a.name !== "grasan");
+  }
+  if (mapId === "vj_room01" && STATE.flags.galaxyMaou) {
+    actors = actors.filter(a => a.name !== "minami");
+    if (!STATE.flags.galaxyMaou2) {
+      setTimeout(() => {
+        if (current.id === "vj_room01") startPhoneCallEvent2();
+      }, 1000);
+    }
   }
   refreshPizzaJobMarkers();
 
@@ -1016,9 +2635,86 @@ let spaceWarpFx = { active: false, start: 0 };
 const WARP_SHAKE_MS = 800;
 const WARP_SPIN_MS  = 1200;
 const WARP_TOTAL_MS = WARP_SHAKE_MS + WARP_SPIN_MS;
+const SPACE_BOSS_TIMING = {
+  introDelay: 5000,
+  shortDelay: 1000,
+  preStyleDelay: 2000,
+  whiteFlash: 2000,
+  whiteFlashChange: 1000,
+  postRestoreLineDelay: 1000,
+  preSuckDelay: 1000,
+  suck: 1500,
+  blackHoleHold: 10000,
+  regroupFadeIn: 800,
+  preBossDropDelay: 3000,
+  bossDrop: 4500,
+  battleAfterBossDrop: 7500,
+  fadeOut: 800,
+  fadeHold: 600,
+  fadeIn: 800,
+};
+const SPACE_BOSS_BOSS_LINES = [
+  "ア　ア　ア　ウ　ア",
+  "ア・・・",
+  "・・・わにさん",
+  "わに",
+  "いるかさん",
+  "わにさん　と",
+  "こんにちは",
+  "あなた　はーい",
+  "・・・・",
+  "・・・・・・・・・",
+  "はァい　こんにちは　わたくしが　あなたがたの　さがしものです。",
+];
+const SPACE_BOSS_TYPE_CHAR_MS = 90;
+const SPACE_BOSS_TYPE_BACKSPACE_MS = 42;
+const SPACE_BOSS_TYPE_LINE_HOLD_MS = 620;
+const SPACE_BOSS_TYPE_RETYPE_PAUSE_MS = 450;
+const SPACE_BOSS_TYPE_RANT_HOLD_MS = 760;
+const SPACE_BOSS_TYPE_TRANSITION_HOLD_MS = 650;
+const SPACE_BOSS_BOSS_RETYPE_DRAFT = "おどろいたでしょう";
+const SPACE_BOSS_BOSS_RETYPE_FINAL = "驚いたでしょう。私があなた方地球人類と同じ姿をしているものだから。";
+const SPACE_BOSS_BOSS_AFTER_LINE = "本来、私は物質としての姿を持ちません。";
+const SPACE_BOSS_BOSS_MIMIC_LINES = [
+  "あなた方との対話を円滑にするため、",
+  "地球人類と呼ばれるものの姿を模倣させていただきました。",
+];
+const SPACE_BOSS_BOSS_LIKE_LINE = "お気に召しましたか？";
+const SPACE_BOSS_BOSS_KNOW_LINE = "あなた方のことはよくわかりました。";
+const SPACE_BOSS_BOSS_GLITCH_PREFACE_LINES = [
+  "◇※△□○は、◇◇◇記□※○○に△◇※。",
+  "◇◇◇□※奥で、◇◇◇な◇※△が反□◇※。",
+  "◇◇問◇は、◇◇◇方の△◇でなく△○□◇※。",
+];
+const SPACE_BOSS_BOSS_GLITCH_QUESTION = "◇◇◇△□◇○※☆？";
+const SPACE_BOSS_BOSS_CHOICES = ["はい", "いいえ"];
+const SPACE_BOSS_BOSS_CHOICE_RANT_LINES = [
+  "◇□△※○◇◇※△□○※◇△□※○◇※△□○",
+  "○◇※□△◇◇／※○□△※◇○□△◇※○□△",
+  "観◇△□※○◇□△※※※○□◇△※○□◇△※",
+  "ゆ◇◇※□△○◇※□△○◇※□△○◇※□△○",
+  "◇◇◇開△□※◇○△※□◇○△※□",
+];
+const SPACE_BOSS_TALK = [
+  { wait: SPACE_BOSS_TIMING.introDelay, pages: [["さあ、しばらくおしゃべりでもしてよっか。"], ["ここからはけっこう遠いからね。"]] },
+  { wait: SPACE_BOSS_TIMING.shortDelay, pages: [["なぜ息ができるんだって？"], ["とうぜん、ぼくらが一緒にいるからさ。"]] },
+  { fade: true, pages: [["そうだね。つまり地球のきみたちの次元に合わせて言うなら、"], ["宇宙人はかならず三つ子で生まれてくると、説明することもできるね。"], ["でも、ぼくの生まれた次元からみればひとつの体さ。"], ["地球人はあらかじめ折りたたまれた状態で生まれてくるわけだ。"], ["おもしろいね。"]] },
+  { fade: true, pages: [["はじめて地球にきた日をおぼえているよ。"], ["きみたちの一人が生まれた日のことさ。"], ["かわいかったなぁ。"]] },
+  { fade: true, pages: [["おでんは宇宙人が地球に伝えたんだよ。"], ["カップヌードルもね。"], ["あとはねー、"]] },
+  { fade: true, pages: [["ユーフォー？カップ焼きそばの？"], ["ハハハ、それはちがうよー。"], ["あ、あとはウイダー！ウイダーは宇宙製だよ。"], ["忘れてた忘れた。"]] },
+  { fade: true, onBlack: () => { sbBlackHole = { y: -20, r: 50 }; }, pages: [["さぁ、ついたよ。"], ["覚悟を決めるんだね。"], ["もう後戻りはできない。"], ["たのしかったよ、しなないでね。"]] },
+  { wait: SPACE_BOSS_TIMING.preStyleDelay, pages: [["あ、そうだ。"], ["さいごの戦いなのに、そんな感じじゃカッコつかないだろう。"], ["それ！"]] },
+  { action: "whiteFlash" },
+  { pages: [["やっぱりこれがきみたちってかんじだよ。"]] },
+  { wait: SPACE_BOSS_TIMING.postRestoreLineDelay, pages: [["それじゃ！"], ["はりきっていってらっしゃい！"]] },
+  { action: "suck" },
+  { action: "regroup" },
+  { wait: SPACE_BOSS_TIMING.preBossDropDelay },
+  { action: "dropBoss" },
+];
 
-function startSpaceWarp() {
-  spaceWarpFx = { active: true, start: performance.now(), done: false };
+function startSpaceWarp(targetMap = "space") {
+  spaceWarpFx = { active: true, start: performance.now(), done: false, target: targetMap };
   input.lock();
   playTimeMachineShine();
 }
@@ -1123,6 +2819,240 @@ function drawSpaceBackdrop(tt) {
   }
   ctx.restore();
   ctx.globalAlpha = 1;
+}
+let _sbStars = null;
+let sbBlackHole = false;
+let sbSuck = null;
+let sbBoss = null;
+let sbWhiteFlash = null;
+let sbBossType = null;
+let sbCactusIntro = null;
+let sbLastBattleStarted = false;
+function drawSpaceBossBackdrop(tt) {
+  if (!_sbStars) {
+    _sbStars = Array.from({ length: 120 }, () => ({
+      x: Math.random() * BASE_W,
+      y: Math.random() * BASE_H,
+      r: Math.random() < 0.15 ? 2 : 1,
+      a: 0.5 + Math.random() * 0.5,
+      speed: 0.3 + Math.random() * 0.7,
+    }));
+  }
+  ctx.save();
+  ctx.fillStyle = "#000";
+  ctx.fillRect(0, 0, BASE_W, BASE_H);
+  ctx.fillStyle = "#fff";
+  for (const s of _sbStars) {
+    s.y += s.speed;
+    if (s.y > BASE_H) { s.y = -2; s.x = Math.random() * BASE_W; }
+    ctx.globalAlpha = s.a;
+    ctx.fillRect(s.x | 0, s.y | 0, s.r, s.r);
+  }
+  if (sbBlackHole) {
+    const bx = BASE_W / 2;
+    let by = sbBlackHole.y ?? -20;
+    let br = sbBlackHole.r ?? 50;
+    if (sbBlackHole.animStart != null) {
+      const e = nowMs() - sbBlackHole.animStart;
+      const p = Math.min(1, Math.max(0, e / sbBlackHole.duration));
+      const eased = p * p;
+      by = sbBlackHole.startY + (sbBlackHole.endY - sbBlackHole.startY) * eased;
+      br = sbBlackHole.startR + (sbBlackHole.endR - sbBlackHole.startR) * eased;
+    }
+    const rot = tt / 3000;
+    ctx.save();
+    ctx.translate(bx, by);
+    ctx.rotate(rot);
+    const ring = ctx.createRadialGradient(0, 0, br * 0.3, 0, 0, br);
+    ring.addColorStop(0, "rgba(0,0,0,1)");
+    ring.addColorStop(0.4, "rgba(0,0,0,0.95)");
+    ring.addColorStop(0.6, "rgba(80,0,160,0.4)");
+    ring.addColorStop(0.8, "rgba(255,120,40,0.25)");
+    ring.addColorStop(1, "rgba(255,180,60,0)");
+    ctx.fillStyle = ring;
+    ctx.beginPath();
+    ctx.arc(0, 0, br, 0, Math.PI * 2);
+    ctx.fill();
+    const disc = ctx.createRadialGradient(0, 0, 0, 0, 0, br * 0.35);
+    disc.addColorStop(0, "rgba(0,0,0,1)");
+    disc.addColorStop(1, "rgba(0,0,0,0.9)");
+    ctx.fillStyle = disc;
+    ctx.beginPath();
+    ctx.arc(0, 0, br * 0.35, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+  drawSpaceBossCactusHole(tt);
+  ctx.restore();
+  ctx.globalAlpha = 1;
+  if (sbBoss) drawUraboss(tt);
+}
+
+function drawSpaceBossCactusHole(tt) {
+  if (!sbCactusIntro) return;
+  const fx = sbCactusIntro;
+  const elapsed = nowMs() - fx.startMs;
+  const growP = Math.min(1, elapsed / 520);
+  const jumpP = fx.phase === "jump" ? Math.min(1, (nowMs() - fx.phaseStartMs) / 820) : 0;
+  const r = 4 + Math.sin(growP * Math.PI / 2) * 13 + Math.sin(tt / 170) * 0.8;
+  const alpha = Math.max(0, Math.min(1, growP * 1.4));
+  if (alpha <= 0 || r <= 1) return;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(fx.holeX, fx.holeY);
+  ctx.rotate(tt / 360 + jumpP * 2.6);
+  const ring = ctx.createRadialGradient(0, 0, r * 0.28, 0, 0, r);
+  ring.addColorStop(0, "rgba(0,0,0,1)");
+  ring.addColorStop(0.48, "rgba(0,0,0,0.95)");
+  ring.addColorStop(0.72, "rgba(92,55,170,0.55)");
+  ring.addColorStop(1, "rgba(120,190,255,0)");
+  ctx.fillStyle = ring;
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(190,220,255,0.45)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, r * 1.15, r * 0.55, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawUraboss(tt) {
+  const now = nowMs();
+  const elapsed = now - sbBoss.startMs;
+  const p = Math.min(1, elapsed / sbBoss.duration);
+  const ease = 1 - Math.pow(1 - p, 3);
+  const x = BASE_W / 2;
+  const y = sbBoss.startY + (sbBoss.endY - sbBoss.startY) * ease;
+  const size = sbBoss.size;
+  const t = now / 1000;
+  const low = SPRITES.urabossLow;
+  const mid = SPRITES.urabossMid;
+  const top = SPRITES.urabossTop;
+  ctx.save();
+  drawUrabossPsychedelicPop(x, y, t, size);
+  if (low.complete && low.naturalWidth) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(t * -2.2);
+    ctx.drawImage(low, -size / 2, -size / 2, size, size);
+    ctx.restore();
+  }
+  if (mid.complete && mid.naturalWidth) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(t * 2.8);
+    ctx.drawImage(mid, -size / 2, -size / 2, size, size);
+    ctx.restore();
+  }
+  if (top.complete && top.naturalWidth) {
+    ctx.drawImage(top, x - size / 2, y - size / 2, size, size);
+  }
+  ctx.restore();
+}
+function drawUrabossPsychedelicPop(x, y, t, size) {
+  const scale = size / 100;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.globalCompositeOperation = "screen";
+  ctx.globalAlpha = 0.72;
+  const colors = ["#ff1744", "#ffea00", "#00e676", "#00b0ff", "#ff00e6", "#ff7a00"];
+  for (let i = 0; i < 18; i++) {
+    const a = t * 1.6 + (i * Math.PI * 2) / 18;
+    const inner = (17 + (i % 2) * 5) * scale;
+    const outer = (58 + Math.sin(t * 4 + i) * 6) * scale;
+    const w = (i % 3 === 0 ? 9 : 6) * scale;
+    ctx.fillStyle = colors[i % colors.length];
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(a - 0.045) * inner, Math.sin(a - 0.045) * inner);
+    ctx.lineTo(Math.cos(a) * outer, Math.sin(a) * outer);
+    ctx.lineTo(Math.cos(a + 0.045) * inner, Math.sin(a + 0.045) * inner);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillRect((Math.cos(a) * (outer - 3 * scale)) | 0, (Math.sin(a) * (outer - 3 * scale)) | 0, w, w);
+  }
+  ctx.globalAlpha = 0.58;
+  ctx.lineWidth = 3 * scale;
+  for (let i = 0; i < 4; i++) {
+    const r = (31 + i * 8 + Math.sin(t * 5 + i) * 2) * scale;
+    ctx.strokeStyle = colors[(i * 2 + (t * 4 | 0)) % colors.length];
+    ctx.beginPath();
+    ctx.arc(0, 0, r, t * (i % 2 ? -1.8 : 1.4), t * (i % 2 ? -1.8 : 1.4) + Math.PI * 1.35);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+function wrapSpaceBossTypeText(text, maxWidth) {
+  const lines = [];
+  let row = "";
+  for (const ch of [...text]) {
+    const next = row + ch;
+    if (row && ctx.measureText(next).width > maxWidth) {
+      lines.push(row);
+      row = ch;
+    } else {
+      row = next;
+    }
+  }
+  if (row || !lines.length) lines.push(row);
+  return lines;
+}
+function drawSpaceBossTypedSpeech(tt) {
+  if (!sbBossType) return;
+  const fx = sbBossType;
+  const line = getSpaceBossTypeLine(fx);
+  const visible = [...line].slice(0, fx.charIndex).join("");
+  if (!visible) return;
+
+  ctx.save();
+  const prevSkipShadow = ctx._skipTextShadow;
+  ctx._skipTextShadow = true;
+  ctx.font = "bold 12px PixelMplus10";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = "rgba(0,0,0,0.82)";
+  const lines = wrapSpaceBossTypeText(visible, BASE_W - 18);
+  const lineH = 16;
+  const baseY = (BASE_H / 2 - ((lines.length - 1) * lineH) / 2) | 0;
+  const flicker = Math.sin(tt / 58 + fx.lineIndex * 1.7) > 0.74;
+  ctx.fillStyle = flicker ? "#cafff5" : "#fff7ee";
+  for (let i = 0; i < lines.length; i++) {
+    const y = baseY + i * lineH;
+    const jitter = flicker && i === lines.length - 1 ? 1 : 0;
+    ctx.strokeText(lines[i], BASE_W / 2 + jitter, y);
+    ctx.fillText(lines[i], BASE_W / 2 + jitter, y);
+  }
+  if (fx.waitingChoice) {
+    ctx.font = "10px PixelMplus10";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    const labels = SPACE_BOSS_BOSS_CHOICES;
+    const hPad = 6;
+    const gapW = 16;
+    const widths = labels.map(label => Math.ceil(ctx.measureText(label).width));
+    const boxWs = widths.map(w => w + hPad * 2);
+    const totalW = boxWs.reduce((sum, w, i) => sum + w + (i < boxWs.length - 1 ? gapW : 0), 0);
+    let choiceX = ((BASE_W - totalW) / 2) | 0;
+    const choiceY = Math.min(BASE_H - 22, (baseY + lines.length * lineH + 12) | 0);
+
+    for (let i = 0; i < labels.length; i++) {
+      if (fx.choiceIndex === i) {
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(choiceX, choiceY - 1, boxWs[i], 13);
+        ctx.fillStyle = "#000";
+        ctx.fillText(labels[i], choiceX + hPad, choiceY);
+      } else {
+        ctx.fillStyle = "#fff";
+        ctx.fillText(labels[i], choiceX + hPad, choiceY);
+      }
+      choiceX += boxWs[i] + (i < labels.length - 1 ? gapW : 0);
+    }
+  }
+  ctx._skipTextShadow = prevSkipShadow;
+  ctx.restore();
 }
 function drawSpaceO2Meter() {
   const ratio = Math.max(0, Math.min(1, spaceO2 / getSpaceO2Capacity()));
@@ -1620,6 +3550,9 @@ const menu = createMenu({
 let pendingBattlePages   = null; // { win, lose, winEnding }
 let partyVisible         = true;
 let pendingEndingFadeIn  = false;
+let spaceBossWhiteReunion = null; // { startMs }
+let spaceBossMoonScene = null; // { startMs, stars }
+let spaceBossOutdoorEpilogue = null; // { fadeStartMs, fadeMs, waitMs }
 
 // ---- Seahole bubbles (オブジェクトプール) ----
 const BUBBLE_POOL_SIZE = 32;
@@ -1667,6 +3600,7 @@ const BT_COLS = 10, BT_ROWS = 8;
 const BT_DURATION = 550;
 
 function startBattleTransition(onDone) {
+  playGlassShatter();
   // 現在のキャンバスをスナップショット（ゲーム解像度のまま）
   const off = document.createElement("canvas");
   off.width  = BASE_W;
@@ -1762,6 +3696,9 @@ function checkQuest01() {
   if (hasAll) achieveQuest("01");
 }
 
+let _phoneCallIconActive = false;
+let _phoneCallIconMs = 0;
+
 function achieveQuest(id) {
   if (STATE.achievedQuests.has(id)) return;
   STATE.achievedQuests.add(id);
@@ -1772,6 +3709,86 @@ function achieveQuest(id) {
     const a = actors.find(a => a.id === "keeper");
     if (a) { a.x = 1613; a.y = 2709; }
   }
+  if (STATE.achievedQuests.size >= 30 && !STATE.flags.phoneCalled) {
+    STATE.flags.phoneCalled = true;
+    setTimeout(() => startPhoneCallEvent(), 3000);
+  }
+}
+
+function debugCompleteAllQuests() {
+  for (const q of QUESTS) STATE.achievedQuests.add(q.id);
+  questQueue.length = 0;
+  const keeper = actors.find(a => a.id === "keeper");
+  if (keeper) { keeper.x = 1613; keeper.y = 2709; }
+  saveNotice = { text: "QUEST ALL", until: nowMs() + 1200 };
+  if (!STATE.flags.phoneCalled) {
+    STATE.flags.phoneCalled = true;
+    setTimeout(() => startPhoneCallEvent(), 3000);
+  }
+}
+
+function phoneCallSequence(pages, onDone, opts = {}) {
+  input.lock();
+  startPhoneRing();
+  dialog.open([
+    ["プルルルルルルル"],
+  ], () => {
+    stopPhoneRing();
+    playPhonePick();
+    dialog.open([
+      ["ピ"],
+    ], () => {
+      _phoneCallIconActive = true;
+      _phoneCallIconMs = nowMs();
+      input.unlock();
+      dialog.setVoice("m_mid");
+      const allPages = [["ミナミだ。"], ...pages];
+      const waits = opts.pageWaits || {};
+      dialog.open(allPages, () => {
+          dialog.setVoice("default");
+          _phoneCallIconActive = false;
+          input.lock();
+          playPhoneHang();
+          dialog.open([
+            ["ガチャン"],
+          ], () => {
+            input.unlock();
+            if (onDone) onDone();
+          }, "sign", 1200);
+        }, "talk", 0, opts);
+      dialog.onPageChange((idx) => {
+        const ms = waits[idx];
+        if (ms > 0) {
+          input.lock();
+          setTimeout(() => input.unlock(), ms);
+        }
+      });
+    }, "sign", 800);
+  }, "talk", 2800);
+}
+
+function startPhoneCallEvent() {
+  phoneCallSequence([
+    ["おまえたち、今すぐヴィニールジャンキーに来てくれ！"],
+    ["制作費？今はそんな話をしている場合ではない！"],
+    ["超銀河魔王が復活してしまったのだ！"],
+    ["このままでは、地球は滅んでしまう！"],
+    ["今すぐ超銀河魔王の攻撃をそししなければ！"],
+    ["とにかく！"],
+    ["すぐにヴィニールジャンキーにくるんだ！"],
+  ], () => {
+    STATE.flags.galaxyMaou = true;
+    actors = actors.filter(a => a.name !== "grasan");
+  }, { highlights: [{ text: "超銀河魔王", color: "#f44" }], pageWaits: { 2: 1000 } });
+}
+
+function startPhoneCallEvent2() {
+  phoneCallSequence([
+    ["伝え忘れていたが、"],
+    ["事務所じゃなくて隣の工場の方に来てくれ！"],
+  ], () => {
+    STATE.flags.galaxyMaou2 = true;
+  });
 }
 
 function clearFlags() {
@@ -1795,6 +3812,8 @@ function isSceneActive() {
   if (battle.isActive()) return true;
   if (shooting.isActive()) return true;
   if (diving.isActive()) return true;
+  if (phoneBrawl.isActive()) return true;
+  if (sbBossType) return true;
   if (jumprope.isActive()) return true;
   if (shop.isActive()) return true;
   if (ending.isActive()) return true;
@@ -1962,13 +3981,13 @@ const battle = createBattleSystem({
 
 // ---- Collision ----
 function footBox(x, y) {
-  return { x: x + 3, y: y + 10, w: 10, h: 6 };
+  return { x: x + 2, y: y + 10, w: 12, h: 6 };
 }
 function hitRect(a, b) {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 }
 function hitBg(nx, ny) {
-  if (current.id === "shooting_lobby" || current.id === "space") return false;
+  if (current.id === "shooting_lobby" || current.id === "space" || current.id === "space_boss") return false;
   const f = footBox(nx, ny);
   for (let y = f.y; y < f.y + f.h; y++) {
     for (let x = f.x; x < f.x + f.w; x++) {
@@ -2009,6 +4028,7 @@ function hitNpc(nx, ny) {
   if (!actors.length) return false;
   const a = footBox(nx, ny);
   for (const act of actors) {
+    if (act.hidden) continue;
     if (!act.solid) continue;
     if (act.showWhenBgm && bgmCtl.getOverrideSrc() !== act.showWhenBgm) continue;
     if (hitRect(a, npcFootBox(act))) return true;
@@ -2026,6 +4046,16 @@ function updateCam() {
   const cy = leader.y + 8 - ch / 2;
   cam.x = Math.max(0, Math.min(maxX, cx)) | 0;
   cam.y = Math.max(0, Math.min(maxY, cy)) | 0;
+  const now = performance.now();
+  if (_shakeUntil > now) {
+    const p = (_shakeUntil - now) / 500;
+    cam.x += (Math.sin(now * 0.05) * _shakeIntensity * p) | 0;
+    cam.y += (Math.cos(now * 0.07) * _shakeIntensity * p) | 0;
+  }
+  if (_spaceBossRantShake) {
+    cam.x += (Math.sin(now * 0.083) * 2.4 + Math.sin(now * 0.031) * 1.2) | 0;
+    cam.y += (Math.cos(now * 0.071) * 2.2) | 0;
+  }
 }
 
 // ---- Entry auto-walk ----
@@ -2261,6 +4291,10 @@ function loadMap(id, opt = null) {
   current.id = id;
   afloBlackout = { active: false, phase: "idle", phaseStart: 0 };
   timeMachineFx = { active: false, start: 0, until: 0, onDone: null };
+  stopChaosMetalBgm();
+  _spaceBossRantShake = false;
+  sbBossType = null;
+  sbCactusIntro = null;
   theaterScene = { active: id === "theater", startMs: 0, exitWaitStartMs: 0, phase: "intro", messageShown: false };
   kakoMovieScene = { active: false, startMs: 0, exitWaitStartMs: 0, phase: "intro", messageShown: false };
   timeMachineEnterMsA = 0;
@@ -2305,15 +4339,17 @@ function loadMap(id, opt = null) {
 
     current.bgW = (def.bgW || bgImg.naturalWidth) | 0;
     current.bgH = (def.bgH || bgImg.naturalHeight) | 0;
-    if (id === "space") {
+    if (id === "space" || id === "space_boss") {
       initSpaceStars();
       spaceMoonAttach = false;
       spaceMoonAngle = 0;
       spaceMoonRadius = SPACE_MOON.surfaceR;
       spaceMoonCooldownUntil = 0;
-      spaceO2 = getSpaceO2Capacity();
-      spaceO2LastMs = nowMs();
-      spaceO2Depleted = false;
+      if (id === "space") {
+        spaceO2 = getSpaceO2Capacity();
+        spaceO2LastMs = nowMs();
+        spaceO2Depleted = false;
+      }
     }
 
     let sx = current.bgW >> 1,
@@ -2371,14 +4407,20 @@ function loadMap(id, opt = null) {
       bgmCtl.setOverride("about:blank");
       stopAfloClubBgm();
       startShootingBgm();
-    } else if (current.id === "space") {
+    } else if (current.id === "space" || current.id === "space_boss") {
       bgmCtl.setOverride("about:blank");
       stopShootingBgm();
       stopAfloClubBgm();
     } else if (current.id === "afloclub") {
       bgmCtl.setOverride("about:blank");
       stopShootingBgm();
+      stopMetalBgm();
       startAfloClubBgm();
+    } else if (current.id === "vj_factry") {
+      bgmCtl.setOverride("about:blank");
+      stopShootingBgm();
+      stopAfloClubBgm();
+      startMetalBgm();
     } else if (current.id === "theater") {
       bgmCtl.setOverride("assets/audio/bgm_movie.mp3");
       stopShootingBgm();
@@ -2390,6 +4432,8 @@ function loadMap(id, opt = null) {
     } else {
       stopShootingBgm();
       stopAfloClubBgm();
+      stopMetalBgm();
+      bgmCtl.setOverride(null);
     }
 
     seaholeCutscene = { active: false, shadowX: BASE_W, charOffsetX: 0 };
@@ -2401,6 +4445,168 @@ function loadMap(id, opt = null) {
     chinanagoActivated = false;
     cactusActivated    = false;
     followers.reset({ leader, p2, p3, p4 });
+    if (current.id === "space_boss") {
+      bgmCtl.setOverride("assets/audio/duckE.mp3");
+      partyVisible = false;
+      const cx = leader.x;
+      const cy = leader.y;
+      const all = [1, 2, 3, 4];
+      const leaderNo = all[STATE.leaderIdx];
+      const order = [leaderNo, ...all.filter(n => n !== leaderNo)];
+      for (let i = 0; i < 4; i++) {
+        actors.push({
+          kind: "npc", name: `sb_party_${i}`,
+          img: getPartySprite(order[i]),
+          x: cx - 30 + i * 20, y: cy,
+          spr: SPR, sprH: SPR,
+          frame: 0, last: 0,
+          solid: false, noWalk: true,
+          animMs: NPC_FRAME_MS,
+          talkHit: { x: 0, y: 0, w: 0, h: 0 },
+          glow: true,
+        });
+      }
+      for (const act of actors) {
+        if (act.name === "sb_ss1") act.glow = true;
+      }
+      input.lock();
+      let sbIdx = opt?.spaceBossStartAt === "blackHole" || opt?.spaceBossStartAt === "gameOver"
+        ? SPACE_BOSS_TALK.findIndex(step => step.action === "suck")
+        : 0;
+      if (sbIdx < 0) sbIdx = 0;
+      sbBlackHole = null;
+      sbSuck = null;
+      sbBoss = null;
+      sbWhiteFlash = null;
+      sbBossType = null;
+      sbLastBattleStarted = false;
+      if (opt?.spaceBossStartAt === "blackHole" || opt?.spaceBossStartAt === "gameOver") {
+        sbBlackHole = { y: -20, r: 50 };
+        const party = actors.filter(a => a.name?.startsWith("sb_party_"));
+        for (let i = 0; i < party.length; i++) {
+          party[i].img = SPRITES[`p${i + 1}`];
+        }
+        const ss = actors.find(a => a.name === "sb_ss1");
+        if (ss) ss.ironHeartMark = true;
+      }
+      if (opt?.spaceBossStartAt === "gameOver") {
+        sbBlackHole = null;
+        sbSuck = null;
+        sbBoss = {
+          startMs: nowMs(),
+          duration: 1,
+          startY: 55,
+          endY: 55,
+          size: 90,
+        };
+        const ss = actors.find(a => a.name === "sb_ss1");
+        if (ss) ss.hidden = true;
+        const px = leader.x;
+        const py = leader.y;
+        const party = actors.filter(a => a.name?.startsWith("sb_party_"));
+        for (let i = 0; i < party.length; i++) {
+          party[i].x = px - 30 + i * 20;
+          party[i].y = py + 60;
+          party[i].hidden = true;
+          party[i].glow = true;
+        }
+        setTimeout(() => startSpaceBossFirstBattleGameOverDebug(), 250);
+        return;
+      }
+      function sbNext() {
+        if (sbIdx >= SPACE_BOSS_TALK.length) return;
+        const step = SPACE_BOSS_TALK[sbIdx++];
+        if (step.action === "regroup") {
+          startChaosMetalBgm();
+          sbSuck = null;
+          sbBlackHole = null;
+          const ss = actors.find(a => a.name === "sb_ss1");
+          if (ss) ss.hidden = true;
+          const px = leader.x;
+          const py = leader.y;
+          const party = actors.filter(a => a.name?.startsWith("sb_party_"));
+          for (let i = 0; i < party.length; i++) {
+            party[i].x = px - 30 + i * 20;
+            party[i].y = py + 60;
+            party[i].glow = true;
+          }
+          fade.startCutFade(nowMs(), { outMs: 0, holdMs: 0, inMs: SPACE_BOSS_TIMING.regroupFadeIn, onEnd: sbNext });
+          return;
+        }
+        if (step.action === "dropBoss") {
+          sbBoss = {
+            startMs: nowMs(),
+            duration: SPACE_BOSS_TIMING.bossDrop,
+            startY: -60,
+            endY: 55,
+            size: 90,
+          };
+          setTimeout(() => {
+            if (current.id === "space_boss" && !sbLastBattleStarted) {
+              startSpaceBossBossSpeech(() => startSpaceBossFirstBattle());
+            }
+          }, SPACE_BOSS_TIMING.battleAfterBossDrop);
+          return;
+        }
+        if (step.action === "whiteFlash") {
+          sbWhiteFlash = { startMs: nowMs(), duration: SPACE_BOSS_TIMING.whiteFlash };
+          setTimeout(() => {
+            const party = actors.filter(a => a.name?.startsWith("sb_party_"));
+            for (let i = 0; i < party.length; i++) {
+              party[i].img = SPRITES[`p${i + 1}`];
+            }
+          }, SPACE_BOSS_TIMING.whiteFlashChange);
+          setTimeout(() => {
+            sbWhiteFlash = null;
+            sbNext();
+          }, SPACE_BOSS_TIMING.whiteFlash);
+          return;
+        }
+        if (step.action === "suck") {
+          input.lock();
+          setTimeout(() => {
+            const targets = actors.filter(a => a.name?.startsWith("sb_party_"));
+            const suckStart = nowMs();
+            sbSuck = { targets, start: suckStart, duration: SPACE_BOSS_TIMING.suck };
+            setTimeout(() => {
+              bgmCtl.setOverride("about:blank");
+              fade.startCutFade(nowMs(), {
+                outMs: SPACE_BOSS_TIMING.fadeHold, holdMs: SPACE_BOSS_TIMING.blackHoleHold, inMs: 0,
+                onEnd: sbNext,
+              });
+            }, SPACE_BOSS_TIMING.suck);
+          }, SPACE_BOSS_TIMING.preSuckDelay);
+          return;
+        }
+        if (step.fade && !step.pages) {
+          fade.startCutFade(nowMs(), { outMs: SPACE_BOSS_TIMING.fadeOut, holdMs: SPACE_BOSS_TIMING.fadeHold, inMs: SPACE_BOSS_TIMING.fadeIn, onBlack: step.onBlack, onEnd: sbNext });
+          return;
+        }
+        if (step.fade) {
+          fade.startCutFade(nowMs(), {
+            outMs: SPACE_BOSS_TIMING.fadeOut, holdMs: SPACE_BOSS_TIMING.fadeHold, inMs: SPACE_BOSS_TIMING.fadeIn,
+            onBlack: step.onBlack,
+            onEnd: () => {
+              input.unlock();
+              dialog.setVoice("s_hi");
+              dialog.open(step.pages, () => { dialog.setVoice("default"); sbNext(); }, "talk");
+            },
+          });
+          return;
+        }
+        const delay = step.wait || 0;
+        if (!step.pages) {
+          setTimeout(sbNext, delay);
+          return;
+        }
+        setTimeout(() => {
+          input.unlock();
+          dialog.setVoice("s_hi");
+          dialog.open(step.pages, () => { dialog.setVoice("default"); input.lock(); sbNext(); }, "talk");
+        }, delay);
+      }
+      sbNext();
+    }
     updateCam();
     if (current.id === "theater") {
       theaterScene.startMs = nowMs();
@@ -2602,6 +4808,21 @@ function drawEntry(o) {
   const sprSize  = o.spr  ?? SPR;
   const sprSizeH = o.sprH ?? sprSize;
 
+  if (o.glow) {
+    const gx = ((o.x - cam.x) | 0) + sprSize / 2;
+    const gy = ((o.y - cam.y) | 0) + sprSizeH / 2;
+    const pulse = 0.35 + 0.15 * Math.sin(nowMs() / 600);
+    const gr = Math.max(sprSize, sprSizeH) * 1.2;
+    ctx.save();
+    const grad = ctx.createRadialGradient(gx, gy, 0, gx, gy, gr);
+    grad.addColorStop(0, `rgba(180,220,255,${pulse})`);
+    grad.addColorStop(0.5, `rgba(120,180,255,${pulse * 0.4})`);
+    grad.addColorStop(1, "rgba(80,140,255,0)");
+    ctx.fillStyle = grad;
+    ctx.fillRect(gx - gr, gy - gr, gr * 2, gr * 2);
+    ctx.restore();
+  }
+
   if (o.animMode === "crossfade" && o.crossAlpha !== undefined) {
     const t = o.crossAlpha;
     ctx.save();
@@ -2635,6 +4856,10 @@ function drawEntry(o) {
     if (o.shadowImg) drawSprite(o.shadowImg, 0, o.x + (o.shadowOff?.x ?? 0), o.y + (o.shadowOff?.y ?? 0), sprSize, sprSizeH);
     drawSprite(o.img, o.frame, o.x, o.y, sprSize, sprSizeH);
     if (o.metImg) drawSprite(o.metImg, 0, o.x, o.y, sprSize, sprSizeH);
+  }
+
+  if (o.ironHeartMark) {
+    drawIronHeartMark(((o.x - cam.x) | 0) + sprSize / 2, ((o.y - cam.y) | 0) - 8, nowMs());
   }
 
   if (o.markImg?.naturalWidth > 0) {
@@ -2691,6 +4916,19 @@ function drawEntry(o) {
     ctx.fillRect(p3x, p3y, 1, 1);
     ctx.restore();
   }
+}
+
+function drawIronHeartMark(x, y, t) {
+  const bob = Math.sin(t / 180) > 0 ? 1 : 0;
+  const sx = x | 0;
+  const sy = (y + bob) | 0;
+  ctx.save();
+  ctx.fillStyle = "#ff8f8f";
+  ctx.fillRect(sx - 4, sy, 9, 1);
+  ctx.fillRect(sx, sy - 4, 1, 9);
+  ctx.fillStyle = "rgba(255,140,140,0.7)";
+  ctx.fillRect(sx - 1, sy - 1, 3, 3);
+  ctx.restore();
 }
 
 function drawPizzaMarkOverlay(o) {
@@ -2789,14 +5027,27 @@ function draw() {
   }
 
   if (shooting.isActive()) {
+    ctx._skipTextShadow = true;
     shooting.draw(ctx);
+    ctx._skipTextShadow = false;
     questAlert.update(); drainQuestQueue();
     questAlert.draw(ctx);
     return;
   }
 
   if (diving.isActive()) {
+    ctx._skipTextShadow = true;
     diving.draw(ctx);
+    ctx._skipTextShadow = false;
+    questAlert.update(); drainQuestQueue();
+    questAlert.draw(ctx);
+    return;
+  }
+
+  if (phoneBrawl.isActive()) {
+    ctx._skipTextShadow = true;
+    phoneBrawl.draw(ctx);
+    ctx._skipTextShadow = false;
     questAlert.update(); drainQuestQueue();
     questAlert.draw(ctx);
     return;
@@ -2804,6 +5055,17 @@ function draw() {
 
   // ★ここは見た目用なので performance.now() でもOK（ゲーム進行の時間とは別）
   const tt = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+  if (spaceBossMoonScene) {
+    drawSpaceBossMoonScene(tt);
+    fade.draw(ctx);
+    return;
+  }
+  if (spaceBossWhiteReunion) {
+    drawSpaceBossWhiteReunionScene(tt);
+    dialog.draw(ctx);
+    fade.draw(ctx);
+    return;
+  }
   const shouldDrawSea = current.id === "outdoor" || current.id === "mirai" || current.id === "kako" || !!waterMaskCanvas;
   const seaUpdateInterval = IS_MOBILE_DEVICE && (current.id === "outdoor" || current.id === "mirai" || current.id === "kako") ? 6 : 3;
   if (shouldDrawSea && seaSparkleFrame++ % seaUpdateInterval === 0) {
@@ -2818,7 +5080,9 @@ function draw() {
     dialog.draw(ctx);
     choice.draw(ctx);
     shop.draw(ctx);
+    ctx._skipTextShadow = true;
     jumprope.draw(ctx);
+    ctx._skipTextShadow = false;
     inventory.draw(ctx);
     toast.draw(ctx, tt);
     questAlert.update(); drainQuestQueue();
@@ -2830,6 +5094,8 @@ function draw() {
   // ベースレイヤー：shrine完全移行後はbgImgを省略して描画コスト削減
   if (current.id === "shooting_lobby") {
     drawShootingBackdrop(ctx, BASE_W, BASE_H, tt);
+  } else if (current.id === "space_boss") {
+    drawSpaceBossBackdrop(tt);
   } else if (current.id === "space") {
     drawSpaceBackdrop(tt);
   } else if (current.id === "orca_ride") {
@@ -2853,11 +5119,13 @@ function draw() {
   const groundList = _groundList;
   const upperList  = _upperList;
   const aboveTopList = _aboveTopList;
+  const isSpaceMap = current.id === "space" || current.id === "space_boss";
   const spaceDanger = current.id === "space" && spaceO2 / SPACE_O2_MAX <= 0.2;
-  const moonRot = current.id === "space" && spaceMoonAttach ? spaceMoonAngle + Math.PI / 2 : 0;
+  const moonRot = isSpaceMap && spaceMoonAttach ? spaceMoonAngle + Math.PI / 2 : 0;
   const panicOx = (phase = 0) => spaceDanger ? (((Math.sin(tt / 45 + phase) * 1.8) | 0)) : 0;
   const panicOy = (phase = 0) => spaceDanger ? (((Math.sin(tt / 28 + phase) > 0 ? 1 : -1))) : 0;
-  if (partyVisible) {
+  const hidePartyForSpaceWarp = spaceWarpFx.active && (nowMs() - spaceWarpFx.start) >= WARP_SHAKE_MS;
+  if (partyVisible && !hidePartyForSpaceWarp) {
     const singleLeaderOnly = current.id === "shooting_lobby";
     const followerAlpha = 1 - shrineFade;
     const emerging = holeTransition?.phase === 'emerging';
@@ -2927,7 +5195,7 @@ function draw() {
     const isCactus = act.name === "cactus_hat" || act.name?.startsWith("cactus_");
     const ia = _poolItem();
     ia.img = act.img; ia.x = act.x; ia.y = act.y; ia.frame = act.frame;
-    ia.spr = act.spr; ia.sprH = act.sprH; ia.alpha = (act.alpha != null ? act.alpha : 1) * bgmFadeAlpha; ia.scale = undefined; ia.metImg = undefined;
+    ia.spr = act.spr; ia.sprH = act.sprH; ia.alpha = (act.alpha != null ? act.alpha : 1) * bgmFadeAlpha; ia.scale = act.scale; ia.rotation = act.rotation; ia.metImg = undefined;
     ia.sparkle = act.sparkle;
     ia.sparkleColor = act.sparkleColor;
     ia.sparklePhase = act.sparklePhase;
@@ -2936,9 +5204,22 @@ function draw() {
     ia.markAnimMs = act.markAnimMs;
     ia.markMode = act.markMode;
     ia.markFromImg = act.markFromImg;
-    ia.markAnimStart = act.markAnimStart;
-    ia.markAnimUntil = act.markAnimUntil;
-    ia.vanishStart = act.vanishStart;
+          ia.markAnimStart = act.markAnimStart;
+          ia.markAnimUntil = act.markAnimUntil;
+          ia.vanishStart = act.vanishStart;
+          ia.glow = act.glow;
+          ia.ironHeartMark = act.ironHeartMark;
+    if (sbSuck && sbSuck.targets.includes(act)) {
+      const p = Math.min(1, (nowMs() - sbSuck.start) / sbSuck.duration);
+      const ep = p * p;
+      const tx = cam.x + BASE_W / 2 - 8;
+      const ty = cam.y - 20;
+      ia.x = act.x + (tx - act.x) * ep;
+      ia.y = act.y + (ty - act.y) * ep;
+      ia.scale = 1 - ep * 0.9;
+      ia.alpha = 1 - ep;
+      ia.glow = false;
+    }
     ia.shadowImg = undefined; // 影は outdoor.png に合成済み
     ia.shadowOff = isCactus ? _cactusShadowOff : undefined;
     if (act.aboveTop) aboveTopList.push(ia);
@@ -3015,7 +5296,7 @@ function draw() {
   }
 
   // トップレイヤー：同様に完全移行後は shrine 側のみ
-  if (current.id === "space") {
+  if (current.id === "space" || current.id === "space_boss") {
     // no top layer
   } else if (shrineFade >= 1) {
     drawMapImg(bgShrineTopImg);
@@ -3165,15 +5446,36 @@ function draw() {
       const alpha = e.opaque ? 1 : (p > 0.8 ? 1 - (p - 0.8) / 0.2 : 1);
       ctx.save();
       ctx.globalAlpha = alpha;
-      ctx.translate(e.sx, e.sy - 10);
+      ctx.translate(e.sx, e.sy);
       ctx.scale(scale, scale);
-      ctx.fillStyle = e.color || "#e00";
-      ctx.font = "bold 12px PixelMplus10";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "bottom";
-      ctx.fillText(e.char || "!", 0, 0);
+      const ch = e.char || "!";
+      const markImg = ch === "?" ? SPRITES.hatena : ch === "!" ? SPRITES.bikkuri : null;
+      if (markImg?.naturalWidth > 0) {
+        ctx.drawImage(markImg, -8, -16, 16, 16);
+      } else {
+        ctx.fillStyle = e.color || "#e00";
+        ctx.font = "bold 12px PixelMplus10";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "bottom";
+        ctx.fillText(ch, 0, 0);
+      }
       ctx.restore();
     }
+  }
+
+  if (_phoneCallIconActive && SPRITES.minami_call?.naturalWidth > 0) {
+    const elapsed = tt - _phoneCallIconMs;
+    let scale = 1;
+    if (elapsed < 150) scale = (elapsed / 150) * 1.2;
+    else if (elapsed < 220) scale = 1.2 - (elapsed - 150) / 70 * 0.2;
+    const bob = Math.sin(tt / 180) > 0 ? 1 : 0;
+    const sx = ((leader.x + 8) - cam.x) | 0;
+    const sy = ((leader.y) - cam.y) | 0;
+    ctx.save();
+    ctx.translate(sx, sy - 2 + bob);
+    ctx.scale(scale, scale);
+    ctx.drawImage(SPRITES.minami_call, -8, -16, 16, 16);
+    ctx.restore();
   }
 
   menu.draw(ctx);
@@ -3181,10 +5483,13 @@ function draw() {
   dialog.draw(ctx);
   choice.draw(ctx);
   shop.draw(ctx);
+  ctx._skipTextShadow = true;
   jumprope.draw(ctx);
+  ctx._skipTextShadow = false;
   toast.draw(ctx, tt);
   questAlert.update(); drainQuestQueue();
   questAlert.draw(ctx);
+  drawSpaceBossOutdoorDeadParty();
   ending.draw(ctx, tt);
 
   // 赤→黒フェード（orca 衝撃）
@@ -3247,11 +5552,13 @@ function draw() {
     } else if (!spaceWarpFx.done) {
       // フェード開始、白は描き続ける
       spaceWarpFx.done = true;
+      const toSpaceBoss = (spaceWarpFx.target || "space") === "space_boss";
       fade.startCutFade(nowMs(), {
-        outMs: 1, holdMs: 200, inMs: 500,
+        outMs: 1, holdMs: toSpaceBoss ? 3200 : 200, inMs: 500,
         onBlack: () => {
+          if (toSpaceBoss) STATE.headwear = null;
           spaceWarpFx.active = false;
-          loadMap("space");
+          loadMap(spaceWarpFx.target || "space");
           input.unlock();
         },
       });
@@ -3269,6 +5576,23 @@ function draw() {
   if (kakoMovieScene.active) {
     drawDinoScene(tt);
   }
+
+  if (sbWhiteFlash) {
+    const elapsed = nowMs() - sbWhiteFlash.startMs;
+    const p = Math.min(1, elapsed / sbWhiteFlash.duration);
+    let a;
+    if (p < 0.1) a = p / 0.1;
+    else if (p < 0.5) a = 1;
+    else a = 1 - (p - 0.5) / 0.5;
+    ctx.save();
+    ctx.fillStyle = "#fff";
+    ctx.globalAlpha = Math.max(0, Math.min(1, a));
+    ctx.fillRect(0, 0, BASE_W, BASE_H);
+    ctx.restore();
+  }
+
+  drawSpaceBossTypedSpeech(tt);
+  drawSpaceBossOutdoorEpilogueOverlay(tt);
 
   fade.draw(ctx);
 
@@ -3289,8 +5613,6 @@ function draw() {
       const py = p.y | 0;
       ctx.save();
       ctx.globalAlpha = alpha;
-      ctx.fillStyle = "#000";
-      ctx.fillText(p.text, px + 1, py + 1);
       ctx.fillStyle = p.color ?? "#fff";
       ctx.fillText(p.text, px, py);
       ctx.restore();
@@ -3300,7 +5622,7 @@ function draw() {
   }
 
   // デバッグ：座標表示
-  if (DEBUG && !MOBILE) {
+  if (DEBUG && !MOBILE && input.down("c")) {
     const coord = `${leader.x | 0},${leader.y | 0}`;
     ctx.save();
     ctx.font = "normal 10px PixelMplus10";
@@ -3759,6 +6081,11 @@ function tryInteract(t) {
             if (typeof onDone === "function") onDone();
           });
         },
+        startShake: (ms = 500, intensity = 3) => {
+          _shakeUntil = performance.now() + ms;
+          _shakeIntensity = intensity;
+        },
+        startPhoneBrawl,
       });
       if (handled) return;
 
@@ -4023,26 +6350,37 @@ function update(t) {
 
   // ending 中は入力ブロック
   if (ending.isActive()) {
-    // Debug: D キーでフィールドに即戻る
-    if (DEBUG && input.consume("d")) {
-      ending.stop();
-      bgmCtl.audio.loop = true;
-      bgmCtl.setOverride(null);
-      partyVisible = true;
-      setGameResolution(BASE_W, BASE_H);
-      loadMap("outdoor");
-      return;
-    }
+    const endingReturnPressed = () => (
+      input.consume("z") ||
+      input.consume("x") ||
+      input.consume("c") ||
+      input.consume("d") ||
+      input.consume("s") ||
+      input.consume("l") ||
+      input.consume("v") ||
+      input.consume("b") ||
+      input.consume("p") ||
+      input.consume("1") ||
+      input.consume("2") ||
+      input.consume("Enter") ||
+      input.consume(" ") ||
+      input.consume("ArrowUp") ||
+      input.consume("ArrowDown") ||
+      input.consume("ArrowLeft") ||
+      input.consume("ArrowRight")
+    );
     ending.update(t);
     updateNpcAnim(t);
     updateCam();
 
-    // フェードアウト完了後、Zでタイトルに戻る
-    if (ending.isDone() && (input.consume("z") || input.consume("x") || input.consume("ArrowUp") || input.consume("ArrowDown") || input.consume("ArrowLeft") || input.consume("ArrowRight"))) {
+    // フェードアウト完了後、press any button でタイトルに戻る
+    if (ending.isDone() && endingReturnPressed()) {
       ending.stop();
+      stopSeasideBgm();
       bgmCtl.audio.loop = true;
       bgmCtl.setOverride(null);
       partyVisible = true;
+      spaceBossOutdoorEpilogue = null;
       resetProgress();
       inventory.resetItems(START_INVENTORY_NORMAL);
       loadMap("outdoor");
@@ -4051,6 +6389,20 @@ function update(t) {
         onNewGame()  { startNewGameFlow(); },
         onContinue() { setGameResolution(BASE_W, BASE_H); if (hasSaveData()) loadGame(); else startNewGameFlow(); },
       });
+      return;
+    }
+
+    // Debug: D キーでフィールドに即戻る
+    if (DEBUG && input.consume("d")) {
+      ending.stop();
+      stopSeasideBgm();
+      bgmCtl.audio.loop = true;
+      bgmCtl.setOverride(null);
+      partyVisible = true;
+      spaceBossOutdoorEpilogue = null;
+      setGameResolution(BASE_W, BASE_H);
+      loadMap("outdoor");
+      return;
     }
     return;
   }
@@ -4083,6 +6435,47 @@ function update(t) {
   // diving
   if (diving.isActive()) {
     diving.update();
+    return;
+  }
+
+  // phone brawl
+  if (phoneBrawl.isActive()) {
+    phoneBrawl.update(1 / 60);
+    return;
+  }
+
+  if (spaceBossWhiteReunion && !dialog.isActive()) {
+    updateCam();
+    return;
+  }
+
+  if (spaceBossMoonScene) {
+    updateSpaceBossMoonScene(t);
+    updateCam();
+    return;
+  }
+
+  if (spaceBossOutdoorEpilogue) {
+    updateSpaceBossOutdoorEpilogue(t);
+    updateNpcAnim(t);
+    updateCam();
+    return;
+  }
+
+  if (sbBossType) {
+    updateSpaceBossBossSpeech(t);
+    leader.frame = 0;
+    p2.frame = p3.frame = p4.frame = 0;
+    for (const act of actors) act.frame = 0;
+    updateCam();
+    return;
+  }
+
+  if (sbCactusIntro && !sbCactusIntro.done) {
+    updateSpaceBossCactusIntro(t);
+    leader.frame = 0;
+    p2.frame = p3.frame = p4.frame = 0;
+    updateCam();
     return;
   }
 
@@ -4219,6 +6612,10 @@ function update(t) {
   if (input.consume("s")) { saveGame(); return; }
   if (input.consume("l")) { loadGame(); return; }
   if (input.consume("v")) { setBgmOverrideSafe(null); setBgmMapSafe("assets/audio/bgm0.mp3"); return; }
+  if (DEBUG && input.consume("p")) {
+    startPhoneBrawl();
+    return;
+  }
   if (DEBUG && input.consume("1") && !pageTurnFx.active && !timeMachineTravelFx.active) {
     startTimeMachineTravel("kako", undefined, "ltr");
     return;
@@ -4234,12 +6631,10 @@ function update(t) {
     return;
   }
 
-  // D で過去へワープ
+  // D でクエスト全クリア（デバッグ）
   if (DEBUG && input.consume("d")) {
-    fade.startCutFade(nowMs(), {
-      outMs: 150, holdMs: 80, inMs: 300,
-      onBlack: () => { loadMap("kako"); },
-    });
+    debugCompleteAllQuests();
+    return;
   }
 
   if (shootingKnockback && current.id === "shooting_lobby") {

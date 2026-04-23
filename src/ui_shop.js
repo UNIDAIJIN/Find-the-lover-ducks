@@ -161,13 +161,16 @@ export function createShop({ BASE_W, BASE_H, input } = {}) {
       const iy        = listY + (i - scrollRow) * ROW_H;
       const canAfford = row.id === null || row.price == null || STATE.money >= row.price;
 
-      if (i === cursor) {
+      const isCur = i === cursor;
+      if (isCur) {
         ctx.fillStyle = "#fff";
         ctx.fillRect(r.x + 4, iy - 1, r.w - 8, 13);
         ctx.fillStyle = canAfford ? "#000" : "#888";
       } else {
         ctx.fillStyle = canAfford ? "#fff" : "#666";
       }
+
+      if (isCur) ctx._skipTextShadow = true;
 
       // アイテム名
       ctx.fillText(String(row.name ?? ""), r.x + PAD, iy);
@@ -178,6 +181,8 @@ export function createShop({ BASE_W, BASE_H, input } = {}) {
         ctx.fillText(row.price + "EN", r.x + r.w - PAD, iy);
         ctx.textAlign = "left";
       }
+
+      if (isCur) ctx._skipTextShadow = false;
     }
 
     // スクロールバー

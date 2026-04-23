@@ -260,6 +260,13 @@ export const outdoorMap = {
       entryAt:   { x: 1515, y: 930 },
       entryWalk: { dx: 0, dy: 1, frames: 20 },
     },
+    {
+      id:        35,
+      to:        "vj_factry",
+      trigger:   { x: 1787, y: 682, w: 16, h: 8 },
+      entryAt:   { x: 1787, y: 674 },
+      entryWalk: { dx: 0, dy: 1, frames: 20 },
+    },
   ],
 
   // ---- 穴ワープ ----

@@ -25,6 +25,12 @@ export function createDialog({ BASE_W, BASE_H, input } = {}) {
   let typingDoneFired = false;
   // ★タイプライター音声
   let voice = "default";
+  let highlights = [];
+  let textScale = 1;
+  let textAlign = "left";
+  let textVAlign = "top";
+  let onFinalAdvance = null;
+  let finalAdvanceHandled = false;
 
   // 画面下のメッセージ窓
   const rect = {
@@ -33,6 +39,8 @@ export function createDialog({ BASE_W, BASE_H, input } = {}) {
     w: (BASE_W - 16) | 0,
     h: 55,
   };
+  const defaultRectY = rect.y;
+  const topRectY = 8;
 
   const textCanvas = null; // 未使用
   const textCtx   = null; // 未使用
@@ -51,6 +59,10 @@ export function createDialog({ BASE_W, BASE_H, input } = {}) {
 
   function setVoice(v) {
     voice = v || "default";
+  }
+
+  function getVoice() {
+    return voice;
   }
 
   // ---- typewriter helpers ----
@@ -91,7 +103,7 @@ export function createDialog({ BASE_W, BASE_H, input } = {}) {
   }
 
   // ---- public API ----
-  function open(p, onCloseFn = null, dialogType = "talk", autoMs = 0) {
+  function open(p, onCloseFn = null, dialogType = "talk", autoMs = 0, opts = {}) {
     active         = true;
     pages          = Array.isArray(p) ? p : [];
     index          = 0;
@@ -99,6 +111,13 @@ export function createDialog({ BASE_W, BASE_H, input } = {}) {
     type           = dialogType;
     autoAdvanceMs  = autoMs | 0;
     autoAdvanceAt  = autoMs > 0 ? Date.now() + autoMs : 0;
+    highlights     = opts.highlights || [];
+    textScale      = Math.max(1, opts.textScale || 1);
+    textAlign      = opts.align === "center" ? "center" : "left";
+    textVAlign     = opts.valign === "center" ? "center" : "top";
+    onFinalAdvance = typeof opts.onFinalAdvance === "function" ? opts.onFinalAdvance : null;
+    finalAdvanceHandled = false;
+    rect.y         = opts.position === "top" ? topRectY : defaultRectY;
     resetTyping();
 
     if (onPageChangeCb) onPageChangeCb(index);
@@ -112,6 +131,8 @@ export function createDialog({ BASE_W, BASE_H, input } = {}) {
 
     const cb = onClose;
     onClose = null;
+    onFinalAdvance = null;
+    finalAdvanceHandled = false;
     if (cb) cb();
   }
 
@@ -163,6 +184,9 @@ export function createDialog({ BASE_W, BASE_H, input } = {}) {
       if (type === "talk" && !isTypingDone()) {
         // 表示中→即時完了
         completeTyping();
+      } else if (index >= pages.length - 1 && onFinalAdvance && !finalAdvanceHandled) {
+        finalAdvanceHandled = true;
+        onFinalAdvance();
       } else {
         advance();
       }
@@ -204,6 +228,8 @@ export function createDialog({ BASE_W, BASE_H, input } = {}) {
     ctx.save();
     const pad   = 10;
     const maxW  = rect.w - pad * 2;
+    const fontPx = 10 * textScale;
+    const lineH = 14 * textScale;
 
     // 影
     ctx.fillStyle = "rgba(0,0,0,0.45)";
@@ -223,7 +249,7 @@ export function createDialog({ BASE_W, BASE_H, input } = {}) {
     ctx.strokeRect(rect.x + 1, rect.y + 1, rect.w - 2, rect.h - 2);
 
     ctx.fillStyle = "#fff";
-    ctx.font = "normal 10px PixelMplus10";
+    ctx.font = `normal ${fontPx}px PixelMplus10`;
     ctx.textBaseline = "top";
 
     const wrappedLines = [];
@@ -233,10 +259,68 @@ export function createDialog({ BASE_W, BASE_H, input } = {}) {
       }
     }
 
+    function buildColorMap(fullText) {
+      const colors = new Array(fullText.length).fill("#fff");
+      if (!highlights || highlights.length === 0) return colors;
+      for (const h of highlights) {
+        if (h.rainbow && h.text && h.text.includes(fullText)) {
+          for (let i = 0; i < fullText.length; i++) {
+            const hue = (i / Math.max(1, fullText.length) * 360 + (Date.now() / 10)) % 360;
+            colors[i] = `hsl(${hue},90%,65%)`;
+          }
+          continue;
+        }
+        let start = 0;
+        while (true) {
+          const idx = fullText.indexOf(h.text, start);
+          if (idx < 0) break;
+          for (let i = idx; i < idx + h.text.length; i++) {
+            if (h.rainbow) {
+              const hue = ((i - idx) / h.text.length * 360 + (Date.now() / 10)) % 360;
+              colors[i] = `hsl(${hue},90%,65%)`;
+            } else {
+              colors[i] = h.color || "#f44";
+            }
+          }
+          start = idx + h.text.length;
+        }
+      }
+      return colors;
+    }
+
+    function drawLineColored(ctx, text, colors, x, y) {
+      let cx = x;
+      let seg = "";
+      let cur = colors[0] || "#fff";
+      for (let i = 0; i < text.length; i++) {
+        if (colors[i] !== cur) {
+          ctx.fillStyle = cur;
+          ctx.fillText(seg, cx, y);
+          cx += ctx.measureText(seg).width;
+          seg = "";
+          cur = colors[i];
+        }
+        seg += text[i];
+      }
+      if (seg) {
+        ctx.fillStyle = cur;
+        ctx.fillText(seg, cx, y);
+      }
+    }
+
     let row = 0;
+    const totalTextH = wrappedLines.length * lineH;
+    const baseY = textVAlign === "center"
+      ? Math.round(rect.y + (rect.h - totalTextH) / 2)
+      : rect.y + 9;
+    const lineX = (wl) => {
+      if (textAlign !== "center") return rect.x + pad;
+      return Math.round(rect.x + rect.w / 2 - ctx.measureText(wl).width / 2);
+    };
     if (instant) {
       for (const wl of wrappedLines) {
-        ctx.fillText(wl, rect.x + pad, rect.y + 9 + row * 14);
+        const cm = buildColorMap(wl);
+        drawLineColored(ctx, wl, cm, lineX(wl), baseY + row * lineH);
         row++;
       }
     } else {
@@ -244,7 +328,8 @@ export function createDialog({ BASE_W, BASE_H, input } = {}) {
       for (const wl of wrappedLines) {
         if (remaining <= 0) break;
         const visible = wl.slice(0, remaining);
-        ctx.fillText(visible, rect.x + pad, rect.y + 9 + row * 14);
+        const cm = buildColorMap(wl);
+        drawLineColored(ctx, visible, cm, lineX(wl), baseY + row * lineH);
         remaining -= wl.length;
         row++;
       }
@@ -285,5 +370,6 @@ export function createDialog({ BASE_W, BASE_H, input } = {}) {
     onTypingDone,
     completeTyping,
     setVoice,
+    getVoice,
   };
 }

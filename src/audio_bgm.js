@@ -9,7 +9,22 @@ export function createBgm({
   bgm.volume = volume;
   bgm.preload = "none";
   const sourceVolumeScale = {
-    "assets/audio/bgm_movie.mp3": 1.8,
+    "assets/audio/bgm0.mp3": 1.25,
+    "assets/audio/bgm_battle.mp3": 0.85,
+    "assets/audio/bgm_end.mp3": 0.82,
+    "assets/audio/bgm_select.mp3": 0.9,
+    "assets/audio/bgm_movie.mp3": 2.4,
+    "assets/audio/duckA.mp3": 0.74,
+    "assets/audio/duckB.mp3": 1.0,
+    "assets/audio/duckC.mp3": 0.76,
+    "assets/audio/duckD.mp3": 1.0,
+    "assets/audio/duckE.mp3": 1.25,
+    "assets/audio/duckF.mp3": 0.52,
+    "assets/audio/duckG-good.mp3": 0.77,
+    "assets/audio/duckG-bad.mp3": 0.78,
+    "assets/audio/duckH.mp3": 0.83,
+    "assets/audio/duckI.mp3": 0.60,
+    "assets/audio/duckJ.mp3": 1.0,
   };
 
   function applyVolumeForSrc(src) {

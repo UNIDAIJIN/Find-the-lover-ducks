@@ -9,9 +9,9 @@ export function createEnding({ BASE_W, BASE_H }) {
   const CREDITS_DELAY_MS  = 8000;
   const DIM_ALPHA         = 0.5;
   const DIM_FADE_MS       = 1500; // 暗転フェードイン時間
-  const SCROLL_PX_PER_SEC = 24;
   const LINE_H            = 22;
   const FADEOUT_MS        = 2500; // 最後の真っ暗フェードアウト時間
+  const ENDING_BGM_MS     = 53551; // assets/audio/bgm_end.mp3
 
   const CREDITS = [
     "MoritaSaki in the pool 2nd Album",
@@ -28,6 +28,11 @@ export function createEnding({ BASE_W, BASE_H }) {
     "",
     "Programming",
     "RIKU ISHIHARA",
+    "",
+    "Debug",
+    "NATSUMI HEIKE",
+    "TAIGA NINOMIYA",
+    "MAKI SHIBATA",
     "",
     "Art / Graphics",
     "RIKU ISHIHARA",
@@ -53,6 +58,9 @@ export function createEnding({ BASE_W, BASE_H }) {
     "",
   ];
 
+  const SCROLL_MS = Math.max(1000, ENDING_BGM_MS - CREDITS_DELAY_MS - FADEOUT_MS);
+  const SCROLL_PX_PER_SEC = (BASE_H + CREDITS.length * LINE_H) / (SCROLL_MS / 1000);
+
   const FIXED_LINE = "Thank you for playing";
   const FIXED_Y    = (BASE_H / 2 - 5) | 0;
 
@@ -66,6 +74,14 @@ export function createEnding({ BASE_W, BASE_H }) {
     phase          = "waiting";
     startMs        = ms;
     creditsStartMs = 0;
+    fadeOutStartMs = 0;
+  }
+
+  function startCredits(ms) {
+    active         = true;
+    phase          = "credits";
+    startMs        = ms;
+    creditsStartMs = ms;
     fadeOutStartMs = 0;
   }
 
@@ -173,5 +189,5 @@ export function createEnding({ BASE_W, BASE_H }) {
 
   function stop() { active = false; phase = "waiting"; }
 
-  return { start, isActive, isDone, stop, update, draw };
+  return { start, startCredits, isActive, isDone, stop, update, draw };
 }

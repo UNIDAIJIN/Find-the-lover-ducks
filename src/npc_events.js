@@ -2,11 +2,24 @@
 import { STATE } from "./state.js";
 import { SPRITES } from "./sprites.js";
 import { ALL_ITEM_IDS } from "./items.js";
-import { playCooking, playIndianJingle, playItemJingle, playInnJingle, playJaws, stopJaws, playCrush, playConfirm, playCoin, playDoor, playClickOn, playTimeMachineShine } from "./se.js";
+import { playCooking, playIndianJingle, playItemJingle, playInnJingle, playJaws, stopJaws, playCrush, playConfirm, playCoin, playDoor, playClickOn, playTimeMachineShine, playDadaan } from "./se.js";
 
 export function runNpcEvent(act, ctx) {
   const ev = act?.event;
   if (!ev || !ev.type) return false;
+  if (act._eventBusy) return true;
+
+  if (ev.type === "phone_brawl") {
+    const { dialog, startPhoneBrawl } = ctx;
+    const start = () => {
+      if (typeof startPhoneBrawl === "function") {
+        startPhoneBrawl(ev.onDone, { playerDeckIds: ev.playerDeckIds });
+      }
+    };
+    if (dialog && ev.introPages) dialog.open(ev.introPages, start, ev.talkType || "talk");
+    else start();
+    return true;
+  }
 
   if (ev.type === "inn_stay") {
     const { choice, dialog, fade, nowMs, lockInput, unlockInput, teleportPlayer, spawnPickup } = ctx;
@@ -743,12 +756,12 @@ export function runNpcEvent(act, ctx) {
   if (ev.type === "spacesisters_warp") {
     const { dialog, startSpaceWarp } = ctx;
     const pages = STATE.flags.spacesistersWarped
-      ? [["それじゃいってみよう！"], ["グッドバイヴレーション！"]]
+      ? [["それじゃいってみよう！"], ["グッドバイブレーション！"]]
       : [["ワレワレハ、宇宙人ダ。"], ["なーんてね、ふふ。"], ["よくきたね。"], ["ぼくらは君たちが来るのをずっと待ってたのさ。"], ["つまりは、そうだな。"], ["君たちを、宇宙にご招待さ！"]];
     dialog.open(pages, () => {
       STATE.flags.spacesistersWarped = true;
       startSpaceWarp();
-    });
+    }, "talk", 0, { highlights: [{ text: "グッドバイブレーション！", rainbow: true }] });
     return true;
   }
 
@@ -795,6 +808,164 @@ export function runNpcEvent(act, ctx) {
         ["でもいまはまだそのときじゃねぇんだな。"],
       ]);
     }
+    return true;
+  }
+
+  if (ev.type === "factry_minami") {
+    const { dialog, choice, lockInput, unlockInput, startShake } = ctx;
+    const hl = [{ text: "超銀河魔王", color: "#f44" }];
+
+    dialog.setVoice("m_mid");
+    STATE.flags.galaxyMaou2 = true;
+    if (STATE.flags.galaxyLastBattle) {
+      dialog.open([["いってこい！死ぬなよ！"]], null, "talk");
+      return true;
+    }
+    act._eventBusy = true;
+    dialog.open([
+      ["おつかれさん！おもったよりはやかったな！"],
+      ["見ろ！"],
+      ["メカナツミ量産型！エヌツーだ！"],
+    ], () => {
+          dialog.open([
+            ["圧巻だろう！この時のために以前より準備を進めていたのだ！"],
+              ["さぁこいつらをつれていけ！"],
+            ], () => {
+              function askChoice() {
+                choice.open(["はい", "いいえ"], (idx) => {
+                  if (typeof choice.close === "function") choice.close();
+                  if (idx === 0) {
+                    dialog.open([
+                      ["よし！そう言うとおもっていた！"],
+                      ["概要の説明のために宇宙人の皆様にもきていただいたのだ。"],
+                      ["では説明をよろしく。"],
+                    ], () => {
+                      const ss2 = ctx.getNpcByName("factry_ss2");
+                      if (ss2) {
+                        playClickOn();
+                        const jumpDur = 350;
+                        const jumpH = 12;
+                        const baseY = ss2.y;
+                        const startMs = Date.now();
+                        const jumpInterval = setInterval(() => {
+                          const p = Math.min((Date.now() - startMs) / jumpDur, 1);
+                          ss2.y = baseY - Math.sin(p * Math.PI) * jumpH;
+                          if (p >= 1) {
+                            clearInterval(jumpInterval);
+                            ss2.y = baseY;
+                            setTimeout(() => {
+                              dialog.setVoice("s_hi");
+                              dialog.open([
+                                ["それでは、ブリーフィン！"],
+                                ["ぼくはわかってたよ。"],
+                                ["ずっと超銀河魔王って？って顔してたでしょ。"],
+                              ], () => {
+                                setTimeout(() => {
+                                  dialog.open([
+                                    ["よけいなこと考えなくていいの！"],
+                                    ["とにかく、"],
+                                    ["今、超銀河魔王は長い眠りから復活した。"],
+                                    ["そしてやつは過去の宇宙から攻撃を仕掛けてくるつもりなのさ。"],
+                                    ["ぼくたちはそれをとめるためにやってきた。"],
+                                    ["さぁ、いっしょにいこう。"],
+                                    ["まずは、ぼくらと過去に渡り"],
+                                    ["それから宇宙に飛ぶのさ。"],
+                                    ["きみたちにはその力がもうあるはずさ。"],
+                                  ], () => {
+                                    function doYes() {
+                                      dialog.open([
+                                        ["それじゃ、先に行ってるからね。"],
+                                        ["過去で会おう。"],
+                                        ["バァイ！"],
+                                      ], () => {
+                                        playTimeMachineShine();
+                                        const now = performance.now();
+                                        const ss1 = ctx.getNpcByName("factry_ss1");
+                                        const ss2b = ctx.getNpcByName("factry_ss2");
+                                        const ss3 = ctx.getNpcByName("factry_ss3");
+                                        [ss1, ss2b, ss3].forEach(s => {
+                                          if (!s) return;
+                                          s.vanishStart = now;
+                                          s.solid = false;
+                                          s.talkHit = { x: 0, y: 0, w: 0, h: 0 };
+                                        });
+                                        STATE.flags.galaxyLastBattle = true;
+                                        dialog.setVoice("default");
+                                        act._eventBusy = false;
+                                      }, "talk");
+                                    }
+                                    choice.open(["はい", "いいえ"], (idx2) => {
+                                      if (typeof choice.close === "function") choice.close();
+                                      if (idx2 === 0) {
+                                        doYes();
+                                      } else {
+                                        dialog.open([
+                                          ["ばかだな、はいって言っておけばいいのさ。"],
+                                        ], () => {
+                                          doYes();
+                                        }, "talk");
+                                      }
+                                    }, "わかるね？", { highlights: hl });
+                                  }, "talk", 0, { highlights: hl });
+                                }, 1000);
+                              }, "talk", 0, { highlights: hl });
+                            }, 1000);
+                          }
+                        }, 16);
+                      }
+                    }, "talk");
+                    return;
+                  }
+                  dialog.open([
+                    ["ダメだ！レーベルの契約書に書いてあっただろう！"],
+                    ["超銀河魔王復活の際、乙はこれを打倒し地球の平和を守る。"],
+                    ["ちゃんと読んでいないおまえたちがわるい！"],
+                  ], () => {
+                    askChoice();
+                  }, "talk", 0, { highlights: hl });
+                }, "超銀河魔王を倒すんだ！", { highlights: hl });
+              }
+              askChoice();
+            }, "talk", 0, { highlights: hl });
+    }, "talk");
+    return true;
+  }
+
+  if (ev.type === "kako_sisters_warp") {
+    const { dialog, getNpcByName, startSpaceWarp } = ctx;
+    act._eventBusy = true;
+    const ss = ["kako_ss1", "kako_ss2", "kako_ss3"].map(n => getNpcByName(n)).filter(Boolean);
+    ss.forEach(s => { if (s) s._eventBusy = true; });
+    let i = 0;
+    function jumpNext() {
+      if (i >= ss.length) {
+        setTimeout(() => {
+          dialog.setVoice("s_hi");
+          dialog.open([
+            ["いこう！さいごのぼうけんだ！"],
+            ["グッドバイブレーション！"],
+          ], () => {
+            startSpaceWarp("space_boss");
+          }, "talk", 0, { highlights: [{ text: "グッドバイブレーション！", rainbow: true }] });
+        }, 300);
+        return;
+      }
+      const s = ss[i];
+      playClickOn();
+      const baseY = s.y;
+      const startMs = Date.now();
+      const interval = setInterval(() => {
+        const p = Math.min((Date.now() - startMs) / 350, 1);
+        s.y = baseY - Math.sin(p * Math.PI) * 12;
+        if (p >= 1) {
+          clearInterval(interval);
+          s.y = baseY;
+          i++;
+          setTimeout(jumpNext, 150);
+        }
+      }, 16);
+    }
+    jumpNext();
     return true;
   }
 

@@ -17,7 +17,7 @@ import { createInventory }    from "./ui_inventory.js";
 import { createToast }        from "./ui_toast.js";
 import { createFollowers }    from "./party_followers.js";
 import { createBattleSystem } from "./battle.js";
-import { runNpcEvent }        from "./npc_events.js";
+import { runNpcEvent } from "./npc_events.js";
 
 export const REGISTRY = {
   createInput,

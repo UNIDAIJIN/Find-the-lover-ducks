@@ -12,6 +12,10 @@ export const SPRITES = {
   p2: loadSprite("assets/sprites/p2.png"),
   p3: loadSprite("assets/sprites/p3.png"),
   p4: loadSprite("assets/sprites/p4.png"),
+  p1_dead: loadSprite("assets/sprites/p1_dead.png"),
+  p2_dead: loadSprite("assets/sprites/p2_dead.png"),
+  p3_dead: loadSprite("assets/sprites/p3_dead.png"),
+  p4_dead: loadSprite("assets/sprites/p4_dead.png"),
 
   p1_t1: loadSprite("assets/sprites/p1_t1.png"),
   p2_t1: loadSprite("assets/sprites/p2_t1.png"),
@@ -23,6 +27,7 @@ export const SPRITES = {
   p3_t2: loadSprite("assets/sprites/p3_t2.png"),
   p4_t2: loadSprite("assets/sprites/p4_t2.png"),
   mecha_natsumi: loadSprite("assets/sprites/mecha-natsumi.png"),
+  ryousan: loadSprite("assets/sprites/ryousan.png"),
   
   // npc
   natsumi:   loadSprite("assets/sprites/natsumi_play.png"),
@@ -59,11 +64,16 @@ export const SPRITES = {
   ufogirl: loadSprite("assets/sprites/ufogirl.png"),
   yuma: loadSprite("assets/sprites/yuma.png"),
   afloboy: loadSprite("assets/sprites/afloboy.png"),
+  afloboy2: loadSprite("assets/sprites/afloboy2.png"),
+  lee: loadSprite("assets/sprites/lee.png"),
+  gyoza: loadSprite("assets/sprites/gyoza.png"),
   dream: loadSprite("assets/sprites/dream.png"),
   grasan: loadSprite("assets/sprites/grasan.png"),
   chara: loadSprite("assets/sprites/chara.png"),
   ice: loadSprite("assets/sprites/ice.png"),
   pizza_sign: loadSprite("assets/sprites/pizza_sign.png"),
+  bikkuri: loadSprite("assets/sprites/bikkuri.png"),
+  hatena: loadSprite("assets/sprites/hatena.png"),
   fan: loadSprite("assets/sprites/fan.png"),
   ac_1: loadSprite("assets/sprites/ac_1.png"),
   ac_2: loadSprite("assets/sprites/ac_2.png"),
@@ -76,6 +86,7 @@ export const SPRITES = {
   kori: loadSprite("assets/sprites/kori.png"),
   cat1: loadSprite("assets/sprites/cat_g.png"),
   misaki: loadSprite("assets/sprites/misaki.png"),
+  minami_call: loadSprite("assets/sprites/minami-call.png"),
   sogankyo: loadSprite("assets/sprites/sogankyo.png"),
   kako_yashi: loadSprite("assets/sprites/kako_yashi.png"),
   sogankyo_mask: loadSprite("assets/sprites/sogankyo_mask.png"),
@@ -84,6 +95,7 @@ export const SPRITES = {
   // hole マップ
   nidhogg:  loadSprite("assets/sprites/nidhogg.png"),
   nidhogg2: loadSprite("assets/sprites/nidhogg2.png"),
+  angler:   loadSprite("assets/sprites/angler.png"),
 
   // ura_ketchupug マップ
   ura_yahhy: loadSprite("assets/sprites/ura_yahhy.png"),
@@ -141,6 +153,11 @@ export const SPRITES = {
 
   spacesisters1: loadSprite("assets/sprites/spacesisters1.png"),
   dinosour: loadSprite("assets/sprites/dinosour.png"),
+  earth: loadSprite("assets/sprites/earth.png"),
+  urabossLow: loadSprite("assets/sprites/uraboss_low.png"),
+  urabossMid: loadSprite("assets/sprites/uraboss_mid.png"),
+  urabossTop: loadSprite("assets/sprites/uraboss_top.png"),
+  curry: loadSprite("assets/sprites/curry.png"),
 
   dive_tank:  loadSprite("assets/sprites/dive_tank.png"),
   dive_fin:   loadSprite("assets/sprites/dive_fin.png"),
@@ -152,4 +169,17 @@ export const SPRITES = {
   dive_urchin:   loadSprite("assets/sprites/dive_urchin.png"),
   dive_treasure: loadSprite("assets/sprites/dive_treasure.png"),
   dive_wall:     loadSprite("assets/sprites/dive_wall.png"),
+
+  // phone brawl prototype
+  phoneBrawlEnemy: loadSprite("assets/phone_brawl/enemy.png"),
+  phoneBrawl1:  loadSprite("assets/phone_brawl/1.png"),
+  phoneBrawl2:  loadSprite("assets/phone_brawl/2.png"),
+  phoneBrawl3:  loadSprite("assets/phone_brawl/3.png"),
+  phoneBrawl4:  loadSprite("assets/phone_brawl/4.png"),
+  phoneBrawl5:  loadSprite("assets/phone_brawl/5.png"),
+  phoneBrawl6:  loadSprite("assets/phone_brawl/6.png"),
+  phoneBrawl7:  loadSprite("assets/phone_brawl/7.png"),
+  phoneBrawl8:  loadSprite("assets/phone_brawl/8.png"),
+  phoneBrawl9:  loadSprite("assets/phone_brawl/9.png"),
+  phoneBrawl10: loadSprite("assets/phone_brawl/10.png"),
 };
