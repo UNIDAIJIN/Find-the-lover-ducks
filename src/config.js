@@ -2,7 +2,7 @@
 // Global configuration for the RPG engine.
 // Import this file to avoid hardcoded magic numbers scattered across modules.
 
-export const VERSION = "0.2.0";
+export const VERSION = "0.3.0";
 
 export const CONFIG = {
   // ---- Canvas / Display ----
