@@ -366,6 +366,24 @@ export function runNpcEvent(act, ctx) {
     return true;
   }
 
+  if (ev.type === "hyoryu_lang") {
+    const { dialog, choice } = ctx;
+    if (STATE.flags.hyoryuLang === "ja") {
+      dialog.open([["ハーイ！私は漂流者です。"]], () => {
+        choice.open(["はい", "いいえ"], (sel) => {
+          if (sel === 0) delete STATE.flags.hyoryuLang;
+        }, "あなたは日本語はなせますか？");
+      }, "talk");
+    } else {
+      dialog.open([["Hi! I am a drifter."]], () => {
+        choice.open(["Yes", "No"], (sel) => {
+          if (sel === 0) STATE.flags.hyoryuLang = "ja";
+        }, "Can you speak English?");
+      }, "talk");
+    }
+    return true;
+  }
+
   if (ev.type === "dream_talk") {
     const { dialog, choice } = ctx;
     choice.open(["はい", "いいえ"], (sel) => {

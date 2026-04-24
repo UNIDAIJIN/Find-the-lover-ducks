@@ -409,16 +409,16 @@ export function playShootingKill() {
   if (ctx.state === "suspended") ctx.resume().catch(() => {});
   const t = ctx.currentTime;
 
-  [[620, 0, 0.08], [930, 0.012, 0.09], [1240, 0.02, 0.11]].forEach(([freq, delay, dur]) => {
+  [[620, 0, 0.08], [930, 0.012, 0.09], [1240, 0.02, 0.11], [1680, 0.028, 0.09]].forEach(([freq, delay, dur], idx) => {
     const st = t + delay;
     const osc = ctx.createOscillator();
     const g = ctx.createGain();
     osc.connect(g);
     g.connect(ctx.destination);
-    osc.type = "triangle";
+    osc.type = idx >= 2 ? "square" : "triangle";
     osc.frequency.setValueAtTime(freq, st);
-    osc.frequency.exponentialRampToValueAtTime(freq * 0.72, st + dur);
-    g.gain.setValueAtTime(generatedSeLevel(0.08), st);
+    osc.frequency.exponentialRampToValueAtTime(freq * 0.68, st + dur);
+    g.gain.setValueAtTime(generatedSeLevel(idx >= 2 ? 0.06 : 0.085), st);
     g.gain.exponentialRampToValueAtTime(0.001, st + dur);
     osc.start(st);
     osc.stop(st + dur + 0.01);
@@ -437,7 +437,7 @@ export function playShootingKill() {
   lp.type = "lowpass";
   lp.frequency.value = 3200;
   const g = ctx.createGain();
-  g.gain.setValueAtTime(generatedSeLevel(0.065), t);
+  g.gain.setValueAtTime(generatedSeLevel(0.075), t);
   g.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
   src.connect(hp);
   hp.connect(lp);
@@ -445,6 +445,21 @@ export function playShootingKill() {
   g.connect(ctx.destination);
   src.start(t);
   src.stop(t + 0.055);
+
+  [[1760, 0.018, 0.06], [2350, 0.045, 0.09]].forEach(([freq, delay, dur]) => {
+    const st = t + delay;
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.connect(g);
+    g.connect(ctx.destination);
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(freq * 0.92, st);
+    osc.frequency.linearRampToValueAtTime(freq, st + 0.014);
+    g.gain.setValueAtTime(generatedSeLevel(0.04), st);
+    g.gain.exponentialRampToValueAtTime(0.001, st + dur);
+    osc.start(st);
+    osc.stop(st + dur + 0.01);
+  });
 }
 
 export function playShootingHurt() {

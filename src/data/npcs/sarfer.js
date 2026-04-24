@@ -8,9 +8,9 @@ export const sarferNpc = {
   solid:     true,
   event: {
     type:      "item_shop",
-    shopName:  "ビッグウェーブヌードル",
-    greeting:  [["いらっしゃーい。"]],
-    byeDialog: [["たのしんでねー！"]],
+    shopName:  "ビッグウェーブ",
+    greeting:  [["ヨォ！よってけよ！"]],
+    byeDialog: [["またな！"]],
     items: [
       { id: "yakisoba", name: "やきそば", price: 200 },
     ],

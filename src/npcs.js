@@ -14,6 +14,8 @@ import { cat1Npc }          from "./data/npcs/cat1.js";
 import { fanFlowerNpc }     from "./data/npcs/fan_flower.js";
 import { fanOrangeNpc }     from "./data/npcs/fan_orange.js";
 import { sarferNpc }        from "./data/npcs/sarfer.js";
+import { hyoryuNpc }        from "./data/npcs/hyoryu.js";
+import { hawaiiNpc }        from "./data/npcs/hawaii.js";
 import { rickyNpc }         from "./data/npcs/ricky.js";
 import { oharaNpc }         from "./data/npcs/ohara.js";
 import { indoorMinamiNpc } from "./data/npcs/minami_indoor01.js";
@@ -129,6 +131,8 @@ export const NPCS_BY_MAP = {
     resolve(fanNpc),
     resolve(fanOrangeNpc),
     resolve(sarferNpc),
+    resolve(hyoryuNpc),
+    resolve(hawaiiNpc),
     resolve({ ...fanNpc, name: "fan_2", x: 2299, y: 1133 }),
     resolve({ ...fanNpc, name: "fan_3", x: 1522, y: 875 }),
     resolve({ ...fanNpc, name: "fan_4", x: 1595, y: 928 }),

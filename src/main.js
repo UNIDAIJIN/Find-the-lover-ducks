@@ -87,9 +87,9 @@ fitCanvas();
 
 const input = createInput();
 
-function nowMs() {
-  return typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
-}
+const nowMs = (typeof performance !== "undefined" && performance.now)
+  ? performance.now.bind(performance)
+  : Date.now.bind(Date);
 
 
 // UI / FX
@@ -219,7 +219,7 @@ let orcaRide = { active: false, startMs: 0, durationMs: 15000, ending: false };
 let mechaEvolution = { active: false, phase: "idle", startMs: 0, fromImg: null, toImg: null };
 let theaterScene = { active: false, startMs: 0, exitWaitStartMs: 0, phase: "intro", messageShown: false };
 let kakoMovieScene = { active: false, startMs: 0, exitWaitStartMs: 0, phase: "intro", messageShown: false };
-const RAIN_DROP_COUNT = 84;
+const RAIN_DROP_COUNT = IS_MOBILE_DEVICE ? 48 : 84;
 const RAIN_DURATION_MS = 60000;
 let rainScene = {
   active: false,
@@ -2521,12 +2521,13 @@ function spawnActorsForMap(mapId) {
   if (mapId === "shooting_lobby") {
     for (const a of actors) {
       if (!a.name?.startsWith("door_")) continue;
-      if (a.name === "door_0") {
-        a.markImg = null;
-        continue;
+      a.markImg = null;
+      if (a.name === "door_0") continue;
+      if (STATE.flags[`shootingCleared_${a.name}`]) {
+        a.hidden = true;
+        a.solid = false;
+        a.talkHit = { x: 0, y: 0, w: 0, h: 0 };
       }
-      a.markImg = STATE.flags[`shootingCleared_${a.name}`] ? SPRITES.door_clear : SPRITES.door_noclear;
-      if (STATE.flags[`shootingCleared_${a.name}`]) a.alpha = 0.82;
     }
   }
   if (mapId === "house07" && STATE.flags.ac1Gone) {
@@ -3430,6 +3431,21 @@ const menu = createMenu({
         dialog.open([
           ["ナツミはギョウザをたべてみた！"],
           ["ジューシー！"],
+        ], null, "sign");
+      }, 700);
+      return true;
+    }
+    if (id === "yakisoba") {
+      inventory.removeItem("yakisoba");
+      input.lock();
+      setTimeout(restoreItemBgm, 670);
+      setTimeout(() => {
+        STATE.flags.eatCount = (STATE.flags.eatCount || 0) + 1;
+        if (STATE.flags.eatCount >= 10) achieveQuest("26");
+        input.unlock();
+        dialog.open([
+          ["ナツミはやきそばをたべてみた！"],
+          ["ソースがきいてる！"],
         ], null, "sign");
       }, 700);
       return true;
@@ -4891,6 +4907,10 @@ function loadMap(id, opt = null) {
   bgMidImg.src         = def.bgMidSrc       || "";
   bgShrineImg.src      = def.bgShrineSrc    || "";
   bgShrineTopImg.src   = def.bgShrineTopSrc || "";
+  current.hasBgTop       = !!def.bgTopSrc;
+  current.hasBgMid       = !!def.bgMidSrc;
+  current.hasBgShrine    = !!def.bgShrineSrc;
+  current.hasBgShrineTop = !!def.bgShrineTopSrc;
   shrineMode = false;
   shrineFade = 0;
   shrineTriggerActive = false;
@@ -4985,6 +5005,46 @@ function drawTintedSprite(img, f, x, y, tint, spr = SPR, sprH = spr) {
 
 
 function drawEntry(o) {
+  if (o.explodeStart) {
+    const ee = (nowMs() - o.explodeStart) / 260;
+    if (ee >= 1) return;
+    const ep = Math.min(1, ee);
+    const sx = ((o.x - cam.x) | 0) + 8;
+    const sy = ((o.y - cam.y) | 0) + 16;
+    const flash = 1 - Math.abs(ep - 0.16) / 0.16;
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, 1 - ep * 1.5);
+    drawSprite(o.img, o.frame, o.x, o.y, o.spr ?? SPR, o.sprH ?? (o.spr ?? SPR));
+    ctx.globalCompositeOperation = "lighter";
+    ctx.globalAlpha = Math.max(0, flash) * 0.95;
+    ctx.fillStyle = "#fff7d0";
+    ctx.beginPath();
+    ctx.arc(sx, sy, 12 + ep * 44, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = (1 - ep) * 0.88;
+    ctx.strokeStyle = "#ff5a3d";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(sx, sy, 9 + ep * 38, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = (1 - ep) * 0.72;
+    ctx.strokeStyle = "#fff7d0";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(sx, sy, 6 + ep * 26, 0, Math.PI * 2);
+    ctx.stroke();
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * Math.PI * 2 + ep * 5;
+      const r = ep * (18 + (i % 4) * 9);
+      const px = sx + Math.cos(a) * r;
+      const py = sy + Math.sin(a) * r - ep * 10;
+      ctx.globalAlpha = (1 - ep) * 0.9;
+      ctx.fillStyle = i % 3 === 0 ? "#fff7d0" : i % 2 === 0 ? "#ff1744" : "#ff9a3d";
+      ctx.fillRect(px | 0, py | 0, 4, 4);
+    }
+    ctx.restore();
+    return;
+  }
   if (o.vanishStart) {
     const ve = (nowMs() - o.vanishStart) / 400;
     if (ve >= 1) return;
@@ -5323,7 +5383,7 @@ function draw() {
     return;
   }
   const shouldDrawSea = current.id === "outdoor" || current.id === "mirai" || current.id === "kako" || !!waterMaskCanvas;
-  const seaUpdateInterval = IS_MOBILE_DEVICE && (current.id === "outdoor" || current.id === "mirai" || current.id === "kako") ? 6 : 3;
+  const seaUpdateInterval = IS_MOBILE_DEVICE && (current.id === "outdoor" || current.id === "mirai" || current.id === "kako") ? 10 : 3;
   if (shouldDrawSea && seaSparkleFrame++ % seaUpdateInterval === 0) {
     sea.draw(seaSparkleCtx, tt, cam, seaSparkleCanvas.width, seaSparkleCanvas.height);
   }
@@ -5361,11 +5421,11 @@ function draw() {
   } else if (shrineFade >= 1) {
     ctx.fillStyle = "#fff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    drawMapImg(bgShrineImg);
+    if (current.hasBgShrine) drawMapImg(bgShrineImg);
   } else {
     drawMapImg(bgImg);
     drawWaterSea(ctx);
-    if (shrineFade > 0) drawMapImg(bgShrineImg, shrineFade);
+    if (shrineFade > 0 && current.hasBgShrine) drawMapImg(bgShrineImg, shrineFade);
   }
 
   _groundList.length = 0;
@@ -5494,7 +5554,7 @@ function draw() {
   groundList.sort(sortFn);
   upperList.sort(sortFn);
   for (let i = 0; i < groundList.length; i++) drawEntry(groundList[i]);
-  drawMapImg(bgMidImg);
+  if (current.hasBgMid) drawMapImg(bgMidImg);
   for (let i = 0; i < upperList.length; i++) drawEntry(upperList[i]);
   for (let i = 0; i < groundList.length; i++) drawPizzaMarkOverlay(groundList[i]);
   for (let i = 0; i < upperList.length; i++) drawPizzaMarkOverlay(upperList[i]);
@@ -5556,10 +5616,10 @@ function draw() {
   if (current.id === "space" || current.id === "space_boss") {
     // no top layer
   } else if (shrineFade >= 1) {
-    drawMapImg(bgShrineTopImg);
+    if (current.hasBgShrineTop) drawMapImg(bgShrineTopImg);
   } else {
-    drawMapImg(bgTopImg);
-    if (shrineFade > 0) drawMapImg(bgShrineTopImg, shrineFade);
+    if (current.hasBgTop) drawMapImg(bgTopImg);
+    if (shrineFade > 0 && current.hasBgShrineTop) drawMapImg(bgShrineTopImg, shrineFade);
   }
 
   for (let i = 0; i < aboveTopList.length; i++) drawEntry(aboveTopList[i]);
@@ -6057,6 +6117,11 @@ function draw() {
 
 // ---- Update ----
 function updateNpcAnim(t) {
+  const cullMargin = 32;
+  const camLeft   = cam.x - cullMargin;
+  const camRight  = cam.x + canvas.width + cullMargin;
+  const camTop    = cam.y - cullMargin;
+  const camBottom = cam.y + canvas.height + cullMargin;
   for (const act of actors) {
     if (act.patrol) {
       if (act.patrolHomeX === undefined) act.patrolHomeX = act.x;
@@ -6066,6 +6131,11 @@ function updateNpcAnim(t) {
       act.x += act.patrolDir * speed;
       if (act.x >= act.patrolHomeX + range) { act.x = act.patrolHomeX + range; act.patrolDir = -1; }
       else if (act.x <= act.patrolHomeX - range) { act.x = act.patrolHomeX - range; act.patrolDir = 1; }
+    }
+    if (!act.alwaysAnim) {
+      const sw = act.spr ?? SPR;
+      const sh = act.sprH ?? act.spr ?? SPR;
+      if (act.x + sw < camLeft || act.x > camRight || act.y + sh < camTop || act.y > camBottom) continue;
     }
     if (act.animMode === "seq") {
       const ms = act.animMs ?? NPC_FRAME_MS;
@@ -6104,6 +6174,8 @@ function activateShootingLobbyDoor(act, t) {
   }
 
   const returnPos = { x: act.x, y: act.y + 26 };
+  const clearedDoors = Array.from({ length: 7 }, (_, i) => `door_${i + 1}`)
+    .filter((name) => !!STATE.flags[`shootingCleared_${name}`]);
   bgmCtl.setOverride("about:blank");
   setGameResolution(SHOOTING_W, SHOOTING_H);
   startShootingBgm();
@@ -6116,24 +6188,31 @@ function activateShootingLobbyDoor(act, t) {
     if (result?.cleared) {
       input.lock();
       playBattleWinJingle();
+      STATE.flags[`shootingCleared_${act.name}`] = true;
+      const allHellDoorsCleared = Array.from({ length: 7 }, (_, i) =>
+        STATE.flags[`shootingCleared_door_${i + 1}`]
+      ).every(Boolean);
+      if (allHellDoorsCleared) achieveQuest("15");
+      leader.x = returnPos.x;
+      leader.y = returnPos.y;
+      followers.reset({ leader, p2, p3, p4 });
+      startShootingBgm();
       setTimeout(() => {
-        STATE.flags[`shootingCleared_${act.name}`] = true;
-        const allHellDoorsCleared = Array.from({ length: 7 }, (_, i) =>
-          STATE.flags[`shootingCleared_door_${i + 1}`]
-        ).every(Boolean);
-        if (allHellDoorsCleared) achieveQuest("15");
-        act.alpha = 0.82;
-        act.markFromImg = act.markImg || SPRITES.door_noclear;
-        act.markImg = SPRITES.door_clear;
-        act.markAnimStart = nowMs();
-        act.markAnimUntil = act.markAnimStart + 500;
-        leader.x = returnPos.x;
-        leader.y = returnPos.y;
-        followers.reset({ leader, p2, p3, p4 });
-        startShootingBgm();
+        act.markImg = null;
+        act.explodeStart = nowMs();
         shootingDoorCooldown = nowMs() + 800;
-        input.unlock();
       }, 1000);
+      setTimeout(() => {
+        act.explodeStart = undefined;
+        act.vanishStart = nowMs();
+      }, 1180);
+      setTimeout(() => {
+        act.hidden = true;
+        act.solid = false;
+        act.talkHit = { x: 0, y: 0, w: 0, h: 0 };
+        act.vanishStart = undefined;
+        input.unlock();
+      }, 1620);
       return;
     }
     leader.x = returnPos.x;
@@ -6148,7 +6227,13 @@ function activateShootingLobbyDoor(act, t) {
       };
     }
     shootingDoorCooldown = nowMs() + 800;
-  }, { autoEndOnClear: true, autoEndOnResult: true, difficulty: getShootingDifficultyId() });
+  }, {
+    autoEndOnClear: true,
+    autoEndOnResult: true,
+    difficulty: getShootingDifficultyId(),
+    progressLevel: clearedDoors.length,
+    supportDoors: [],
+  });
   return true;
 }
 

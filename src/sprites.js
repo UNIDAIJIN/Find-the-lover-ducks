@@ -85,6 +85,8 @@ export const SPRITES = {
   fan_flower: loadSprite("assets/sprites/fan_flower.png"),
   fan_orange: loadSprite("assets/sprites/fan_orange.png"),
   sarfer: loadSprite("assets/sprites/sarfer.png"),
+  hyoryu: loadSprite("assets/sprites/hyoryu.png"),
+  hawaii: loadSprite("assets/sprites/hawaii.png"),
   kori: loadSprite("assets/sprites/kori.png"),
   cat1: loadSprite("assets/sprites/cat_g.png"),
   misaki: loadSprite("assets/sprites/misaki.png"),
