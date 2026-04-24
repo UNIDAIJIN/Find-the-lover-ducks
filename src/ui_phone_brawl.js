@@ -181,12 +181,14 @@ export function createPhoneBrawl({
   let activePlayerDeckIds = playerDeckIds;
   let activeGiveUpAction = giveUpAction;
   let activeInternalBgm = true;
+  let activeEnemyInvincible = false;
 
   function start(cb = onEnd, options = {}) {
     onEnd = cb || onEnd;
     activePlayerDeckIds = options.playerDeckIds || playerDeckIds;
     activeGiveUpAction = options.giveUpAction || giveUpAction;
     activeInternalBgm = options.internalBgm !== false;
+    activeEnemyInvincible = !!options.enemyInvincible;
     endedOnce = false;
     state.active = true;
     reset();
@@ -1507,6 +1509,7 @@ export function createPhoneBrawl({
   }
 
   function applyBaseDamage(side, amount, attacker = null) {
+    if (activeEnemyInvincible && side === "enemy") return;
     const beforeHp = side === "enemy" ? state.enemyHp : state.playerHp;
     const beforeSegments = baseSegmentsRemaining(beforeHp);
     if (side === "enemy") state.enemyHp -= amount;

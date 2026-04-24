@@ -6,4 +6,6 @@ export const foodItems = [
   { id: "moon_stone", name: "つきのいし", bgmSrc: null, throwDmg: 1000 },
   { id: "iron_heart", name: "鉄の心臓", bgmSrc: null, throwDmg: 100 },
   { id: "ice_cream", name: "アイスクリーム", bgmSrc: null, throwDmg: 1 },
+  { id: "gyoza", name: "ギョウザ", bgmSrc: null, throwDmg: 1 },
+  { id: "yakisoba", name: "やきそば", bgmSrc: null, throwDmg: 1 },
 ];

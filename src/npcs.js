@@ -12,6 +12,8 @@ import { koriNpc }          from "./data/npcs/kori.js";
 import { seatsNpc }         from "./data/npcs/seats.js";
 import { cat1Npc }          from "./data/npcs/cat1.js";
 import { fanFlowerNpc }     from "./data/npcs/fan_flower.js";
+import { fanOrangeNpc }     from "./data/npcs/fan_orange.js";
+import { sarferNpc }        from "./data/npcs/sarfer.js";
 import { rickyNpc }         from "./data/npcs/ricky.js";
 import { oharaNpc }         from "./data/npcs/ohara.js";
 import { indoorMinamiNpc } from "./data/npcs/minami_indoor01.js";
@@ -125,6 +127,8 @@ export const NPCS_BY_MAP = {
     resolve({ ...yashiNpc, name: "yashi3_1", spriteKey: "yashi3", x: 2100, y: 542, hitOy: 5, aboveTop: true }),
     resolve({ ...yashiNpc, name: "yashi3_2", spriteKey: "yashi3", x: 2406, y: 874, hitOy: 5 }),
     resolve(fanNpc),
+    resolve(fanOrangeNpc),
+    resolve(sarferNpc),
     resolve({ ...fanNpc, name: "fan_2", x: 2299, y: 1133 }),
     resolve({ ...fanNpc, name: "fan_3", x: 1522, y: 875 }),
     resolve({ ...fanNpc, name: "fan_4", x: 1595, y: 928 }),
@@ -138,6 +142,25 @@ export const NPCS_BY_MAP = {
     resolve(keeperNpc),
     resolve(kingyobachiSanNpc),
     resolve(iceNpc),
+    resolve({
+      kind: "npc",
+      name: "lee",
+      spriteKey: "lee",
+      x: 1583,
+      y: 1609,
+      talkHit: { x: 0, y: 0, w: 16, h: 16 },
+      solid: true,
+      event: {
+        type: "item_shop",
+        shopName: "リーの餃子",
+        greeting: [["よくきたネ！"]],
+        byeDialog: [["お腹いっぱいネ！"]],
+        items: [
+          { id: "gyoza", name: "ギョウザ", price: 200 },
+        ],
+        closeLabel: "やめる",
+      },
+    }),
     resolve(yumaNpc),
     resolve(afloboyNpc),
     resolve(dreamNpc),

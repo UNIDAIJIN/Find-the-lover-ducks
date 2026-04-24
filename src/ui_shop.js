@@ -150,7 +150,9 @@ export function createShop({ BASE_W, BASE_H, input } = {}) {
     ctx.fillStyle = "#000";
     const titleW = ctx.measureText(shopName).width;
     const titleX = (r.x + (r.w - titleW) / 2) | 0;
+    ctx._skipTextShadow = true;
     ctx.fillText(shopName, titleX, r.y + 4);
+    ctx._skipTextShadow = false;
 
     // アイテムリスト（スクロール対応）
     const listY  = r.y + TITLE_H + PAD;

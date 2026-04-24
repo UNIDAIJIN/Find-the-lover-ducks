@@ -21,7 +21,7 @@ import { createGoodTripEffect } from "./trip_effect_good.js";
 import * as letterbox           from "./letterbox.js";
 import { createQuestAlert }     from "./ui_quest_alert.js";
 import { QUESTS }               from "./data/quests.js";
-import { createShooting, drawShootingBackdrop } from "./ui_shooting.js";
+import { createShooting, drawShootingBackdrop, SHOOTING_DIFFICULTIES } from "./ui_shooting.js";
 import { createDiving, DIVE_W, DIVE_H } from "./ui_diving.js";
 import { createPhoneBrawl, PHONE_BRAWL_W, PHONE_BRAWL_H } from "./ui_phone_brawl.js";
 import { gateNpc } from "./data/npcs/gate.js";
@@ -62,6 +62,8 @@ const BASE_H = 180;
 // battle_ui.js は cmdX=160,cmdW=88(合計248) / BOSS_SCALE=3で80×80→240px 等、256×240想定で設計
 const BATTLE_W = 256;
 const BATTLE_H = 240;
+const SHOOTING_W = 256;
+const SHOOTING_H = 240;
 
 // Fit canvas CSS size to window while keeping pixel-perfect aspect ratio
 function fitCanvas() {
@@ -91,7 +93,7 @@ function nowMs() {
 
 
 // UI / FX
-const shooting  = createShooting({ BASE_W, BASE_H, input, sprites: SPRITES, getLeaderImg: () => leader?.img });
+const shooting  = createShooting({ BASE_W: SHOOTING_W, BASE_H: SHOOTING_H, input, sprites: SPRITES, getLeaderImg: () => leader?.img });
 const diving    = createDiving({ BASE_W, BASE_H, input, getLeaderImg: () => leader?.img, getHeadwearImg: () => SPRITES.kingyobachi, sprites: SPRITES });
 const phoneBrawl = createPhoneBrawl({
   input,
@@ -989,6 +991,8 @@ function applyAfloClubRgbShift() {
 }
 let shootingDoorCooldown = 0;
 let shootingKnockback = null;
+let shootingDoorMarkLastMs = 0;
+let shootingDifficultyUi = { active: false, index: 1, openedAt: 0 };
 
 // ---- ベンチ・噴水トリガー ----
 const BENCH_TRIGGER    = { x: 402,  y: 2443, w: 40, h: 32 }; // 教会ベンチ (422,2459)
@@ -1066,7 +1070,7 @@ function startSpaceBossFirstBattle() {
     if (current.id !== "space_boss") return;
     stopHeartbeat();
     startSpaceBossReunionEvent();
-  }, { playerDeckIds: "n2_msitp", giveUpAction: "interventionReturn", internalBgm: false });
+  }, { playerDeckIds: "n2_msitp", giveUpAction: "interventionReturn", internalBgm: false, enemyInvincible: true });
 }
 
 function startSpaceBossFirstBattleGameOverDebug() {
@@ -3415,6 +3419,21 @@ const menu = createMenu({
       }, 700);
       return true;
     }
+    if (id === "gyoza") {
+      inventory.removeItem("gyoza");
+      input.lock();
+      setTimeout(restoreItemBgm, 670);
+      setTimeout(() => {
+        STATE.flags.eatCount = (STATE.flags.eatCount || 0) + 1;
+        if (STATE.flags.eatCount >= 10) achieveQuest("26");
+        input.unlock();
+        dialog.open([
+          ["ナツミはギョウザをたべてみた！"],
+          ["ジューシー！"],
+        ], null, "sign");
+      }, 700);
+      return true;
+    }
     if (id === "pizza") {
       inventory.removeItem("pizza");
       if (STATE.flags.pizzaJobActive && !STATE.flags.pizzaDelivered) {
@@ -3672,7 +3691,10 @@ function startNewGameFlow() {
       outMs:  1,
       holdMs: 80,
       inMs:   500,
-      onBlack: () => loadMap("moritasaki_room"),
+      onBlack: () => {
+        resetHeightState();
+        loadMap("moritasaki_room");
+      },
     });
   });
 }
@@ -3725,6 +3747,226 @@ function debugCompleteAllQuests() {
     STATE.flags.phoneCalled = true;
     setTimeout(() => startPhoneCallEvent(), 3000);
   }
+}
+
+function debugJumpToShootingLobby() {
+  STATE.flags.shootingLobbyLuchaTalked = true;
+  shootingKnockback = null;
+  loadMap("shooting_lobby");
+  saveNotice = { text: "SHOOTING", until: nowMs() + 1200 };
+}
+
+const SHOOTING_DIFFICULTY_ORDER = ["hard", "normal", "easy"];
+
+function getShootingDifficultyId() {
+  const id = STATE.flags.shootingDifficulty;
+  return SHOOTING_DIFFICULTIES[id] ? id : "normal";
+}
+
+function openShootingDifficultyUi() {
+  const currentId = getShootingDifficultyId();
+  const idx = SHOOTING_DIFFICULTY_ORDER.indexOf(currentId);
+  shootingDifficultyUi.active = true;
+  shootingDifficultyUi.index = idx >= 0 ? idx : 1;
+  shootingDifficultyUi.openedAt = nowMs();
+  input.clear();
+}
+
+function closeShootingDifficultyUi() {
+  shootingDifficultyUi.active = false;
+  input.clear();
+}
+
+function updateShootingDifficultyUi() {
+  if (!shootingDifficultyUi.active) return false;
+  if (input.consume("ArrowLeft")) {
+    shootingDifficultyUi.index = (shootingDifficultyUi.index + SHOOTING_DIFFICULTY_ORDER.length - 1) % SHOOTING_DIFFICULTY_ORDER.length;
+    playCursor();
+  }
+  if (input.consume("ArrowRight")) {
+    shootingDifficultyUi.index = (shootingDifficultyUi.index + 1) % SHOOTING_DIFFICULTY_ORDER.length;
+    playCursor();
+  }
+  if (input.consume("ArrowUp")) {
+    shootingDifficultyUi.index = (shootingDifficultyUi.index + SHOOTING_DIFFICULTY_ORDER.length - 1) % SHOOTING_DIFFICULTY_ORDER.length;
+    playCursor();
+  }
+  if (input.consume("ArrowDown")) {
+    shootingDifficultyUi.index = (shootingDifficultyUi.index + 1) % SHOOTING_DIFFICULTY_ORDER.length;
+    playCursor();
+  }
+  if (input.consume("x")) {
+    playCursor();
+    closeShootingDifficultyUi();
+    return true;
+  }
+  if (input.consume("z") || input.consume("Enter") || input.consume(" ")) {
+    const id = SHOOTING_DIFFICULTY_ORDER[shootingDifficultyUi.index];
+    STATE.flags.shootingDifficulty = id;
+    saveNotice = { text: SHOOTING_DIFFICULTIES[id].label, until: nowMs() + 900 };
+    playConfirm();
+    closeShootingDifficultyUi();
+    return true;
+  }
+  return true;
+}
+
+function drawShootingDifficultyUi(tt) {
+  if (!shootingDifficultyUi.active) return;
+  const cards = SHOOTING_DIFFICULTY_ORDER.map((id) => SHOOTING_DIFFICULTIES[id]);
+  const cx = BASE_W >> 1;
+  const cardW = 48;
+  const cardH = 88;
+  const topY = 48;
+  const xs = [18, 72, 126];
+  const pulse = 0.5 + 0.5 * Math.sin(tt / 180);
+  const current = cards[shootingDifficultyUi.index];
+  const prevSkip = ctx._skipTextShadow;
+  ctx._skipTextShadow = true;
+  const drawCenterText = (text, centerX, y) => {
+    const tw = ctx.measureText(text).width;
+    ctx.fillText(text, ((centerX - tw / 2) | 0), y | 0);
+  };
+  const drawBanner = (x, y, w, h, color) => {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + w, y);
+    ctx.lineTo(x + w - 4, y + h - 6);
+    ctx.lineTo(x + (w >> 1), y + h);
+    ctx.lineTo(x + 4, y + h - 6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.18)";
+    ctx.fillRect(x + 4, y + 3, w - 8, 2);
+  };
+  const drawStepBorder = (x, y, w, h, colorA, colorB) => {
+    for (let i = 0; i < w; i += 8) {
+      ctx.fillStyle = ((i >> 3) & 1) ? colorA : colorB;
+      ctx.fillRect(x + i, y, 4, 2);
+      ctx.fillRect(x + i + 4, y + h - 2, 4, 2);
+    }
+    for (let i = 0; i < h; i += 8) {
+      ctx.fillStyle = ((i >> 3) & 1) ? colorB : colorA;
+      ctx.fillRect(x, y + i, 2, 4);
+      ctx.fillRect(x + w - 2, y + i + 4, 2, 4);
+    }
+  };
+
+  ctx.save();
+  ctx.fillStyle = "rgba(4,0,10,0.76)";
+  ctx.fillRect(0, 0, BASE_W, BASE_H);
+
+  for (let y = 0; y < BASE_H; y += 12) {
+    ctx.fillStyle = (y / 12) & 1 ? "rgba(255,120,70,0.05)" : "rgba(40,180,120,0.05)";
+    ctx.fillRect(0, y, BASE_W, 6);
+  }
+  drawStepBorder(6, 6, BASE_W - 12, BASE_H - 12, "#f3bb54", "#db5f4a");
+
+  const bannerY = 8;
+  const bannerColors = ["#e35d4f", "#f3bb54", "#43b98e", "#e05ca8", "#4f9de3", "#f08e33"];
+  for (let i = 0; i < 6; i++) {
+    drawBanner(12 + i * 28, bannerY + ((i & 1) ? 2 : 0), 20, 14, bannerColors[i % bannerColors.length]);
+  }
+  ctx.strokeStyle = "#f7e7b5";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(8, 10);
+  ctx.lineTo(BASE_W - 8, 10);
+  ctx.stroke();
+
+  ctx.strokeStyle = `rgba(255,${180 + (pulse * 40) | 0},90,0.8)`;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(cx, 98, 60 + pulse * 3, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.fillStyle = "rgba(245,177,60,0.10)";
+  ctx.beginPath();
+  ctx.arc(cx, 98, 50, 0, Math.PI * 2);
+  ctx.fill();
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2;
+    const x1 = (cx + Math.cos(a) * 36) | 0;
+    const y1 = (98 + Math.sin(a) * 36) | 0;
+    const x2 = (cx + Math.cos(a) * 56) | 0;
+    const y2 = (98 + Math.sin(a) * 56) | 0;
+    ctx.strokeStyle = i & 1 ? "rgba(255,228,140,0.35)" : "rgba(255,120,90,0.30)";
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+  }
+
+  ctx.font = "normal 10px PixelMplus10";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+  ctx.fillStyle = "#fff2cc";
+  drawCenterText("JIGOKU LEVEL", cx, 14);
+  ctx.fillStyle = "#ffd36a";
+  drawCenterText("PUNISHMENT SCALE", cx, 26);
+
+  for (let i = 0; i < cards.length; i++) {
+    const card = cards[i];
+    const selected = i === shootingDifficultyUi.index;
+    const x = xs[i];
+    const y = topY - (selected ? 8 : 0);
+    const glow = selected ? 0.75 + pulse * 0.25 : 0.24;
+    const frame = selected ? card.color : "#8a6d48";
+
+    ctx.strokeStyle = "#d0b080";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x + cardW / 2, 14);
+    ctx.lineTo(x + cardW / 2, y + 6);
+    ctx.stroke();
+    ctx.fillStyle = "#f9f2cf";
+    ctx.fillRect(x + cardW / 2 - 2, 12, 4, 4);
+
+    ctx.fillStyle = `rgba(0,0,0,${selected ? 0.5 : 0.34})`;
+    ctx.fillRect(x + 2, y + 4, cardW, cardH);
+    ctx.fillStyle = selected ? "#2a1511" : "#1a1016";
+    ctx.fillRect(x, y, cardW, cardH);
+    ctx.fillStyle = "rgba(255,255,255,0.07)";
+    ctx.fillRect(x + 2, y + 2, cardW - 4, 8);
+    for (let sy = y + 24; sy < y + cardH - 8; sy += 8) {
+      ctx.fillStyle = ((sy >> 3) & 1) ? "rgba(243,187,84,0.09)" : "rgba(67,185,142,0.08)";
+      ctx.fillRect(x + 4, sy, cardW - 8, 3);
+    }
+    ctx.strokeStyle = frame;
+    ctx.strokeRect(x + 0.5, y + 0.5, cardW - 1, cardH - 1);
+    if (selected) {
+      ctx.strokeStyle = `rgba(255,255,255,${glow})`;
+      ctx.strokeRect(x - 2.5, y - 2.5, cardW + 3, cardH + 3);
+      ctx.fillStyle = `rgba(255,255,255,${0.16 + pulse * 0.06})`;
+      ctx.fillRect(x + 3, y + 40, cardW - 6, 12);
+      ctx.fillRect(x + 3, y + 58, cardW - 6, 12);
+    }
+    ctx.fillStyle = frame;
+    ctx.fillRect(x + 8, y + 8, cardW - 16, 2);
+    ctx.fillRect(x + 8, y + cardH - 10, cardW - 16, 2);
+
+    ctx.font = "normal 10px PixelMplus10";
+    ctx.fillStyle = card.color;
+    drawCenterText(card.label, x + (cardW >> 1), y + 12);
+
+    ctx.font = "normal 10px PixelMplus10";
+    ctx.fillStyle = "#fff";
+    drawCenterText(`SCORE`, x + (cardW >> 1), y + 30);
+    ctx.fillStyle = "#fff";
+    const mulText = `x${card.scoreMul.toFixed(1)}`;
+    const mulW = ctx.measureText(mulText).width;
+    ctx.fillText(mulText, (((x + (cardW >> 1)) - mulW / 2) | 0), (y + 42) | 0);
+    ctx.fillStyle = "#ffdf72";
+    const lifeText = `LIFE ${card.lives}`;
+    const lifeW = ctx.measureText(lifeText).width;
+    ctx.fillText(lifeText, (((x + (cardW >> 1)) - lifeW / 2) | 0), (y + 60) | 0);
+  }
+
+  ctx.font = "normal 10px PixelMplus10";
+  ctx.fillStyle = current.color;
+  drawCenterText("Z SELECT  X CLOSE", cx, 160);
+  ctx.restore();
+  ctx._skipTextShadow = prevSkip;
 }
 
 function phoneCallSequence(pages, onDone, opts = {}) {
@@ -4894,8 +5136,22 @@ function drawEntry(o) {
         ctx.restore();
       }
     } else {
-      if (markSpr > 0) ctx.drawImage(o.markImg, markFrame * markSpr, 0, markSpr, 16, ix, iy, 16, 16);
-      else ctx.drawImage(o.markImg, ix, iy, 16, 16);
+      const reveal = o.markReveal;
+      if (reveal !== undefined) {
+        if (reveal <= 0.001) return;
+        const s = 0.2 + reveal * 0.8;
+        ctx.save();
+        ctx.globalAlpha *= reveal;
+        ctx.translate(ix + 8, iy + 16);
+        ctx.scale(s, s);
+        if (markSpr > 0) ctx.drawImage(o.markImg, markFrame * markSpr, 0, markSpr, 16, -8, -16, 16, 16);
+        else ctx.drawImage(o.markImg, -8, -16, 16, 16);
+        ctx.restore();
+      } else if (markSpr > 0) {
+        ctx.drawImage(o.markImg, markFrame * markSpr, 0, markSpr, 16, ix, iy, 16, 16);
+      } else {
+        ctx.drawImage(o.markImg, ix, iy, 16, 16);
+      }
     }
   }
 
@@ -5200,6 +5456,7 @@ function draw() {
     ia.sparkleColor = act.sparkleColor;
     ia.sparklePhase = act.sparklePhase;
     ia.markImg = act.markImg;
+    ia.markReveal = act.markReveal;
     ia.markSpr = act.markSpr;
     ia.markAnimMs = act.markAnimMs;
     ia.markMode = act.markMode;
@@ -5593,6 +5850,7 @@ function draw() {
 
   drawSpaceBossTypedSpeech(tt);
   drawSpaceBossOutdoorEpilogueOverlay(tt);
+  drawShootingDifficultyUi(tt);
 
   fade.draw(ctx);
 
@@ -5847,15 +6105,17 @@ function activateShootingLobbyDoor(act, t) {
 
   const returnPos = { x: act.x, y: act.y + 26 };
   bgmCtl.setOverride("about:blank");
+  setGameResolution(SHOOTING_W, SHOOTING_H);
   startShootingBgm();
   shooting.start((earnedEN, result) => {
     stopShootingBgm();
     bgmCtl.setOverride("about:blank");
+    setGameResolution(BASE_W, BASE_H);
     STATE.money = Math.min(STATE.money + earnedEN, 999999);
     if (earnedEN > 0) toast.show(`${earnedEN} EN ゲット！`);
     if (result?.cleared) {
       input.lock();
-      playVictory();
+      playBattleWinJingle();
       setTimeout(() => {
         STATE.flags[`shootingCleared_${act.name}`] = true;
         const allHellDoorsCleared = Array.from({ length: 7 }, (_, i) =>
@@ -5888,8 +6148,31 @@ function activateShootingLobbyDoor(act, t) {
       };
     }
     shootingDoorCooldown = nowMs() + 800;
-  }, { autoEndOnClear: true });
+  }, { autoEndOnClear: true, autoEndOnResult: true, difficulty: getShootingDifficultyId() });
   return true;
+}
+
+function updateShootingDoorMarkers(t) {
+  if (current.id !== "shooting_lobby") {
+    shootingDoorMarkLastMs = t;
+    for (const act of actors) {
+      if (act.name?.startsWith("door_")) act.markReveal = 0;
+    }
+    return;
+  }
+  const prev = shootingDoorMarkLastMs || t;
+  shootingDoorMarkLastMs = t;
+  const step = Math.max(0, Math.min(1, (t - prev) / 140));
+  const touch = talkBoxLeader();
+  const canShow = !!STATE.flags.shootingLobbyLuchaTalked;
+  for (const act of actors) {
+    if (!act.name?.startsWith("door_") || !act.markImg || act.name === "door_0") continue;
+    const target = canShow && hitRect(touch, npcFootBox(act)) ? 1 : 0;
+    const cur = act.markReveal ?? 0;
+    act.markReveal = target > cur
+      ? Math.min(target, cur + step)
+      : Math.max(target, cur - step);
+  }
 }
 
 // ★ここを t を受け取る形にする
@@ -6166,16 +6449,21 @@ function tryInteract(t) {
         }
       } else {
         if (act.name === "lucha_shooting") {
-          const pages = STATE.flags.shootingLobbyLuchaTalked
-            ? [["ここが！ジ・ゴ・ク！"], ["サイコーーーーーー！！"]]
-            : (act.talkPages || [["……"]]);
-          const onClose = STATE.flags.shootingLobbyLuchaTalked
-            ? null
-            : () => {
+          const firstTalk = !STATE.flags.shootingLobbyLuchaTalked;
+          const pages = firstTalk
+            ? (act.talkPages || [["……"]])
+            : [["ジゴクの罰の重さは自分で選ぶもんだぜ！"]];
+          const onClose = firstTalk
+            ? () => {
                 STATE.flags.shootingLobbyLuchaTalked = true;
+                if (!STATE.flags.shootingDifficulty) STATE.flags.shootingDifficulty = "normal";
                 achieveQuest("12");
                 input.lock();
                 setTimeout(() => input.unlock(), 1000);
+              }
+            : () => {
+                if (!STATE.flags.shootingDifficulty) STATE.flags.shootingDifficulty = "normal";
+                openShootingDifficultyUi();
               };
           dialog.open(pages, onClose, act.talkType ?? "talk");
         } else {
@@ -6485,6 +6773,15 @@ function update(t) {
     return;
   }
 
+  if (shootingDifficultyUi.active) {
+    updateShootingDifficultyUi();
+    leader.frame = 0;
+    p2.frame = p3.frame = p4.frame = 0;
+    for (const act of actors) act.frame = 0;
+    updateCam();
+    return;
+  }
+
   if (timeMachineFx.active) {
     if (t >= timeMachineFx.until) {
       const cb = timeMachineFx.onDone;
@@ -6605,6 +6902,8 @@ function update(t) {
     return;
   }
 
+  updateShootingDoorMarkers(t);
+
   if (input.consume("x")) menu.toggle();
   if (input.consume("z")) tryInteract(t); // ★tを渡す
 
@@ -6631,9 +6930,9 @@ function update(t) {
     return;
   }
 
-  // D でクエスト全クリア（デバッグ）
+  // D で shooting_lobby へワープ（デバッグ）
   if (DEBUG && input.consume("d")) {
-    debugCompleteAllQuests();
+    debugJumpToShootingLobby();
     return;
   }
 

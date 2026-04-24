@@ -344,6 +344,146 @@ export function playConfirm() {
   });
 }
 
+export function playShootingShot() {
+  const ctx = getCtx();
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
+  const t = ctx.currentTime;
+
+  const osc = ctx.createOscillator();
+  const g = ctx.createGain();
+  const hp = ctx.createBiquadFilter();
+  hp.type = "highpass";
+  hp.frequency.value = 900;
+  osc.connect(hp);
+  hp.connect(g);
+  g.connect(ctx.destination);
+  osc.type = "square";
+  osc.frequency.setValueAtTime(1260, t);
+  osc.frequency.exponentialRampToValueAtTime(520, t + 0.04);
+  g.gain.setValueAtTime(generatedSeLevel(0.10), t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+  osc.start(t);
+  osc.stop(t + 0.055);
+
+  const len = Math.max(1, (ctx.sampleRate * 0.018) | 0);
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  const bp = ctx.createBiquadFilter();
+  bp.type = "bandpass";
+  bp.frequency.value = 2800;
+  bp.Q.value = 1.6;
+  const ng = ctx.createGain();
+  ng.gain.setValueAtTime(generatedSeLevel(0.045), t);
+  ng.gain.exponentialRampToValueAtTime(0.001, t + 0.02);
+  src.connect(bp);
+  bp.connect(ng);
+  ng.connect(ctx.destination);
+  src.start(t);
+  src.stop(t + 0.022);
+}
+
+export function playShootingHit(strong = false) {
+  const ctx = getCtx();
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
+  const t = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  const g = ctx.createGain();
+  osc.connect(g);
+  g.connect(ctx.destination);
+  osc.type = "triangle";
+  const top = strong ? 980 : 860;
+  const bot = strong ? 420 : 520;
+  osc.frequency.setValueAtTime(top, t);
+  osc.frequency.exponentialRampToValueAtTime(bot, t + 0.045);
+  g.gain.setValueAtTime(generatedSeLevel(strong ? 0.11 : 0.07), t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+  osc.start(t);
+  osc.stop(t + 0.055);
+}
+
+export function playShootingKill() {
+  const ctx = getCtx();
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
+  const t = ctx.currentTime;
+
+  [[620, 0, 0.08], [930, 0.012, 0.09], [1240, 0.02, 0.11]].forEach(([freq, delay, dur]) => {
+    const st = t + delay;
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.connect(g);
+    g.connect(ctx.destination);
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(freq, st);
+    osc.frequency.exponentialRampToValueAtTime(freq * 0.72, st + dur);
+    g.gain.setValueAtTime(generatedSeLevel(0.08), st);
+    g.gain.exponentialRampToValueAtTime(0.001, st + dur);
+    osc.start(st);
+    osc.stop(st + dur + 0.01);
+  });
+
+  const len = Math.max(1, (ctx.sampleRate * 0.045) | 0);
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 1.8);
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  const hp = ctx.createBiquadFilter();
+  hp.type = "highpass";
+  hp.frequency.value = 700;
+  const lp = ctx.createBiquadFilter();
+  lp.type = "lowpass";
+  lp.frequency.value = 3200;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(generatedSeLevel(0.065), t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+  src.connect(hp);
+  hp.connect(lp);
+  lp.connect(g);
+  g.connect(ctx.destination);
+  src.start(t);
+  src.stop(t + 0.055);
+}
+
+export function playShootingHurt() {
+  const ctx = getCtx();
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
+  const t = ctx.currentTime;
+
+  const osc = ctx.createOscillator();
+  const g = ctx.createGain();
+  osc.connect(g);
+  g.connect(ctx.destination);
+  osc.type = "sawtooth";
+  osc.frequency.setValueAtTime(180, t);
+  osc.frequency.exponentialRampToValueAtTime(72, t + 0.12);
+  g.gain.setValueAtTime(generatedSeLevel(0.11), t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
+  osc.start(t);
+  osc.stop(t + 0.15);
+
+  const len = Math.max(1, (ctx.sampleRate * 0.05) | 0);
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 1.2);
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  const bp = ctx.createBiquadFilter();
+  bp.type = "bandpass";
+  bp.frequency.value = 420;
+  bp.Q.value = 0.9;
+  const ng = ctx.createGain();
+  ng.gain.setValueAtTime(generatedSeLevel(0.05), t);
+  ng.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
+  src.connect(bp);
+  bp.connect(ng);
+  ng.connect(ctx.destination);
+  src.start(t);
+  src.stop(t + 0.065);
+}
+
 // ---- クリック音: カチッ ----
 export function playClickOn() {
   const ctx = getCtx();

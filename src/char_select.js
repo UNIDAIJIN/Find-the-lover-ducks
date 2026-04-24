@@ -36,7 +36,7 @@ const GLYPH_W = 5, GLYPH_H = 7, GLYPH_GAP = 1, SPACE_W = 2;
 // 右側に余白が残る文字の実幅を上書き
 const CHAR_W = { 'E': 4, 'C': 4 };
 
-function drawPixelText(ctx, text, x, y, scale, fillColor, shadowColor) {
+export function drawPixelText(ctx, text, x, y, scale, fillColor, shadowColor) {
   let cx = x;
   for (let ci = 0; ci < text.length; ci++) {
     const ch    = text[ci];
@@ -79,6 +79,12 @@ function drawPixelText(ctx, text, x, y, scale, fillColor, shadowColor) {
 
     cx += (charW + GLYPH_GAP) * scale;
   }
+}
+
+export function pixelTextWidth(text, scale = 1) {
+  return [...text].reduce((acc, ch) =>
+    acc + ((ch === ' ' ? SPACE_W : (CHAR_W[ch] ?? GLYPH_W)) + GLYPH_GAP) * scale,
+  -GLYPH_GAP * scale);
 }
 
 // セルが中心からポップインする際のイージング（軽いオーバーシュート）

@@ -83,6 +83,8 @@ export const SPRITES = {
   ac_6: loadSprite("assets/sprites/ac_6.png"),
   afloclub_off: loadSprite("assets/maps/afloclub_off.png"),
   fan_flower: loadSprite("assets/sprites/fan_flower.png"),
+  fan_orange: loadSprite("assets/sprites/fan_orange.png"),
+  sarfer: loadSprite("assets/sprites/sarfer.png"),
   kori: loadSprite("assets/sprites/kori.png"),
   cat1: loadSprite("assets/sprites/cat_g.png"),
   misaki: loadSprite("assets/sprites/misaki.png"),
