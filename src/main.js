@@ -2522,7 +2522,18 @@ function spawnActorsForMap(mapId) {
     for (const a of actors) {
       if (!a.name?.startsWith("door_")) continue;
       a.markImg = null;
-      if (a.name === "door_0") continue;
+      if (a.name === "door_0") {
+        if (!STATE.flags.shootingLobbyExitUnlocked) {
+          a.hidden = true;
+          a.alpha = 0;
+          a.scale = 0.7;
+        } else {
+          a.hidden = false;
+          a.alpha = 1;
+          a.scale = 1;
+        }
+        continue;
+      }
       if (STATE.flags[`shootingCleared_${a.name}`]) {
         a.hidden = true;
         a.solid = false;
@@ -4691,7 +4702,9 @@ function loadMap(id, opt = null) {
       stopShootingBgm();
       stopAfloClubBgm();
       stopMetalBgm();
-      bgmCtl.setOverride(null);
+      const _curOv = bgmCtl.getOverrideSrc();
+      const _isDuckBgm = _curOv && /\/duck.*\.mp3$/.test(_curOv);
+      if (!_isDuckBgm) bgmCtl.setOverride(null);
     }
 
     seaholeCutscene = { active: false, shadowX: BASE_W, charOffsetX: 0 };
@@ -5483,6 +5496,17 @@ function draw() {
   }
   for (const act of actors) {
     if (act.vanishStart && (nowMs() - act.vanishStart) >= 400) { act.hidden = true; act.vanishStart = undefined; }
+    if (act.revealStart) {
+      const rp = (nowMs() - act.revealStart) / 320;
+      if (rp >= 1) {
+        act.alpha = 1;
+        act.scale = 1;
+        act.revealStart = undefined;
+      } else {
+        act.alpha = rp;
+        act.scale = 0.7 + rp * 0.3;
+      }
+    }
     if (act.hidden) continue;
     let bgmFadeAlpha = 1;
     if (act.showWhenBgm) {
@@ -6189,6 +6213,8 @@ function activateShootingLobbyDoor(act, t) {
       input.lock();
       playBattleWinJingle();
       STATE.flags[`shootingCleared_${act.name}`] = true;
+      const unlockExitDoor = !STATE.flags.shootingLobbyExitUnlocked;
+      if (unlockExitDoor) STATE.flags.shootingLobbyExitUnlocked = true;
       const allHellDoorsCleared = Array.from({ length: 7 }, (_, i) =>
         STATE.flags[`shootingCleared_door_${i + 1}`]
       ).every(Boolean);
@@ -6213,6 +6239,15 @@ function activateShootingLobbyDoor(act, t) {
         act.talkHit = { x: 0, y: 0, w: 0, h: 0 };
         act.vanishStart = undefined;
         act.vanishUp = undefined;
+        if (unlockExitDoor) {
+          const exitDoor = actors.find((a) => a.name === "door_0");
+          if (exitDoor) {
+            exitDoor.hidden = false;
+            exitDoor.alpha = 0;
+            exitDoor.scale = 0.7;
+            exitDoor.revealStart = nowMs();
+          }
+        }
         input.unlock();
       }, 1620);
       return;
