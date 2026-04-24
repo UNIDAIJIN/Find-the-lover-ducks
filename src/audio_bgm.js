@@ -27,9 +27,13 @@ export function createBgm({
     "assets/audio/duckJ.mp3": 1.0,
   };
 
-  function applyVolumeForSrc(src) {
+  function volumeForSrc(src) {
     const scale = sourceVolumeScale[src] ?? 1;
-    bgm.volume = Math.min(1, volume * scale);
+    return Math.min(1, volume * scale);
+  }
+
+  function applyVolumeForSrc(src) {
+    bgm.volume = volumeForSrc(src);
   }
 
   let unlocked = false;
@@ -332,6 +336,11 @@ export function createBgm({
     getOverrideSrc: () => overrideSrc,
     getCurrentSrc: () => currentSrc,
     getLastMainSrc: () => lastMainSrc,
+    getVolumeForSrc: volumeForSrc,
+    resetVolumeForCurrentSrc: () => {
+      const src = currentSrc || desiredSrc();
+      if (src) applyVolumeForSrc(src);
+    },
     setUnderwater,
     setReverb,
     startTripPitch,

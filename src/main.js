@@ -157,7 +157,7 @@ function fadeOutBgmToSilence(durationMs = 1200) {
       clearInterval(bgmFadeStopTimer);
       bgmFadeStopTimer = null;
       bgmCtl.setOverride("about:blank");
-      audio.volume = BGM_VOLUME;
+      bgmCtl.resetVolumeForCurrentSrc();
     }
   }, 16);
 }
@@ -6401,7 +6401,7 @@ function tryInteract(t) {
                 bgmCtl.audio.volume = 0;
                 bgmCtl.setOverride(null);
                 const rampStart = performance.now();
-                const TARGET_VOL = 0.35;
+                const TARGET_VOL = bgmCtl.getVolumeForSrc(bgmCtl.getCurrentSrc() || bgmCtl.getMapSrc());
                 const id = setInterval(() => {
                   const p = Math.min((performance.now() - rampStart) / 700, 1);
                   bgmCtl.audio.volume = TARGET_VOL * p;
