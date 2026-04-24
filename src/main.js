@@ -5051,9 +5051,10 @@ function drawEntry(o) {
     const vp = ve * ve;
     const sx = ((o.x - cam.x) | 0) + 8;
     const sy = ((o.y - cam.y) | 0) + 8;
+    const vanishUp = !!o.vanishUp;
     ctx.save();
     ctx.globalAlpha = 1 - vp;
-    ctx.translate(sx, sy);
+    ctx.translate(sx, sy + (vanishUp ? -vp * 18 : 0));
     ctx.scale(1 - vp * 0.8, 1 + vp * 2);
     ctx.translate(-sx, -sy);
     const _vs = o.spr ?? SPR, _vh = o.sprH ?? _vs;
@@ -5076,7 +5077,7 @@ function drawEntry(o) {
       const a = (i / 4) * Math.PI * 2 + ve * 3;
       const r = ve * 20;
       const px = sx + Math.cos(a) * r;
-      const py = sy + Math.sin(a) * r - ve * 12;
+      const py = sy + Math.sin(a) * r - ve * (vanishUp ? 28 : 12);
       ctx.save();
       ctx.globalAlpha = (1 - vp) * 0.9;
       ctx.fillStyle = "#aef";
@@ -6184,7 +6185,6 @@ function activateShootingLobbyDoor(act, t) {
     bgmCtl.setOverride("about:blank");
     setGameResolution(BASE_W, BASE_H);
     STATE.money = Math.min(STATE.money + earnedEN, 999999);
-    if (earnedEN > 0) toast.show(`${earnedEN} EN ゲット！`);
     if (result?.cleared) {
       input.lock();
       playBattleWinJingle();
@@ -6204,6 +6204,7 @@ function activateShootingLobbyDoor(act, t) {
       }, 1000);
       setTimeout(() => {
         act.explodeStart = undefined;
+        act.vanishUp = true;
         act.vanishStart = nowMs();
       }, 1180);
       setTimeout(() => {
@@ -6211,6 +6212,7 @@ function activateShootingLobbyDoor(act, t) {
         act.solid = false;
         act.talkHit = { x: 0, y: 0, w: 0, h: 0 };
         act.vanishStart = undefined;
+        act.vanishUp = undefined;
         input.unlock();
       }, 1620);
       return;
@@ -6271,6 +6273,8 @@ function tryInteract(t) {
 
   for (let i = 0; i < actors.length; i++) {
     const act = actors[i];
+    if (act.hidden) continue;
+    if (current.id === "shooting_lobby" && act.name?.startsWith("door_") && (act.explodeStart || act.vanishStart)) continue;
     const b = (current.id === "shooting_lobby" && act.name?.startsWith("door_"))
       ? npcFootBox(act)
       : talkRectActor(act);
@@ -6279,7 +6283,9 @@ function tryInteract(t) {
     if (act.kind === "npc") {
       if (current.id === "shooting_lobby" && act.name?.startsWith("door_")) {
         if (!STATE.flags.shootingLobbyLuchaTalked) return;
-        activateShootingLobbyDoor(act, t);
+        choice.open(["はい", "いいえ"], (idx) => {
+          if (idx === 0) activateShootingLobbyDoor(act, nowMs());
+        }, "このドアにはいる？", { instant: true });
         return;
       }
       if (
@@ -7587,17 +7593,66 @@ if (MOBILE) {
 }
 
 
+const PERF_HUD = true;
+const _perfStats = {
+  frames: 0,
+  accFrame: 0,
+  accUpdate: 0,
+  accDraw: 0,
+  lastWindowStart: 0,
+  fps: 0,
+  frameMs: 0,
+  updateMs: 0,
+  drawMs: 0,
+};
+
+function drawPerfHud() {
+  if (!PERF_HUD) return;
+  ctx.save();
+  ctx.fillStyle = "rgba(0,0,0,0.6)";
+  ctx.fillRect(0, 0, 72, 28);
+  ctx.fillStyle = "#0f0";
+  ctx.font = "8px PixelMplus10, monospace";
+  ctx.textBaseline = "top";
+  ctx.fillText(`${_perfStats.fps.toFixed(0)}fps ${_perfStats.frameMs.toFixed(1)}ms`, 2, 2);
+  ctx.fillText(`u${_perfStats.updateMs.toFixed(1)} d${_perfStats.drawMs.toFixed(1)}`, 2, 14);
+  ctx.restore();
+}
+
 if (!window.__rpgLoopStarted) {
   window.__rpgLoopStarted = true;
 
   function loop(t) {
+    const _a = performance.now();
     update(t);
+    const _b = performance.now();
     draw();
+    const _c = performance.now();
+    if (PERF_HUD) {
+      _perfStats.frames += 1;
+      _perfStats.accFrame  += _c - _a;
+      _perfStats.accUpdate += _b - _a;
+      _perfStats.accDraw   += _c - _b;
+      if (_c - _perfStats.lastWindowStart >= 500) {
+        const elapsed = _c - _perfStats.lastWindowStart || 1;
+        _perfStats.fps      = (_perfStats.frames * 1000) / elapsed;
+        _perfStats.frameMs  = _perfStats.accFrame  / _perfStats.frames;
+        _perfStats.updateMs = _perfStats.accUpdate / _perfStats.frames;
+        _perfStats.drawMs   = _perfStats.accDraw   / _perfStats.frames;
+        _perfStats.frames = 0;
+        _perfStats.accFrame = 0;
+        _perfStats.accUpdate = 0;
+        _perfStats.accDraw = 0;
+        _perfStats.lastWindowStart = _c;
+      }
+      drawPerfHud();
+    }
     requestAnimationFrame(loop);
   }
 
   // フォント読み込み完了後にループ開始（初回テキスト化け防止）
   document.fonts.load("10px PixelMplus10").then(() => {
+    _perfStats.lastWindowStart = performance.now();
     requestAnimationFrame(loop);
   });
 }
