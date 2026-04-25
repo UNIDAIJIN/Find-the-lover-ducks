@@ -14,7 +14,7 @@ import { createTitle  }     from "./title.js";
 import { createCharSelect } from "./char_select.js";
 import { createLoading }    from "./loading.js";
 import { setupMobileController } from "./mobile_controller.js";
-import { playSuzu, playDoor, playZazza, playHoleFall, playHoleRoll, playConfirm, playClickOn, playCursor, playTimeMachineShine, playWave, startHeartbeat, stopHeartbeat, playQuestJingleB, playPunch, startShootingBgm, stopShootingBgm, startAfloClubBgm, stopAfloClubBgm, stopJaws, playBattleWinJingle, getAfloClubKickPulseMs, unlockSeAudio, startRainLoop, stopRainLoop, startSeasideBgm, stopSeasideBgm, startDivingBgm, stopDivingBgm, playDinoStep, playBirdCall, playWingFlap, startWaterfall, setWaterfallVol, stopWaterfall, startPhoneRing, stopPhoneRing, playPhonePick, playPhoneHang, playDadaan, startMetalBgm, stopMetalBgm, startChaosMetalBgm, stopChaosMetalBgm, playAlienTypingNoise, playGlassShatter } from "./se.js";
+import { playSuzu, playDoor, playZazza, playHoleFall, playHoleRoll, playConfirm, playClickOn, playCursor, playTimeMachineShine, playWave, startHeartbeat, stopHeartbeat, playQuestJingleB, playPunch, startShootingBgm, stopShootingBgm, startAfloClubBgm, stopAfloClubBgm, stopJaws, playBattleWinJingle, getAfloClubKickPulseMs, unlockSeAudio, startRainLoop, stopRainLoop, startSeasideBgm, stopSeasideBgm, startDivingBgm, stopDivingBgm, playDinoStep, playBirdCall, playWingFlap, startWaterfall, setWaterfallVol, stopWaterfall, startPhoneRing, stopPhoneRing, playPhonePick, playPhoneHang, playDadaan, startMetalBgm, stopMetalBgm, startChaosMetalBgm, stopChaosMetalBgm, playAlienTypingNoise, playGlassShatter, playItemJingle } from "./se.js";
 import { createMenu } from "./ui_menu.js";
 import { createTripEffect }     from "./trip_effect.js";
 import { createGoodTripEffect } from "./trip_effect_good.js";
@@ -180,6 +180,7 @@ const bgTopImg      = new Image();
 const bgMidImg      = new Image();
 const bgShrineImg    = new Image();
 const bgShrineTopImg = new Image();
+const bgShoreImg     = new Image();
 const col = makeColStore();
 const MOBILE_MAP_CHUNK = 512;
 const MOBILE_MAP_CACHE_LIMIT = 12;
@@ -4920,10 +4921,12 @@ function loadMap(id, opt = null) {
   bgMidImg.src         = def.bgMidSrc       || "";
   bgShrineImg.src      = def.bgShrineSrc    || "";
   bgShrineTopImg.src   = def.bgShrineTopSrc || "";
+  bgShoreImg.src       = def.bgShoreSrc     || "";
   current.hasBgTop       = !!def.bgTopSrc;
   current.hasBgMid       = !!def.bgMidSrc;
   current.hasBgShrine    = !!def.bgShrineSrc;
   current.hasBgShrineTop = !!def.bgShrineTopSrc;
+  current.hasBgShore     = !!def.bgShoreSrc;
   shrineMode = false;
   shrineFade = 0;
   shrineTriggerActive = false;
@@ -5439,6 +5442,9 @@ function draw() {
   } else {
     drawMapImg(bgImg);
     drawWaterSea(ctx);
+    if (current.hasBgShore && (((tt / 800) | 0) & 1) === 0) {
+      drawMapImg(bgShoreImg);
+    }
     if (shrineFade > 0 && current.hasBgShrine) drawMapImg(bgShrineImg, shrineFade);
   }
 
@@ -6617,6 +6623,7 @@ function tryInteract(t) {
       // クエスト01: ラバーダック取得時だけ判定
       if (String(id).startsWith("rubber_duck_")) checkQuest01();
 
+      playItemJingle();
       const name = itemName(id);
       if (id === "moon_stone") dialog.open([["つきのいしをてにいれた！"]], null, "sign");
       else dialog.open([[`${name} をてにいれた。`]], null, "sign");

@@ -4,6 +4,7 @@ export const outdoorMap = {
   bgTopSrc:       "assets/maps/outdoor_top.png",
   bgMidSrc:       "assets/maps/outdoor_mid.png",
   bgShrineSrc:    "assets/maps/outdoor_shrine.png",
+  bgShoreSrc:     "assets/maps/outdoor_shore.png",
   bgShrineTopSrc: "assets/maps/outdoor_shrine_top.png",
   colSrc:         "assets/maps/outdoor_col.png",
   bgmSrc:         "assets/audio/bgm0.mp3",
