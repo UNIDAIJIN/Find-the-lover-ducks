@@ -14,7 +14,7 @@ export function createBgm({
     "assets/audio/bgm_end.mp3": 0.82,
     "assets/audio/bgm_select.mp3": 0.9,
     "assets/audio/bgm_movie.mp3": 2.4,
-    "assets/audio/duckA.mp3": 0.92,
+    "assets/audio/duckA.mp3": 2.0,
     "assets/audio/duckB.mp3": 1.0,
     "assets/audio/duckC.mp3": 0.76,
     "assets/audio/duckD.mp3": 1.0,

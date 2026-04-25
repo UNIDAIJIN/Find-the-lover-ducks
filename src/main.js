@@ -181,6 +181,50 @@ const bgMidImg      = new Image();
 const bgShrineImg    = new Image();
 const bgShrineTopImg = new Image();
 const bgShoreImg     = new Image();
+const bgShoreCanvas  = document.createElement("canvas");
+let bgShoreReady = false;
+let bgShoreOffsetX = 0;
+let bgShoreOffsetY = 0;
+bgShoreImg.onload = () => {
+  if (!bgShoreImg.naturalWidth) return;
+  const w = bgShoreImg.naturalWidth;
+  const h = bgShoreImg.naturalHeight;
+  const tc = document.createElement("canvas");
+  tc.width = w;
+  tc.height = h;
+  const tx = tc.getContext("2d", { willReadFrequently: true });
+  tx.drawImage(bgShoreImg, 0, 0);
+  const data = tx.getImageData(0, 0, w, h).data;
+  let minX = w, minY = h, maxX = -1, maxY = -1;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (data[(y * w + x) * 4 + 3] > 0) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+  if (maxX < 0) { bgShoreReady = false; return; }
+  const cw = maxX - minX + 1;
+  const ch = maxY - minY + 1;
+  bgShoreCanvas.width = cw;
+  bgShoreCanvas.height = ch;
+  const bcx = bgShoreCanvas.getContext("2d");
+  bcx.imageSmoothingEnabled = false;
+  bcx.drawImage(bgShoreImg, minX, minY, cw, ch, 0, 0, cw, ch);
+  bgShoreOffsetX = minX;
+  bgShoreOffsetY = minY;
+  bgShoreReady = true;
+  bgShoreImg.src = ""; // free decoded memory of full-size PNG
+};
+function drawBgShore() {
+  if (!bgShoreReady) return;
+  const dx = (bgShoreOffsetX - cam.x) | 0;
+  const dy = (bgShoreOffsetY - cam.y) | 0;
+  ctx.drawImage(bgShoreCanvas, dx, dy);
+}
 const col = makeColStore();
 const MOBILE_MAP_CHUNK = 512;
 const MOBILE_MAP_CACHE_LIMIT = 12;
@@ -4927,6 +4971,7 @@ function loadMap(id, opt = null) {
   current.hasBgShrine    = !!def.bgShrineSrc;
   current.hasBgShrineTop = !!def.bgShrineTopSrc;
   current.hasBgShore     = !!def.bgShoreSrc;
+  if (!current.hasBgShore) bgShoreReady = false;
   shrineMode = false;
   shrineFade = 0;
   shrineTriggerActive = false;
@@ -5442,8 +5487,8 @@ function draw() {
   } else {
     drawMapImg(bgImg);
     drawWaterSea(ctx);
-    if (current.hasBgShore && (((tt / 800) | 0) & 1) === 0) {
-      drawMapImg(bgShoreImg);
+    if (current.hasBgShore && bgShoreReady && (((tt / 800) | 0) & 1) === 0) {
+      drawBgShore();
     }
     if (shrineFade > 0 && current.hasBgShrine) drawMapImg(bgShrineImg, shrineFade);
   }
