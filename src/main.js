@@ -134,7 +134,7 @@ const fade = createFade({ BASE_W, BASE_H, canvas, input, mapOutMs: MAP_FADE_OUT_
 
 const interactionSession = createInteractionSession({
   input,
-  isUiActive: () => dialog.isActive() || choice.isActive() || shop.isActive() || fade.isActive(),
+  isUiActive: () => dialog.isActive() || choice.isActive() || shop.isActive() || fade.isActive() || input.isLocked(),
 });
 
 const dialogOpenRaw = dialog.open.bind(dialog);
@@ -534,6 +534,8 @@ function updateSpaceBossOutdoorEpilogue(tt) {
   }
   if (!scene.creditsStarted && scene.waitStartMs != null && tt - scene.waitStartMs >= scene.waitMs) {
     scene.creditsStarted = true;
+    interactionSession.end();
+    letterbox.reset();
     input.clear();
     input.unlock();
     ending.startCredits(tt);
@@ -2644,6 +2646,14 @@ function spawnActorsForMap(mapId) {
       }
     }
   }
+  if (mapId === "outdoor" && STATE.achievedQuests.has("12")) {
+    const a = actors.find((a) => a.name === "lucha");
+    if (a) {
+      a.hidden = true;
+      a.solid = false;
+      a.talkHit = { x: 0, y: 0, w: 0, h: 0 };
+    }
+  }
   if (mapId === "house07" && STATE.flags.ac1Gone) {
     const a = actors.find((a) => a.name === "ac_1");
     if (a) {
@@ -2695,7 +2705,7 @@ function spawnActorsForMap(mapId) {
       frame: 0,
       last: 0,
       img: pickupSpriteFor(itemId),
-      talkHit: { x: 0, y: 0, w: 16, h: 16 },
+      talkHit: p.talkHit || { x: 0, y: 0, w: 16, h: 16 },
       solid: true,
       animMs: NPC_FRAME_MS,
       sparkle: itemId === "moon_stone" || itemId === "iron_heart",
@@ -2957,6 +2967,7 @@ let sbBlackHole = false;
 let sbSuck = null;
 let sbBoss = null;
 let sbWhiteFlash = null;
+let _whiteFlash = null;
 let sbBossType = null;
 let sbCactusIntro = null;
 let sbLastBattleStarted = false;
@@ -3291,6 +3302,7 @@ function startAfloClubBlackout(t) {
   const ts = typeof t === "number"
     ? t
     : (typeof performance !== "undefined" && performance.now ? performance.now() : Date.now());
+  interactionSession.end();
   input.lock();
   playClickOn();
   stopAfloClubBgm();
@@ -3700,6 +3712,7 @@ const menu = createMenu({
 let pendingBattlePages   = null; // { win, lose, winEnding }
 let partyVisible         = true;
 let pendingEndingFadeIn  = false;
+let continueRevealFx     = null; // { phase: "loading" | "reveal", startMs, duration, cx, cy, maxR }
 let spaceBossWhiteReunion = null; // { startMs }
 let spaceBossMoonScene = null; // { startMs, stars }
 let spaceBossOutdoorEpilogue = null; // { fadeStartMs, fadeMs, waitMs }
@@ -4172,7 +4185,7 @@ function clearFlags() {
 function resetProgress() {
   collectedItems.clear();
   clearFlags();
-  STATE.money    = 10000;
+  STATE.money    = 0;
   STATE.headwear = null;
   STATE.achievedQuests.clear();
   resetHeightState();
@@ -4221,10 +4234,76 @@ function saveGame() {
   saveNotice = { text: "SAVED", until: nowMs() + 1200 };
 }
 
-function loadGame() {
+function beginContinueReveal() {
+  input.lock();
+  const w = canvas.width || BASE_W;
+  const h = canvas.height || BASE_H;
+  continueRevealFx = {
+    phase: "loading",
+    startMs: 0,
+    duration: 720,
+    cx: w / 2,
+    cy: h / 2,
+    maxR: Math.sqrt(w * w + h * h) + 4,
+  };
+}
+
+function startContinueReveal() {
+  if (!continueRevealFx) return;
+  continueRevealFx.phase = "reveal";
+  continueRevealFx.startMs = nowMs();
+  input.lock();
+}
+
+function updateContinueReveal(t) {
+  if (!continueRevealFx) return false;
+  if (continueRevealFx.phase === "loading") {
+    if (mapReady) startContinueReveal();
+    return true;
+  }
+  if (continueRevealFx.phase === "reveal") {
+    if (t - continueRevealFx.startMs >= continueRevealFx.duration) {
+      continueRevealFx = null;
+      input.unlock();
+      return false;
+    }
+    return true;
+  }
+  return false;
+}
+
+function drawContinueRevealOverlay(ctx, t) {
+  if (!continueRevealFx) return false;
+  const w = canvas.width || BASE_W;
+  const h = canvas.height || BASE_H;
+  if (continueRevealFx.phase === "loading") {
+    ctx.save();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, w, h);
+    ctx.restore();
+    return true;
+  }
+
+  const p = Math.max(0, Math.min(1, (t - continueRevealFx.startMs) / continueRevealFx.duration));
+  const e = p * p * (3 - 2 * p);
+  const r = continueRevealFx.maxR * e;
+  ctx.save();
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = "#000";
+  ctx.beginPath();
+  ctx.rect(0, 0, w, h);
+  ctx.arc(continueRevealFx.cx, continueRevealFx.cy, r, 0, Math.PI * 2, true);
+  ctx.fill("evenodd");
+  ctx.restore();
+  return false;
+}
+
+function loadGame(opt = {}) {
   const raw = localStorage.getItem(SAVE_KEY);
   if (!raw) { saveNotice = { text: "NO DATA", until: nowMs() + 1200 }; return; }
   try {
+    if (opt.fromTitle) beginContinueReveal();
     const data = JSON.parse(raw);
     collectedItems.clear();
     for (const id of (data.collectedItems || [])) collectedItems.add(id);
@@ -4245,9 +4324,14 @@ function loadGame() {
     setupParty(data.leaderIdx | 0);
     applySkinLevel(STATE.flags.skinLevel | 0);
     bgmCtl.setOverride(null);
-    loadMap(data.mapId || "outdoor", { spawnAt: { x: data.leaderX, y: data.leaderY } });
-    saveNotice = { text: "LOADED", until: nowMs() + 1200 };
+    loadMap(data.mapId || "outdoor", {
+      spawnAt: { x: data.leaderX, y: data.leaderY },
+      onReady: opt.fromTitle ? startContinueReveal : null,
+    });
+    if (!opt.fromTitle) saveNotice = { text: "LOADED", until: nowMs() + 1200 };
   } catch (e) {
+    continueRevealFx = null;
+    input.unlock();
     saveNotice = { text: "LOAD ERROR", until: nowMs() + 1200 };
   }
 }
@@ -4274,6 +4358,8 @@ const battle = createBattleSystem({
         popBgmOverride({ safe: false });
         setGameResolution(BASE_W, BASE_H);
         pendingBattlePages = null;
+        interactionSession.begin();
+        letterbox.snapAuto(true);
       },
       onEnd: () => {
         input.unlock();
@@ -4332,6 +4418,8 @@ const battle = createBattleSystem({
     pendingBattlePages = null;
 
     const triggerEnding = () => {
+      interactionSession.end();
+      letterbox.reset();
       bgmCtl.setOverride("about:blank");
       fade.startIrisFade(nowMs(), {
         outMs:   800,
@@ -5270,7 +5358,9 @@ function drawEntry(o) {
     if (hasFilter) ctx.filter = o.filter;
     if (hasScale || hasRotation) {
       const sx = ((o.x - cam.x) | 0) + sprSize / 2;
-      const sy = ((o.y - cam.y) | 0) + sprSizeH - 3;
+      const sy = o.pivotMode === "center"
+        ? ((o.y - cam.y) | 0) + sprSizeH / 2
+        : ((o.y - cam.y) | 0) + sprSizeH - 3;
       ctx.translate(sx, sy);
       ctx.scale(o.scale, o.scale);
       if (hasRotation) ctx.rotate(o.rotation);
@@ -5285,6 +5375,47 @@ function drawEntry(o) {
     if (o.shadowImg) drawSprite(o.shadowImg, 0, o.x + (o.shadowOff?.x ?? 0), o.y + (o.shadowOff?.y ?? 0), sprSize, sprSizeH);
     drawSprite(o.img, o.frame, o.x, o.y, sprSize, sprSizeH);
     if (o.metImg) drawSprite(o.metImg, 0, o.x, o.y, sprSize, sprSizeH);
+  }
+
+  if (o.pickupVanishStart) {
+    const dur = o.pickupVanishDur || 520;
+    const vp = Math.min(1, (nowMs() - o.pickupVanishStart) / dur);
+    const HOP_SPLIT = 0.4;
+    if (vp >= HOP_SPLIT) {
+      const sp = (vp - HOP_SPLIT) / (1 - HOP_SPLIT);
+      const cx = ((o.x - cam.x) | 0) + sprSize / 2;
+      const cy = ((o.y - cam.y) | 0) + sprSizeH / 2;
+      // 白シルエット発光
+      tintCanvas.width = sprSize; tintCanvas.height = sprSizeH;
+      tintCtx.clearRect(0, 0, sprSize, sprSizeH);
+      tintCtx.globalCompositeOperation = "source-over";
+      tintCtx.drawImage(o.img, (o.frame * sprSize) | 0, 0, sprSize, sprSizeH, 0, 0, sprSize, sprSizeH);
+      tintCtx.globalCompositeOperation = "source-in";
+      tintCtx.fillStyle = "#fff";
+      tintCtx.fillRect(0, 0, sprSize, sprSizeH);
+      tintCtx.globalCompositeOperation = "source-over";
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      ctx.globalAlpha = (1 - sp) * sp * 4;
+      ctx.translate(cx, cy);
+      const gs = 1 - sp;
+      ctx.scale(gs, gs);
+      ctx.rotate(sp * Math.PI * 2);
+      ctx.drawImage(tintCanvas, -sprSize / 2, -sprSizeH / 2);
+      ctx.restore();
+      // スパークル
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2 + sp * 4;
+        const r = sp * 18;
+        const px = cx + Math.cos(a) * r;
+        const py = cy + Math.sin(a) * r;
+        ctx.save();
+        ctx.globalAlpha = (1 - sp) * 0.9;
+        ctx.fillStyle = "#aef";
+        ctx.fillRect(px | 0, py | 0, 2, 2);
+        ctx.restore();
+      }
+    }
   }
 
   if (o.ironHeartMark) {
@@ -5411,6 +5542,11 @@ function draw() {
     const tt = typeof performance !== "undefined" ? performance.now() : Date.now();
     charSelect.draw(ctx, tt);
     return;
+  }
+
+  {
+    const tt = typeof performance !== "undefined" ? performance.now() : Date.now();
+    if (continueRevealFx?.phase === "loading" && drawContinueRevealOverlay(ctx, tt)) return;
   }
 
   if (mechaEvolution.active) {
@@ -5624,6 +5760,7 @@ function draw() {
       }
     }
     if (act.hidden) continue;
+    if (act.noRender) continue;
     let bgmFadeAlpha = 1;
     if (act.showWhenBgm) {
       const match = bgmCtl.getOverrideSrc() === act.showWhenBgm;
@@ -5665,6 +5802,9 @@ function draw() {
           ia.markAnimStart = act.markAnimStart;
           ia.markAnimUntil = act.markAnimUntil;
           ia.vanishStart = act.vanishStart;
+          ia.pickupVanishStart = act.pickupVanishStart;
+          ia.pickupVanishDur = act.pickupVanishDur;
+          ia.pivotMode = act.pivotMode;
           ia.glow = act.glow;
           ia.ironHeartMark = act.ironHeartMark;
     if (sbSuck && sbSuck.targets.includes(act)) {
@@ -5937,7 +6077,7 @@ function draw() {
   }
 
   menu.draw(ctx);
-  letterbox.draw(ctx, tt);
+  if (!ending.isActive()) letterbox.draw(ctx, tt);
   dialog.draw(ctx);
   choice.draw(ctx);
   shop.draw(ctx);
@@ -6054,6 +6194,22 @@ function draw() {
   drawShootingDifficultyUi(tt);
 
   fade.draw(ctx);
+  drawContinueRevealOverlay(ctx, tt);
+
+  if (_whiteFlash) {
+    const elapsed = nowMs() - _whiteFlash.startMs;
+    const p = elapsed / _whiteFlash.duration;
+    if (p >= 1) {
+      _whiteFlash = null;
+    } else {
+      const a = p < 0.18 ? p / 0.18 : 1 - (p - 0.18) / (1 - 0.18);
+      ctx.save();
+      ctx.fillStyle = "#fff";
+      ctx.globalAlpha = Math.max(0, Math.min(1, a));
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.restore();
+    }
+  }
 
   // ---- 負け演出コミックポップ ----
   if (beatPops.length > 0) {
@@ -6256,8 +6412,35 @@ function draw() {
   if (tripDuck) tripDuck.alpha = trip.getIntensity() + goodTrip.getIntensity();
 }
 
+function updatePickupVanish(t) {
+  const HOP_SPLIT = 0.4;
+  const HOP_HEIGHT = 9;
+  for (let i = actors.length - 1; i >= 0; i--) {
+    const act = actors[i];
+    if (!act.pickupVanishStart) continue;
+    const dur = act.pickupVanishDur || 520;
+    const p = Math.min(1, (t - act.pickupVanishStart) / dur);
+    if (act.pickupVanishBaseY === undefined) act.pickupVanishBaseY = act.y;
+    if (p < HOP_SPLIT) {
+      const hp = p / HOP_SPLIT;
+      act.y        = act.pickupVanishBaseY - Math.sin(hp * Math.PI) * HOP_HEIGHT;
+      act.scale    = 1;
+      act.rotation = 0;
+      act.alpha    = 1;
+    } else {
+      const sp = (p - HOP_SPLIT) / (1 - HOP_SPLIT);
+      act.y        = act.pickupVanishBaseY;
+      act.scale    = 1 - sp;
+      act.rotation = sp * Math.PI * 2;
+      act.alpha    = 1 - sp;
+    }
+    if (p >= 1) actors.splice(i, 1);
+  }
+}
+
 // ---- Update ----
 function updateNpcAnim(t) {
+  updatePickupVanish(t);
   const cullMargin = 32;
   const camLeft   = cam.x - cullMargin;
   const camRight  = cam.x + canvas.width + cullMargin;
@@ -6414,6 +6597,24 @@ function updateShootingDoorMarkers(t) {
   }
 }
 
+let _letterboxTalkPending = false;
+
+function findInteractTarget() {
+  const a = talkBoxLeader();
+  for (let i = 0; i < actors.length; i++) {
+    const act = actors[i];
+    if (act.hidden) continue;
+    if (current.id === "shooting_lobby" && act.name?.startsWith("door_") && (act.explodeStart || act.vanishStart)) continue;
+    const b = (current.id === "shooting_lobby" && act.name?.startsWith("door_"))
+      ? npcFootBox(act)
+      : talkRectActor(act);
+    if (!hitRect(a, b)) continue;
+    if (act.kind === "npc" && act.showWhenBgm && bgmCtl.getOverrideSrc() !== act.showWhenBgm) continue;
+    return act;
+  }
+  return null;
+}
+
 // ★ここを t を受け取る形にする
 function tryInteract(t) {
   if (interactionSession.isActive()) return;
@@ -6474,6 +6675,7 @@ function tryInteract(t) {
         stopBgm:      () => bgmCtl.setOverride("about:blank"),
         startAfloClubBlackout: () => startAfloClubBlackout(t),
         startTrip: () => {
+          interactionSession.end();
           STATE.flags.tripCount = (STATE.flags.tripCount | 0) + 1;
           if (STATE.flags.tripCount >= 10) achieveQuest("09");
           trip.start(() => {
@@ -6487,6 +6689,7 @@ function tryInteract(t) {
           }
         },
         startGoodTrip: () => {
+          interactionSession.end();
           STATE.flags.tripCount = (STATE.flags.tripCount | 0) + 1;
           if (STATE.flags.tripCount >= 10) achieveQuest("09");
           goodTrip.start(() => {
@@ -6508,6 +6711,9 @@ function tryInteract(t) {
           followers.reset({ leader, p2, p3, p4 });
         },
         spawnPickup,
+        triggerWhiteFlash: (durMs = 600) => {
+          _whiteFlash = { startMs: nowMs(), duration: durMs };
+        },
         triggerRedScreen: () => {
           redScreenStart = (typeof performance !== "undefined" ? performance.now() : Date.now());
           letterbox.disableSepia();
@@ -6611,6 +6817,7 @@ function tryInteract(t) {
             }
             if (typeof onDone === "function") {
               interactionSession.begin();
+              letterbox.snapAuto(true);
               interactionSession.trackSync(() => onDone());
             }
           });
@@ -6657,6 +6864,8 @@ function tryInteract(t) {
           const winPages = pages || act.battleWinPages || null;
           const isEnding = !!act.battleWinEnding;
           const triggerEnd = () => {
+            interactionSession.end();
+            letterbox.reset();
             bgmCtl.setOverride("about:blank");
             fade.startIrisFade(nowMs(), {
               outMs: 800, holdMs: 500, inMs: 300,
@@ -6745,7 +6954,14 @@ function tryInteract(t) {
       if (id === "rubber_duck_I") STATE.flags.duckICollected = true;
       if (id === "rubber_duck_F") STATE.flags.duckFCollected = true;
 
-      actors.splice(i, 1);
+      act.pickupVanishStart = nowMs();
+      act.pickupVanishDur   = 520;
+      act.solid             = false;
+      act.talkHit           = { x: 0, y: 0, w: 0, h: 0 };
+      act.scale             = 1;
+      act.rotation          = 0;
+      act.alpha             = 1;
+      act.pivotMode         = "center";
 
       // クエスト01: ラバーダック取得時だけ判定
       if (String(id).startsWith("rubber_duck_")) checkQuest01();
@@ -6777,6 +6993,13 @@ function update(t) {
     charSelect.update();
     return;
   }
+
+  if (updateContinueReveal(t)) {
+    updateCam();
+    return;
+  }
+
+  letterbox.setAuto(!ending.isActive() && (interactionSession.isActive() || _letterboxTalkPending));
 
   if (mechaEvolution.active) {
     if (mechaEvolution.phase === "queued") {
@@ -6893,6 +7116,8 @@ function update(t) {
   // フェードイン完了 → エンディング開始
   if (pendingEndingFadeIn) {
     pendingEndingFadeIn = false;
+    interactionSession.end();
+    letterbox.reset();
     bgmCtl.setOverride("assets/audio/bgm_end.mp3");
     bgmCtl.audio.loop = false;
     ending.start(t);
@@ -7068,7 +7293,7 @@ function update(t) {
     choice.update();
     leader.frame = 0;
     p2.frame = p3.frame = p4.frame = 0;
-    for (const act of actors) act.frame = 0;
+    updateNpcAnim(t);
     updateCam();
     return;
   }
@@ -7078,7 +7303,7 @@ function update(t) {
     dialog.update();
     leader.frame = 0;
     p2.frame = p3.frame = p4.frame = 0;
-    for (const act of actors) act.frame = 0;
+    updateNpcAnim(t);
     updateCam();
     return;
   }
@@ -7086,7 +7311,7 @@ function update(t) {
   if (interactionSession.blockFieldInput()) {
     leader.frame = 0;
     p2.frame = p3.frame = p4.frame = 0;
-    for (const act of actors) act.frame = 0;
+    updateNpcAnim(t);
     updateCam();
     return;
   }
@@ -7175,7 +7400,33 @@ function update(t) {
   updateShootingDoorMarkers(t);
 
   if (input.consume("x")) menu.toggle();
-  if (input.consume("z")) tryInteract(t); // ★tを渡す
+  if (input.consume("z")) {
+    if (_letterboxTalkPending) {
+      // 帯のスライドイン待ち中：何もしない
+    } else {
+      const noUiBlocking =
+        !interactionSession.isActive() &&
+        !dialog.isActive() && !choice.isActive() &&
+        !fade.isActive() && !menu.isOpen() && !battle.isActive();
+      const target = noUiBlocking ? findInteractTarget() : null;
+      const skipPreroll = target?.event?.type === "careful_letterbox";
+      const wantPreroll = target && (target.kind === "npc" || target.kind === "pickup") && !skipPreroll;
+      if (wantPreroll) {
+        _letterboxTalkPending = true;
+        input.lock();
+        letterbox.setAuto(true);
+        letterbox.onAutoShown(() => {
+          setTimeout(() => {
+            _letterboxTalkPending = false;
+            input.unlock();
+            tryInteract(nowMs());
+          }, 180);
+        });
+      } else {
+        tryInteract(t);
+      }
+    }
+  }
 
   // セーブ / ロード
   if (input.consume("s")) { saveGame(); return; }
@@ -7200,9 +7451,9 @@ function update(t) {
     return;
   }
 
-  // D で shooting_lobby へワープ（デバッグ）
+  // D で d_hole へワープ（デバッグ）
   if (DEBUG && input.consume("d")) {
-    debugJumpToShootingLobby();
+    loadMap("d_hole");
     return;
   }
 
@@ -7753,7 +8004,7 @@ function startTitle() {
     onNewGame() { startNewGameFlow(); },
     onContinue() {
       setGameResolution(BASE_W, BASE_H);
-      if (hasSaveData()) loadGame();
+      if (hasSaveData()) loadGame({ fromTitle: true });
       else startNewGameFlow();
     },
   });

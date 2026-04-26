@@ -52,6 +52,20 @@ export const outdoorMap = {
       entryWalk: { dx: 0, dy: 1, frames: 20 },
     },
     {
+      id:        39,
+      to:        "musium",
+      trigger:   { x: 1577, y: 823, w: 16, h: 8 }, // 底辺中心 (1585,827)
+      entryAt:   { x: 1577, y: 815 },
+      entryWalk: { dx: 0, dy: 1, frames: 20 },
+    },
+    {
+      id:        40,
+      to:        "pub",
+      trigger:   { x: 1630, y: 939, w: 16, h: 8 }, // 底辺中心 (1638,943)
+      entryAt:   { x: 1630, y: 931 },
+      entryWalk: { dx: 0, dy: 1, frames: 20 },
+    },
+    {
       id:        6,
       to:        "ura_ketchupug",
       trigger:   { x: 2024, y: 1076, w: 16, h: 8 },

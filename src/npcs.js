@@ -112,6 +112,17 @@ export const NPCS_BY_MAP = {
       talkPages: [["なんと！一室まるまる日サロ！サン・ラヴァー"]],
       talkType: "sign",
     }),
+    resolve({
+      kind: "npc",
+      name: "board_telescope_fossil",
+      x: 1790,
+      y: 734,
+      talkHit: { x: 0, y: 0, w: 26, h: 16 },
+      talkType: "sign",
+      talkPages: [["恐竜の化石と一緒に出土したなぞの望遠鏡。今はもう動かない。"]],
+      solid: false,
+      noRender: true,
+    }),
     resolve(timemachineSlotNpc),
     resolve(seatsNpc),
     resolve(cat1Npc),
@@ -204,6 +215,31 @@ export const NPCS_BY_MAP = {
 
   moritasaki_room: [
     resolve(moritasakiGiftNpc),
+  ],
+
+  musium: [
+    resolve({
+      kind: "npc",
+      name: "yasu",
+      spriteKey: "yasu",
+      x: 54,
+      y: 150,
+      animMs: Infinity,
+      talkHit: { x: 0, y: 0, w: 16, h: 16 },
+      talkPages: [["本日、２階常設展はご覧になれません。"], ["ご了承ください。"]],
+      solid: true,
+    }),
+    resolve({
+      kind: "npc",
+      name: "musium_benki",
+      x: 220,
+      y: 124,
+      talkHit: { x: 0, y: 0, w: 16, h: 16 },
+      talkType: "sign",
+      talkPages: [["《便器》1917", "既製品"]],
+      solid: false,
+      noRender: true,
+    }),
   ],
 
   vj_room01: [
@@ -326,6 +362,15 @@ export const NPCS_BY_MAP = {
 
   inn: [
     resolve(ponydeadyouthNpc),
+    resolve({
+      kind: "npc",
+      name: "inn_door_decoy",
+      x: 147,
+      y: 123,
+      talkHit: { x: 0, y: 0, w: 16, h: 16 },
+      event: { type: "double_door" },
+      noRender: true,
+    }),
   ],
 };
 

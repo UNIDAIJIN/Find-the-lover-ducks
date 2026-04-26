@@ -7,6 +7,6 @@ export const moritasakiGiftNpc = {
   y:         128,
   talkHit:   { x: 0, y: 0, w: 8, h: 8 },
   solid:     false,
-  hidden:    true,
+  noRender:  true,
   event:     { type: "moritasaki_gift" },
 };

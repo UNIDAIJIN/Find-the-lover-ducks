@@ -53,6 +53,7 @@ export function createInput() {
   return {
     lock()   { _locked = true;  downSet.clear(); hitSet.clear(); },
     unlock() { _locked = false; },
+    isLocked() { return _locked; },
     down(key) {
       if (_locked) return false;
       return downSet.has(normKey(key));

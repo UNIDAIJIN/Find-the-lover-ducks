@@ -5,12 +5,21 @@ const BAR_H  = 32;   // 各帯の最大高さ（px）
 const IN_MS  = 400;  // スライドイン時間
 const OUT_MS = 320;  // スライドアウト時間
 
+const AUTO_BAR_H  = 32;
+const AUTO_IN_MS  = 400;
+const AUTO_OUT_MS = 320;
+
 let _phase       = "hidden"; // "hidden" | "in" | "shown" | "out"
 let _startMs     = 0;
 let _progress    = 0;        // 0=隠れ, 1=全開
 let _onShown     = null;
 let _onHidden    = null;
 let _sepiaActive = true;
+
+let _autoTarget   = 0;
+let _autoProgress = 0;
+let _lastTickMs   = 0;
+let _autoShownCbs = [];
 
 function ease(t) {
   // smoothstep
@@ -47,6 +56,27 @@ export function reset() {
   _sepiaActive = true;
   _onShown     = null;
   _onHidden    = null;
+  _autoTarget   = 0;
+  _autoProgress = 0;
+  _lastTickMs   = 0;
+  _autoShownCbs = [];
+}
+
+export function setAuto(on) {
+  _autoTarget = on ? 1 : 0;
+  if (!on) _autoShownCbs = [];
+}
+
+export function snapAuto(on) {
+  _autoTarget = on ? 1 : 0;
+  _autoProgress = _autoTarget;
+  if (!on) _autoShownCbs = [];
+}
+
+export function onAutoShown(cb) {
+  if (typeof cb !== "function") return;
+  if (_autoTarget === 1 && _autoProgress >= 1) { cb(); return; }
+  _autoShownCbs.push(cb);
 }
 
 export function getSepiaAmount() {
@@ -54,7 +84,18 @@ export function getSepiaAmount() {
 }
 
 export function draw(ctx, nowMs) {
-  if (_phase === "hidden") return;
+  const dt = _lastTickMs ? Math.min(nowMs - _lastTickMs, 100) : 0;
+  _lastTickMs = nowMs;
+  if (_autoProgress < _autoTarget) {
+    _autoProgress = Math.min(_autoTarget, _autoProgress + dt / AUTO_IN_MS);
+  } else if (_autoProgress > _autoTarget) {
+    _autoProgress = Math.max(_autoTarget, _autoProgress - dt / AUTO_OUT_MS);
+  }
+  if (_autoTarget === 1 && _autoProgress >= 1 && _autoShownCbs.length > 0) {
+    const cbs = _autoShownCbs;
+    _autoShownCbs = [];
+    for (const cb of cbs) cb();
+  }
 
   if (_phase === "in") {
     const t = Math.min((nowMs - _startMs) / IN_MS, 1);
@@ -74,7 +115,9 @@ export function draw(ctx, nowMs) {
     }
   }
 
-  const h = Math.round(BAR_H * _progress);
+  const cinematicH = Math.round(BAR_H * _progress);
+  const autoH      = Math.round(AUTO_BAR_H * ease(_autoProgress));
+  const h          = Math.max(cinematicH, autoH);
   if (h <= 0) return;
 
   const W = ctx.canvas.width;

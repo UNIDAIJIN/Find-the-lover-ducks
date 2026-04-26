@@ -14,6 +14,6 @@ export const ponydeadyouthNpc = {
     options:  ["はい", "いいえ"],
     onNo:     [["ロビーでくつろぐのはタダですから、ごじゆうにー。"]],
     restAt:   { x: 147, y: 123 },
-    firstStaySpawn: { itemId: "rubber_duck_D", x: 133, y: 123, flag: "innDuckSpawned" },
+    firstStaySpawn: { itemId: "rubber_duck_D", x: 178, y: 149, flag: "innDuckSpawned" },
   },
 };

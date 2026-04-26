@@ -19,7 +19,7 @@ export const PICKUPS_BY_MAP = {
     { itemId: "rubber_duck_I", x: 151, y: 293 },
   ],
   charch: [
-    { itemId: "rubber_duck_B", x: 192, y: 127 },
+    { itemId: "rubber_duck_B", x: 192, y: 127, talkHit: { x: 0, y: 0, w: 16, h: 30 } },
   ],
   space: [
     { itemId: "moon_stone", x: 1920, y: 126 },

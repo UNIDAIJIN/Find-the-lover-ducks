@@ -364,6 +364,9 @@ export function drawBattleScreen(ctx, st, opt) {
       }
     }
 
+    const prevSkip = ctx._skipTextShadow;
+    if (selecting) ctx._skipTextShadow = true;
+
     ctx.fillText(c.name, statX + 8, yy);
 
     const hpStr = `HP${String(c.hp).padStart(3, " ")}`;
@@ -372,6 +375,8 @@ export function drawBattleScreen(ctx, st, opt) {
     // status（6文字固定）
     const stStr = String(c.status ?? "").padEnd(6, " ").slice(0, 6);
     ctx.fillText(stStr, statX + 106, yy);
+
+    ctx._skipTextShadow = prevSkip;
   }
 
   // command list

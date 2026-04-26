@@ -171,6 +171,18 @@ export function createJumprope({ BASE_W, BASE_H, input, getParty, yahhyImg } = {
 
   function draw(ctx) {
     if (!active) return;
+    const prevSkipTextShadow = ctx._skipTextShadow;
+    ctx._skipTextShadow = true;
+
+    function drawTextLeft(text, x, y) {
+      ctx.fillText(String(text), Math.round(x), Math.round(y));
+    }
+    function drawTextCenter(text, cx, y) {
+      const s = String(text);
+      const x = Math.round(cx - ctx.measureText(s).width / 2);
+      ctx.textAlign = "left";
+      drawTextLeft(s, x, y);
+    }
 
     // 背景：青空 + 砂浜
     ctx.fillStyle = "#87ceeb";
@@ -214,8 +226,8 @@ export function createJumprope({ BASE_W, BASE_H, input, getParty, yahhyImg } = {
     ctx.fillStyle = "#000";
     ctx.fillRect(CX - 12, 10, 24, 14);
     ctx.fillStyle = "#fff";
-    ctx.textAlign = "center";
-    ctx.fillText(String(count), CX, 12);
+    ctx.textAlign = "left";
+    drawTextCenter(count, CX, 12);
     ctx.textAlign = "left";
 
     // ハイスコア（右下）
@@ -227,17 +239,17 @@ export function createJumprope({ BASE_W, BASE_H, input, getParty, yahhyImg } = {
     ctx.fillStyle = "rgba(0,0,0,0.5)";
     ctx.fillRect(hsX, hsY, hsW, hsH);
     ctx.fillStyle = "#ffe";
-    ctx.fillText(hsText, hsX + 3, hsY + 2);
+    drawTextLeft(hsText, hsX + 3, hsY + 2);
 
     if (phase === "miss") {
       const mw = 48, mh = 14;
-      const mx = CX - mw / 2, my = (BASE_H / 2 + 14) | 0;
+      const mx = Math.round(CX - mw / 2), my = Math.round(BASE_H / 2 + 14);
       ctx.fillStyle    = "#000";
       ctx.fillRect(mx, my, mw, mh);
       ctx.fillStyle    = "#f55";
-      ctx.textAlign    = "center";
+      ctx.textAlign    = "left";
       ctx.textBaseline = "top";
-      ctx.fillText("MISS!", CX, my + 2);
+      drawTextCenter("MISS!", CX, my + 2);
       ctx.textAlign    = "left";
       ctx.textBaseline = "top";
     }
@@ -245,14 +257,13 @@ export function createJumprope({ BASE_W, BASE_H, input, getParty, yahhyImg } = {
     if (phase === "ready") {
       ctx.fillStyle    = "rgba(0,0,0,0.45)";
       ctx.fillRect(0, 0, BASE_W, BASE_H);
-      ctx.font         = "normal 16px PixelMplus10";
-      ctx.textAlign    = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillStyle    = "#fff";
-      ctx.fillText("なわとび", CX, (BASE_H / 2) | 0);
       ctx.font         = "normal 10px PixelMplus10";
+      ctx.textAlign    = "left";
+      ctx.textBaseline = "top";
+      ctx.fillStyle    = "#fff";
+      drawTextCenter("NAWATOBI", CX, ((BASE_H / 2) | 0) - 12);
       ctx.fillStyle    = "#ffe";
-      ctx.fillText("Z でジャンプ", CX, ((BASE_H / 2) | 0) + 20);
+      drawTextCenter("Z でジャンプ", CX, ((BASE_H / 2) | 0) + 8);
       ctx.textAlign    = "left";
       ctx.textBaseline = "top";
     }
@@ -267,10 +278,12 @@ export function createJumprope({ BASE_W, BASE_H, input, getParty, yahhyImg } = {
       ctx.textAlign    = "center";
       ctx.textBaseline = "middle";
       ctx.fillStyle    = "#fff";
-      ctx.fillText(label, CX, (BASE_H / 2) | 0);
+      drawTextCenter(label, CX, (BASE_H / 2) | 0);
       ctx.textAlign    = "left";
       ctx.textBaseline = "top";
     }
+
+    ctx._skipTextShadow = prevSkipTextShadow;
   }
 
   return { isActive, start, close, update, draw };

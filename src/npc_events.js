@@ -9,6 +9,30 @@ export function runNpcEvent(act, ctx) {
   if (!ev || !ev.type) return false;
   if (act._eventBusy) return true;
 
+  if (ev.type === "double_door") {
+    playDoor();
+    setTimeout(playDoor, 320);
+    return true;
+  }
+
+  if (ev.type === "mizugi_couple") {
+    const { dialog, lockInput, unlockInput } = ctx;
+    dialog.open([["いとしいなぁ、"]], () => {
+      if (typeof lockInput === "function") lockInput();
+      setTimeout(() => {
+        if (typeof unlockInput === "function") unlockInput();
+        dialog.open([["いとしいねぇ、"]], () => {
+          if (typeof lockInput === "function") lockInput();
+          setTimeout(() => {
+            if (typeof unlockInput === "function") unlockInput();
+            dialog.open([["あ、虹。"]]);
+          }, 3000);
+        });
+      }, 1000);
+    });
+    return true;
+  }
+
   if (ev.type === "phone_brawl") {
     const { dialog, startPhoneBrawl } = ctx;
     const start = () => {
@@ -146,7 +170,7 @@ export function runNpcEvent(act, ctx) {
     const { choice, dialog, fade, nowMs, stopBgm, startTrip, startGoodTrip, isTripActive } = ctx;
 
     if ((typeof isTripActive === "function" && isTripActive()) || STATE.flags.uraYahhyCooking) {
-      dialog.open([["ほぴょぴょぴょーーー"]]);
+      dialog.open([["ほぴょぴょぴょーーー。"]]);
       return true;
     }
 
@@ -161,7 +185,7 @@ export function runNpcEvent(act, ctx) {
     function showAiyo(curryName) {
       cleanup();
       STATE.flags.uraYahhyCooking = true;
-      dialog.open([["アイヨー、チョットマッテネ"]], () => {
+      dialog.open([["アイヨー、チョットマッテネ。"]], () => {
         if (typeof stopBgm === "function") stopBgm();
         const t = typeof nowMs === "function" ? nowMs() : Date.now();
         fade.startCutFade(t, {
@@ -173,7 +197,7 @@ export function runNpcEvent(act, ctx) {
           },
           onEnd: () => {
             dialog.open(
-              [["オマタセアルー"]],
+              [["オマタセアルー。"]],
               () => {
                 playIndianJingle();
                 if (curryName === "ぐねぐねサバカレー" && typeof startTrip === "function") setTimeout(startTrip, 1810);
@@ -188,7 +212,7 @@ export function runNpcEvent(act, ctx) {
 
     function showKimokimo() {
       cleanup();
-      dialog.open([["ケー、キモキモ、ヒヤカシアルヨ"]]);
+      dialog.open([["ケー、キモキモ、ヒヤカシアル。"]]);
     }
 
     function showChickenChoice() {
@@ -206,14 +230,14 @@ export function runNpcEvent(act, ctx) {
         cleanup();
         if (sel === 0) showAiyo("ぐねぐねサバカレー");
         else showChickenChoice();
-      }, "「ぐねぐねサバカレー」二スルカ");
+      }, "「ぐねぐねサバカレー」二スルカ？");
     }
 
     cleanup();
     dialog.open([
-      ["オニイサン、オネエサン、イイトコキタネー"],
-      ["ココ、ウラノカレーショップ「ウラケチャパグ」アルヨー"],
-      ["イマ「ぐねぐねサバカレー」「ぎらぎらチキンカレー」ネ"],
+      ["オニイサン、オネエサン、イイトコキタネー。"],
+      ["ココ、ウラノカレーショップ「ウラケチャパグ」アルヨー。"],
+      ["イマ「ぐねぐねサバカレー」「ぎらぎらチキンカレー」ネ。"],
     ], showSabaChoice);
 
     return true;
@@ -588,7 +612,7 @@ export function runNpcEvent(act, ctx) {
   }
 
   if (ev.type === "yahhy_jumprope") {
-    const { dialog, jumprope, achieveQuest, choice, beginInteraction, endInteraction } = ctx;
+    const { dialog, jumprope, achieveQuest, choice, beginInteraction, endInteraction, letterbox } = ctx;
     const startJumprope = () => {
       choice.open(["はい", "いいえ"], (sel) => {
         if (sel !== 0) {
@@ -608,6 +632,7 @@ export function runNpcEvent(act, ctx) {
             ? `${count}かい！  ${reward}EN もらった！`
             : count > 0 ? `${count}かい。` : `…。`;
           if (typeof beginInteraction === "function") beginInteraction();
+          if (letterbox && typeof letterbox.snapAuto === "function") letterbox.snapAuto(true);
           dialog.open([[msg]], null, "sign");
         });
       }, "なわとびしていく？");
@@ -616,9 +641,7 @@ export function runNpcEvent(act, ctx) {
     if (!STATE.flags.yahhyJumpropeExplained) {
       STATE.flags.yahhyJumpropeExplained = true;
       dialog.open([
-        ["この前、神社に行ってさ。"],
-        ["木に巻いてあったツナで縄跳びしたらあら不思議。"],
-        ["なんとお金が出てきました。"],
+        ["なわとびのアルバイト、なわとびのアルバイトだよー。"],
       ], startJumprope);
     } else {
       startJumprope();
@@ -702,23 +725,23 @@ export function runNpcEvent(act, ctx) {
   }
 
   if (ev.type === "moritasaki_gift") {
-    const { dialog, inventory } = ctx;
-    if (STATE.flags.moritasakiGiftGave) {
-      dialog.open([["もう　なにもない。"]], null, "sign");
-      return true;
-    }
-    STATE.flags.moritasakiGiftGave = true;
-    STATE.money = Math.min((STATE.money | 0) + 10000, 999999);
-    for (const id of ALL_ITEM_IDS) inventory.addItem(id);
-    playItemJingle();
-    dialog.open([
-      ["10000EN と すべてのアイテムを てにいれた！"],
-    ], null, "sign");
+    const { dialog, inventory, choice } = ctx;
+    choice.open(["はい", "いいえ"], (sel) => {
+      STATE.money = Math.min((STATE.money | 0) + 100000, 999999);
+      if (sel === 0) {
+        for (const id of ALL_ITEM_IDS) inventory.addItem(id);
+        playItemJingle();
+        dialog.open([["100000EN と すべてのアイテムを てにいれた！"]], null, "sign");
+      } else {
+        playItemJingle();
+        dialog.open([["100000EN を てにいれた！"]], null, "sign");
+      }
+    }, "アイテムいりますか？");
     return true;
   }
 
   if (ev.type === "kingyobachi_san_give") {
-    const { dialog, inventory, startDiving } = ctx;
+    const { dialog, inventory, startDiving, lockInput, unlockInput } = ctx;
     if (STATE.flags.kingyobachiSanGave) {
       dialog.open([["肺いっぱいに空気を入れるんだ。"]], () => {
         startDiving(() => {
@@ -734,7 +757,9 @@ export function runNpcEvent(act, ctx) {
         inventory.addItem(ev.giveItem);
         playItemJingle();
         dialog.open([["きんぎょばちを手に入れた。"]], () => {
+          if (typeof lockInput === "function") lockInput();
           setTimeout(() => {
+            if (typeof unlockInput === "function") unlockInput();
             dialog.open([
               ["ところで。"],
               ["はやくこれをかぶってダイビングしたい！うずうずするぜ！"],
@@ -754,7 +779,7 @@ export function runNpcEvent(act, ctx) {
   }
 
   if (ev.type === "sogankyo") {
-    const { choice, dialog, fade, nowMs, startKakoMovie } = ctx;
+    const { choice, dialog, fade, nowMs, startKakoMovie, lockInput, unlockInput } = ctx;
     choice.open(["はい", "いいえ"], (idx) => {
       if (typeof choice.close === "function") choice.close();
       if (idx !== 0) return;
@@ -764,7 +789,9 @@ export function runNpcEvent(act, ctx) {
       }
       STATE.money -= 100;
       playCoin();
+      if (typeof lockInput === "function") lockInput();
       setTimeout(() => {
+        if (typeof unlockInput === "function") unlockInput();
         fade.startCutFade(nowMs(), {
           outMs: 600, holdMs: 1200, inMs: 800,
           onBlack: () => startKakoMovie(),
@@ -803,7 +830,7 @@ export function runNpcEvent(act, ctx) {
   }
 
   if (ev.type === "d_sword_give") {
-    const { dialog, inventory, achieveQuest } = ctx;
+    const { dialog, inventory, achieveQuest, triggerWhiteFlash } = ctx;
     if (STATE.flags.dSwordGave) {
       dialog.open([["……"]]);
     } else {
@@ -812,9 +839,10 @@ export function runNpcEvent(act, ctx) {
       act.img     = SPRITES.d_sword_off;
       act.animMs  = Infinity;
       act.talkHit = { x: 0, y: 0, w: 0, h: 0 };
-      if (typeof achieveQuest === "function") achieveQuest("14");
+      if (typeof triggerWhiteFlash === "function") triggerWhiteFlash(700);
       playItemJingle();
       dialog.open([["伝説の剣をてにいれた!!"]]);
+      if (typeof achieveQuest === "function") setTimeout(() => achieveQuest("14"), 1000);
     }
     return true;
   }
@@ -868,6 +896,7 @@ export function runNpcEvent(act, ctx) {
                         const jumpH = 12;
                         const baseY = ss2.y;
                         const startMs = Date.now();
+                        if (typeof lockInput === "function") lockInput();
                         const jumpInterval = setInterval(() => {
                           const p = Math.min((Date.now() - startMs) / jumpDur, 1);
                           ss2.y = baseY - Math.sin(p * Math.PI) * jumpH;
@@ -875,13 +904,16 @@ export function runNpcEvent(act, ctx) {
                             clearInterval(jumpInterval);
                             ss2.y = baseY;
                             setTimeout(() => {
+                              if (typeof unlockInput === "function") unlockInput();
                               dialog.setVoice("s_hi");
                               dialog.open([
                                 ["それでは、ブリーフィン！"],
                                 ["ぼくはわかってたよ。"],
                                 ["ずっと超銀河魔王って？って顔してたでしょ。"],
                               ], () => {
+                                if (typeof lockInput === "function") lockInput();
                                 setTimeout(() => {
+                                  if (typeof unlockInput === "function") unlockInput();
                                   dialog.open([
                                     ["よけいなこと考えなくていいの！"],
                                     ["とにかく、"],
@@ -953,14 +985,16 @@ export function runNpcEvent(act, ctx) {
   }
 
   if (ev.type === "kako_sisters_warp") {
-    const { dialog, getNpcByName, startSpaceWarp } = ctx;
+    const { dialog, getNpcByName, startSpaceWarp, lockInput, unlockInput } = ctx;
     act._eventBusy = true;
     const ss = ["kako_ss1", "kako_ss2", "kako_ss3"].map(n => getNpcByName(n)).filter(Boolean);
     ss.forEach(s => { if (s) s._eventBusy = true; });
+    if (typeof lockInput === "function") lockInput();
     let i = 0;
     function jumpNext() {
       if (i >= ss.length) {
         setTimeout(() => {
+          if (typeof unlockInput === "function") unlockInput();
           dialog.setVoice("s_hi");
           dialog.open([
             ["いこう！さいごのぼうけんだ！"],

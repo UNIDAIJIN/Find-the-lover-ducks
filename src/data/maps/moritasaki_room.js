@@ -3,7 +3,7 @@ export const moritasakiRoomMap = {
   bgSrc:  "assets/maps/moritasaki_room.png",
   colSrc: "assets/maps/moritasaki_room_col.png",
   bgmSrc: "assets/audio/bgm0.mp3",
-  spawn:  { x: 128, y: 160 },
+  spawn:  { x: 117, y: 142 },
   doors: [
     {
       id:        4,

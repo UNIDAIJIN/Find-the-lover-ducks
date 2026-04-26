@@ -6,8 +6,8 @@ export const mizugiMNpc = {
   y:         1821,
   frame:     1,
   animMs:    Infinity,
-  talkHit:   { x: 0, y: 0, w: 16, h: 14 },
-  talkPages: [["……"]],
+  talkHit:   { x: 0, y: 0, w: 26, h: 14 },
+  event:     { type: "mizugi_couple" },
   solid:     true,
 };
 
@@ -19,7 +19,7 @@ export const mizugiFNpc = {
   y:         1821,
   frame:     0,
   animMs:    Infinity,
-  talkHit:   { x: 0, y: 0, w: 16, h: 14 },
+  talkHit:   { x: 0, y: 0, w: 0, h: 0 },
   talkPages: [["……"]],
   solid:     true,
 };

@@ -160,7 +160,7 @@ export function createDiving({ BASE_W: _origW, BASE_H: _origH, input, getLeaderI
       surfY: 0, resTimer: 0, flashT: 0, flashC: null, spearCDTimer: 0,
       bestDepthSession: s.bestDepth, currentMaxDepth: 0, newRecordTimer: 0,
       pickingUp: null, heartbeat: 0,
-      shopCursor: 0, shopConfirm: false, sonarSweep: 0,
+      shopCursor: UPG.length, shopConfirm: false, sonarSweep: 0,
     };
   }
 
@@ -199,10 +199,17 @@ export function createDiving({ BASE_W: _origW, BASE_H: _origH, input, getLeaderI
 
   function endDive(ok) {
     let kept = [], lost = [];
-    if (ok) { kept = [...g.collected]; }
-    else if (g.collected.length > 0) {
-      const idx = Math.floor(Math.random() * g.collected.length);
-      kept = [g.collected[idx]]; lost = g.collected.filter((_, i) => i !== idx);
+    if (ok) {
+      kept = [...g.collected];
+    } else if (g.collected.length > 0) {
+      const candidates = g.collected.filter(it => !it.isTreasure);
+      if (candidates.length > 0) {
+        const pick = candidates[Math.floor(Math.random() * candidates.length)];
+        kept = [pick];
+        lost = g.collected.filter(it => it !== pick);
+      } else {
+        lost = [...g.collected];
+      }
     }
     const earn = kept.reduce((s, i) => s + i.val, 0);
     const lostVal = lost.reduce((s, i) => s + i.val, 0);
@@ -435,8 +442,6 @@ export function createDiving({ BASE_W: _origW, BASE_H: _origH, input, getLeaderI
 
   function drawShop(ctx) {
     ctx.fillStyle = "#0a1220"; ctx.fillRect(0, 0, BASE_W, BASE_H);
-    ctx.fillStyle = "#44ddff"; ctx.font = '24px PixelMplus10'; ctx.textAlign = "center";
-    ctx.fillText("EQUIPMENT", BASE_W / 2, 36);
     ctx.fillStyle = "#ffdd44"; ctx.font = '20px PixelMplus10';
     ctx.fillText(g.money + " EN", BASE_W / 2, 60);
     ctx.fillStyle = "#6688aa";
@@ -463,7 +468,7 @@ export function createDiving({ BASE_W: _origW, BASE_H: _origH, input, getLeaderI
     ctx.restore();
 
     for (let i = 0; i < total; i++) {
-      const a = -Math.PI / 2 + (i / total) * Math.PI * 2;
+      const a = -Math.PI / 2 + ((i + 1) / total) * Math.PI * 2;
       const dist = R * 0.6;
       const bx = cx + Math.cos(a) * dist;
       const by = cy + Math.sin(a) * dist;
