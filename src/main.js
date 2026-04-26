@@ -8023,7 +8023,7 @@ if (MOBILE) {
 }
 
 
-const PERF_HUD = true;
+const PERF_HUD = !MOBILE && !IS_MOBILE_DEVICE;
 const _perfStats = {
   frames: 0,
   accFrame: 0,
