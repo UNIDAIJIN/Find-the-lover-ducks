@@ -8,6 +8,8 @@ export const kingyobachiSanNpc = {
   sprH:        32,
   x:           1246,
   y:           2573,
+  hitW:        16,
+  hitH:        12,
   talkHit:     { x: 0, y: 0, w: 16, h: 16 },
   solid:       true,
   showWhenBgm: "assets/audio/duckI.mp3",

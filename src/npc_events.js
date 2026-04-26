@@ -76,7 +76,8 @@ export function runNpcEvent(act, ctx) {
   if (ev.type === "hisaro_sunlover") {
     const { choice, dialog, fade, sprites, party, nowMs, lockInput, unlockInput, achieveQuest } = ctx;
 
-    const lines   = ev.lines   || ["……"];
+    const introPages = ev.introPages || [[ev.lines?.[0] ?? "……"]];
+    const question = ev.question || ev.lines?.[1] || "……";
     const options = ev.options || ["はい", "いいえ"];
 
     if (typeof dialog.onPageChange === "function") dialog.onPageChange(null);
@@ -86,14 +87,14 @@ export function runNpcEvent(act, ctx) {
 
     // 最大段階ならセリフだけ
     if (curLevel >= 2) {
-      dialog.open([["おまえたち、かがやいてるぜ!!"]]);
+      dialog.open(ev.onMaxLevelPages || [["おまえたち、かがやいてるぜ!!"]]);
       return true;
     }
 
     const nextLevel = curLevel + 1;
     const suffix    = nextLevel === 1 ? "_t1" : "_t2";
 
-    dialog.open([[lines[0] ?? "……"]], () => {
+    dialog.open(introPages, () => {
       choice.open(options, (idx) => {
         if (typeof choice.close === "function") choice.close();
 
@@ -127,7 +128,7 @@ export function runNpcEvent(act, ctx) {
                 playItemJingle();
                 setTimeout(() => {
                   if (typeof unlockInput === "function") unlockInput();
-                  dialog.open([["いいじゃないか、にあってるぜ。"]]);
+                  dialog.open(ev.onYesDonePages || [["いいじゃないか、にあってるぜ。"]]);
                 }, 2000);
               },
             });
@@ -135,7 +136,7 @@ export function runNpcEvent(act, ctx) {
         } else {
           dialog.open(ev.onNoDialog || [["……"]]);
         }
-      }, lines[1] ?? "……");
+      }, question);
     });
 
     return true;
@@ -587,13 +588,14 @@ export function runNpcEvent(act, ctx) {
   }
 
   if (ev.type === "yahhy_jumprope") {
-    const { dialog, jumprope, achieveQuest, choice } = ctx;
+    const { dialog, jumprope, achieveQuest, choice, beginInteraction, endInteraction } = ctx;
     const startJumprope = () => {
       choice.open(["はい", "いいえ"], (sel) => {
         if (sel !== 0) {
           dialog.open([["いってらっしゃい！"]], null, "sign");
           return;
         }
+        if (typeof endInteraction === "function") endInteraction();
         jumprope.start((count) => {
           if (count >= 100 && typeof achieveQuest === "function") achieveQuest("17");
           let reward = 0;
@@ -605,6 +607,7 @@ export function runNpcEvent(act, ctx) {
           const msg = reward > 0
             ? `${count}かい！  ${reward}EN もらった！`
             : count > 0 ? `${count}かい。` : `…。`;
+          if (typeof beginInteraction === "function") beginInteraction();
           dialog.open([[msg]], null, "sign");
         });
       }, "なわとびしていく？");

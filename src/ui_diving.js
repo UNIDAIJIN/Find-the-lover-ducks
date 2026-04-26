@@ -108,7 +108,7 @@ function placeEnts(map, rows) {
 function getSave() {
   const f = STATE.flags;
   return {
-    money: f.diveMoney || 0,
+    money: STATE.money | 0,
     dives: f.diveDives || 0,
     bestDepth: f.diveBestDepth || 0,
     upg: {
@@ -122,7 +122,7 @@ function getSave() {
 }
 
 function writeSave(g) {
-  STATE.flags.diveMoney = g.money;
+  STATE.money = Math.min(g.money | 0, 999999);
   STATE.flags.diveDives = g.dives;
   STATE.flags.diveBestDepth = g.bestDepth;
   STATE.flags.diveUpgTank = g.upg.tank;
@@ -351,7 +351,7 @@ export function createDiving({ BASE_W: _origW, BASE_H: _origH, input, getLeaderI
     g.particles = g.particles.filter(pt => { pt.x += pt.vx; pt.y += pt.vy; pt.life--; pt.vx *= 0.95; pt.vy *= 0.95; return pt.life > 0; });
     if (g.flashT > 0) g.flashT--;
 
-    if (p.y <= g.surfY && g.collected.length > 0) endDive(true);
+    if (p.y <= g.surfY) endDive(true);
     if (g.oxy <= 0) { g.oxy = 0; endDive(false); }
   }
 

@@ -24,6 +24,7 @@ import { QUESTS }               from "./data/quests.js";
 import { createShooting, drawShootingBackdrop, SHOOTING_DIFFICULTIES } from "./ui_shooting.js";
 import { createDiving, DIVE_W, DIVE_H } from "./ui_diving.js";
 import { createPhoneBrawl, PHONE_BRAWL_W, PHONE_BRAWL_H } from "./ui_phone_brawl.js";
+import { createInteractionSession } from "./interaction_session.js";
 import { gateNpc } from "./data/npcs/gate.js";
 
 const DEBUG  = true;
@@ -130,6 +131,39 @@ const choice = createChoice({ BASE_W, BASE_H, input, dialog });
 const shop      = createShop({ BASE_W, BASE_H, input });
 const jumprope  = createJumprope({ BASE_W, BASE_H, input, getParty: () => ({ leader, p2, p3, p4 }), yahhyImg: SPRITES.yahhy });
 const fade = createFade({ BASE_W, BASE_H, canvas, input, mapOutMs: MAP_FADE_OUT_MS, mapInMs: MAP_FADE_IN_MS });
+
+const interactionSession = createInteractionSession({
+  input,
+  isUiActive: () => dialog.isActive() || choice.isActive() || shop.isActive() || fade.isActive(),
+});
+
+const dialogOpenRaw = dialog.open.bind(dialog);
+dialog.open = (pages, onClose, ...args) => {
+  const ret = dialogOpenRaw(pages, interactionSession.wrapCallback(onClose), ...args);
+  interactionSession.scheduleReleaseCheck();
+  return ret;
+};
+
+const choiceOpenRaw = choice.open.bind(choice);
+choice.open = (options, onSelect, ...args) => {
+  const ret = choiceOpenRaw(options, interactionSession.wrapCallback(onSelect), ...args);
+  interactionSession.scheduleReleaseCheck();
+  return ret;
+};
+
+const shopOpenRaw = shop.open.bind(shop);
+shop.open = (items, closeLabel, name, onSelect, ...args) => {
+  const ret = shopOpenRaw(items, closeLabel, name, interactionSession.wrapCallback(onSelect), ...args);
+  interactionSession.scheduleReleaseCheck();
+  return ret;
+};
+
+function runFieldInteraction(fn) {
+  interactionSession.begin();
+  const handled = interactionSession.trackSync(fn);
+  if (!handled) interactionSession.end();
+  return handled;
+}
 
 // 初期：ダイアログの上にchoiceを積むための基準を渡す
 if (typeof dialog.getRect === "function" && typeof choice.setAnchorRect === "function") {
@@ -367,6 +401,7 @@ function drawCenteredCharRotated(img, x, y, scale = 1, frame = 0, rotation = 0) 
 }
 
 function startSpaceBossMoonScene() {
+  interactionSession.begin();
   input.lock();
   spaceBossWhiteReunion = null;
   spaceBossMoonScene = {
@@ -463,6 +498,7 @@ function updateSpaceBossMoonScene(tt) {
 }
 
 function startSpaceBossOutdoorEpilogueScene() {
+  interactionSession.begin();
   input.lock();
   spaceBossMoonScene = null;
   setGameResolution(CONFIG.BASE_W, CONFIG.BASE_H);
@@ -881,6 +917,7 @@ function drawDinoScene(tt) {
 }
 
 function startMechaEvolutionScene() {
+  interactionSession.begin();
   const skinLevel = STATE.flags.skinLevel | 0;
   const fromImg = skinLevel === 2 ? SPRITES.p1_t2 : skinLevel === 1 ? SPRITES.p1_t1 : SPRITES.p1;
   setBgmOverrideSafe("assets/audio/bgm_select.mp3");
@@ -1093,14 +1130,18 @@ function setGameResolution(w, h) {
 
 function startPhoneBrawl(onDone, options = {}) {
   if (phoneBrawl.isActive()) return;
+  interactionSession.end();
   stopChaosMetalBgm();
-  bgmCtl.setOverride("about:blank");
+  pushBgmOverride("about:blank", { safe: false });
   setGameResolution(PHONE_BRAWL_W, PHONE_BRAWL_H);
   phoneBrawl.start((result) => {
-    bgmCtl.setOverride(null);
+    popBgmOverride({ safe: false });
     setGameResolution(BASE_W, BASE_H);
     input.clear();
-    if (typeof onDone === "function") onDone(result);
+    if (typeof onDone === "function") {
+      interactionSession.begin();
+      interactionSession.trackSync(() => onDone(result));
+    }
   }, options);
 }
 
@@ -1381,61 +1422,64 @@ function updateSpaceBossBossSpeech(t) {
 
 function startSpaceBossReunionEvent() {
   if (current.id !== "space_boss") return;
+  interactionSession.begin();
   bgmCtl.setOverride("assets/audio/duckC.mp3");
   restoreSpaceBossPreBattleLayout();
   input.lock();
-  setTimeout(() => startSpaceBossCactusIntro(() => {
-    input.unlock();
-    dialog.open([["またせたな、アミーゴ！"]], () => {
-      dialog.open([["みんなを集めるのに時間がかかっちまった！"]], () => {
-        input.lock();
-        startSpaceBossCactusLeadHop(() => {
-          input.unlock();
-          dialog.open([["みんなー！"]], () => {
-            input.lock();
-            startSpaceBossCactusFriendsIntro(() => {
-              startSpaceBossCactusHatHop(() => {
-                input.unlock();
-                dialog.open([["俺たちだけじゃないぜ！"]], () => {
-                  input.lock();
-                  setTimeout(() => {
-                    startSpaceBossAlliesIntro(() => {
-                      startSpaceBossAllMembersAnim(() => {
-                        startSpaceBossSpacesistersHop(() => {
-                          input.unlock();
-                          dialog.open([
-                            ["間に合ってよかったよ！"],
-                            ["さぁ、力を合わせてあいつを倒すんだ！"],
-                          ], () => {
-                            input.lock();
-                            startSpaceBossAllMembersHop(() => {
-                              input.unlock();
-                              dialog.open([["うおーーー！"]], null, "talk", 0, {
-                                position: "top",
-                                textScale: 2,
-                                align: "center",
-                                valign: "center",
-                                highlights: [{ text: "うおーーー！", rainbow: true }],
-                                onFinalAdvance: () => {
-                                  input.lock();
-                                  startBattleTransition(() => startSpaceBossFinalBattle());
-                                  dialog.close();
-                                },
+  interactionSession.trackSync(() => {
+    setTimeout(() => startSpaceBossCactusIntro(() => {
+      input.unlock();
+      dialog.open([["またせたな、アミーゴ！"]], () => {
+        dialog.open([["みんなを集めるのに時間がかかっちまった！"]], () => {
+          input.lock();
+          startSpaceBossCactusLeadHop(() => {
+            input.unlock();
+            dialog.open([["みんなー！"]], () => {
+              input.lock();
+              startSpaceBossCactusFriendsIntro(() => {
+                startSpaceBossCactusHatHop(() => {
+                  input.unlock();
+                  dialog.open([["俺たちだけじゃないぜ！"]], () => {
+                    input.lock();
+                    setTimeout(() => {
+                      startSpaceBossAlliesIntro(() => {
+                        startSpaceBossAllMembersAnim(() => {
+                          startSpaceBossSpacesistersHop(() => {
+                            input.unlock();
+                            dialog.open([
+                              ["間に合ってよかったよ！"],
+                              ["さぁ、力を合わせてあいつを倒すんだ！"],
+                            ], () => {
+                              input.lock();
+                              startSpaceBossAllMembersHop(() => {
+                                input.unlock();
+                                dialog.open([["うおーーー！"]], null, "talk", 0, {
+                                  position: "top",
+                                  textScale: 2,
+                                  align: "center",
+                                  valign: "center",
+                                  highlights: [{ text: "うおーーー！", rainbow: true }],
+                                  onFinalAdvance: () => {
+                                    input.lock();
+                                    startBattleTransition(() => startSpaceBossFinalBattle());
+                                    dialog.close();
+                                  },
+                                });
                               });
-                            });
-                          }, "talk", 0, { position: "top" });
+                            }, "talk", 0, { position: "top" });
+                          });
                         });
                       });
-                    });
-                  }, 1000);
-                }, "talk", 0, { position: "top" });
+                    }, 1000);
+                  }, "talk", 0, { position: "top" });
+                });
               });
-            });
-          }, "talk", 0, { position: "top" });
-        });
+            }, "talk", 0, { position: "top" });
+          });
+        }, "talk", 0, { position: "top" });
       }, "talk", 0, { position: "top" });
-    }, "talk", 0, { position: "top" });
-  }), 1000);
+    }), 1000);
+  });
 }
 
 function startSpaceBossCactusLeadHop(onDone) {
@@ -2179,76 +2223,86 @@ function startSpaceBossFinalBattle() {
 
 function startSpaceBossWinEvent() {
   if (current.id !== "space_boss") return;
+  interactionSession.begin();
   STATE.flags.galaxyBossDefeated = true;
   bgmCtl.setOverride("assets/audio/duckE.mp3");
   spaceBossWhiteReunion = { startMs: nowMs() };
   partyVisible = false;
   input.lock();
-  setTimeout(() => {
-    input.unlock();
-    dialog.open([
-      ["すごいすごい！"],
-      ["本当にすごいよきみたち！"],
-      ["ついにやったんだ！"],
-      ["はぁ、、、。"],
-      ["感動でなんにも言えないや。"],
-      ["ありがとう。"],
-      ["きみたちのおかげで、たくさんの世界が救われた。"],
-    ], () => {
+  interactionSession.trackSync(() => {
+    setTimeout(() => {
+      input.unlock();
       dialog.open([
-        ["・・・・・・。"],
-        ["うん。"],
+        ["すごいすごい！"],
+        ["本当にすごいよきみたち！"],
+        ["ついにやったんだ！"],
+        ["はぁ、、、。"],
+        ["感動でなんにも言えないや。"],
+        ["ありがとう。"],
+        ["きみたちのおかげで、たくさんの世界が救われた。"],
       ], () => {
-        startSpaceBossReturnHomeSequence(() => {
-          input.lock();
-          setTimeout(() => {
-            input.unlock();
-            dialog.open([
-              ["さ。"],
-              ["かえろっか。"],
-            ], () => {
-              startSpaceBossAfterHeartReturnSequence();
-            }, "talk");
-          }, 3000);
-        });
+        dialog.open([
+          ["・・・・・・。"],
+          ["うん。"],
+        ], () => {
+          startSpaceBossReturnHomeSequence(() => {
+            input.lock();
+            setTimeout(() => {
+              input.unlock();
+              dialog.open([
+                ["さ。"],
+                ["かえろっか。"],
+              ], () => {
+                startSpaceBossAfterHeartReturnSequence();
+              }, "talk");
+            }, 3000);
+          });
+        }, "talk");
       }, "talk");
-    }, "talk");
-  }, 6100);
+    }, 6100);
+  });
 }
 
 function startSpaceBossReturnHomeSequence(onDone = startSpaceBossAfterHeartReturnSequence) {
+  interactionSession.begin();
   input.lock();
-  setTimeout(() => {
-    input.unlock();
-    dialog.open([["それから、"]], () => {
-      startSpaceBossHeartReturnSequence(onDone);
-    }, "talk");
-  }, 1000);
+  interactionSession.trackSync(() => {
+    setTimeout(() => {
+      input.unlock();
+      dialog.open([["それから、"]], () => {
+        startSpaceBossHeartReturnSequence(onDone);
+      }, "talk");
+    }, 1000);
+  });
 }
 
 function startSpaceBossHeartReturnSequence(onDone = startSpaceBossAfterHeartReturnSequence) {
+  interactionSession.begin();
   input.lock();
   if (spaceBossWhiteReunion) {
     spaceBossWhiteReunion.heartFx = { startMs: nowMs(), duration: 1700 };
   }
-  setTimeout(() => {
-    input.unlock();
-    dialog.open([["これは返してもらわなきゃね。"]], () => {
-      input.lock();
-      setTimeout(() => {
-        input.unlock();
-        dialog.open([
-          ["また別の時空のきみたちが見つけられるように、"],
-          ["ほろびた世界に隠しておかなきゃいけないからさ。"],
-        ], () => {
-          onDone?.();
-        }, "talk");
-      }, 1000);
-    }, "talk");
-  }, 1850);
+  interactionSession.trackSync(() => {
+    setTimeout(() => {
+      input.unlock();
+      dialog.open([["これは返してもらわなきゃね。"]], () => {
+        input.lock();
+        setTimeout(() => {
+          input.unlock();
+          dialog.open([
+            ["また別の時空のきみたちが見つけられるように、"],
+            ["ほろびた世界に隠しておかなきゃいけないからさ。"],
+          ], () => {
+            onDone?.();
+          }, "talk");
+        }, 1000);
+      }, "talk");
+    }, 1850);
+  });
 }
 
 function startSpaceBossAfterHeartReturnSequence() {
+  interactionSession.begin();
   dialog.open([
     ["みんながまってる。"],
   ], () => {
@@ -2278,18 +2332,22 @@ function startSpaceBossAfterHeartReturnSequence() {
 }
 
 function startSpaceBossReturnWave() {
+  interactionSession.begin();
   input.lock();
   if (spaceBossWhiteReunion) {
     spaceBossWhiteReunion.heartFx = null;
     spaceBossWhiteReunion.waveFx = { startMs: nowMs(), duration: 1800 };
   }
-  setTimeout(() => {
-    fadeOutBgmToSilence(1400);
-    startSpaceBossMoonScene();
-  }, 1900);
+  interactionSession.trackSync(() => {
+    setTimeout(() => {
+      fadeOutBgmToSilence(1400);
+      startSpaceBossMoonScene();
+    }, 1900);
+  });
 }
 
 function triggerSpaceBossEnding() {
+  interactionSession.begin();
   input.lock();
   bgmCtl.setOverride("about:blank");
   fade.startIrisFade(nowMs(), {
@@ -2831,13 +2889,26 @@ function setBgmOverrideSafe(src) {
   if (isAfloClubBgmLocked()) return;
   bgmCtl.setOverride(src);
 }
-let _preItemBgm = null;
-function captureItemBgm() {
-  const cur = bgmCtl.getOverrideSrc();
-  _preItemBgm = (cur && cur !== "about:blank") ? cur : null;
+const bgmOverrideStack = [];
+function currentBgmOverrideSnapshot() {
+  return bgmCtl.getOverrideSrc();
+}
+function pushBgmOverride(src, { safe = true } = {}) {
+  bgmOverrideStack.push(currentBgmOverrideSnapshot());
+  if (safe) setBgmOverrideSafe(src);
+  else bgmCtl.setOverride(src);
+}
+function popBgmOverride({ safe = true } = {}) {
+  const prev = bgmOverrideStack.length ? bgmOverrideStack.pop() : null;
+  if (safe) setBgmOverrideSafe(prev);
+  else bgmCtl.setOverride(prev);
 }
 function restoreItemBgm() {
-  setBgmOverrideSafe(_preItemBgm);
+  popBgmOverride();
+}
+function lockItemUseWait({ restoreBgm = false } = {}) {
+  input.lock();
+  if (restoreBgm) setTimeout(restoreItemBgm, 670);
 }
 function setBgmMapSafe(src) {
   if (isAfloClubBgmLocked()) return;
@@ -3142,6 +3213,7 @@ function drawSpaceO2Meter() {
   ctx.restore();
 }
 function startTimemachineFx(onDone = null) {
+  interactionSession.begin();
   input.lock();
   const now = nowMs();
   timeMachineFx = { active: true, start: now, until: now + 7000, onDone };
@@ -3149,6 +3221,7 @@ function startTimemachineFx(onDone = null) {
   try { navigator.vibrate?.([70, 40, 90, 40, 120, 40, 160]); } catch (_) {}
 }
 function startPageTurnTravel(destMap, spawnAt, dir = "rtl") {
+  interactionSession.begin();
   input.lock();
   pageTurnPrevCtx.clearRect(0, 0, BASE_W, BASE_H);
   pageTurnPrevCtx.drawImage(canvas, 0, 0, BASE_W, BASE_H);
@@ -3164,6 +3237,7 @@ function startPageTurnTravel(destMap, spawnAt, dir = "rtl") {
   loadMap(destMap, { spawnAt });
 }
 function startTimeMachineTravel(destMap, spawnAt, dir = "rtl") {
+  interactionSession.begin();
   input.lock();
   timeMachineTravelFx = {
     active: true,
@@ -3268,7 +3342,7 @@ const inventory = createInventory({
   input,
   itemName,
   itemBgmSrc,
-  stopBgm: () => { captureItemBgm(); setBgmOverrideSafe("about:blank"); },
+  stopBgm: () => pushBgmOverride("about:blank"),
   unlockBgm: () => bgmCtl.unlock(),
   setOverrideBgm: (src) => {
     if (src == null) { restoreItemBgm(); return; }
@@ -3291,7 +3365,7 @@ const menu = createMenu({
   inventory,
   itemName,
   itemBgmSrc,
-  stopBgm:        () => { captureItemBgm(); setBgmOverrideSafe("about:blank"); },
+  stopBgm:        () => pushBgmOverride("about:blank"),
   unlockBgm:      () => bgmCtl.unlock(),
   setOverrideBgm: (src) => {
     if (src == null) { restoreItemBgm(); return; }
@@ -3303,6 +3377,7 @@ const menu = createMenu({
   },
   toast,
   onUseItem: (id) => {
+    return runFieldInteraction(() => {
     if (id === "pickaxe") {
       const f = footBox(leader.x, leader.y);
       const fx = (f.x + (f.w >> 1)) | 0;
@@ -3315,8 +3390,7 @@ const menu = createMenu({
         fx < SHOVEL_DIG_TRIGGER.x + SHOVEL_DIG_TRIGGER.w &&
         fy >= SHOVEL_DIG_TRIGGER.y &&
         fy < SHOVEL_DIG_TRIGGER.y + SHOVEL_DIG_TRIGGER.h;
-      input.lock();
-      setTimeout(restoreItemBgm, 670);
+      lockItemUseWait();
       setTimeout(() => {
         input.unlock();
         if (canDigTreasure) {
@@ -3365,8 +3439,7 @@ const menu = createMenu({
         fx < SHOVEL_DIG_TRIGGER.x + SHOVEL_DIG_TRIGGER.w &&
         fy >= SHOVEL_DIG_TRIGGER.y &&
         fy < SHOVEL_DIG_TRIGGER.y + SHOVEL_DIG_TRIGGER.h;
-      input.lock();
-      setTimeout(restoreItemBgm, 670);
+      lockItemUseWait();
       setTimeout(() => {
         input.unlock();
         if (inDigSpot) {
@@ -3403,8 +3476,7 @@ const menu = createMenu({
     }
     if (id === "gunter") {
       inventory.removeItem("gunter");
-      input.lock();
-      setTimeout(restoreItemBgm, 670);
+      lockItemUseWait();
       setTimeout(() => {
         STATE.flags.eatCount = (STATE.flags.eatCount || 0) + 1;
         if (STATE.flags.eatCount >= 10) achieveQuest("26");
@@ -3418,8 +3490,7 @@ const menu = createMenu({
     }
     if (id === "hone") {
       inventory.removeItem("hone");
-      input.lock();
-      setTimeout(restoreItemBgm, 670);
+      lockItemUseWait();
       setTimeout(() => {
         STATE.flags.eatCount = (STATE.flags.eatCount || 0) + 1;
         if (STATE.flags.eatCount >= 10) achieveQuest("26");
@@ -3433,8 +3504,7 @@ const menu = createMenu({
     }
     if (id === "tacos") {
       inventory.removeItem("tacos");
-      input.lock();
-      setTimeout(restoreItemBgm, 670);
+      lockItemUseWait();
       setTimeout(() => {
         STATE.flags.eatCount = (STATE.flags.eatCount || 0) + 1;
         if (STATE.flags.eatCount >= 10) achieveQuest("26");
@@ -3448,8 +3518,7 @@ const menu = createMenu({
     }
     if (id === "vodka") {
       inventory.removeItem("vodka");
-      input.lock();
-      setTimeout(restoreItemBgm, 670);
+      lockItemUseWait();
       setTimeout(() => {
         STATE.flags.eatCount = (STATE.flags.eatCount || 0) + 1;
         if (STATE.flags.eatCount >= 10) achieveQuest("26");
@@ -3463,8 +3532,7 @@ const menu = createMenu({
     }
     if (id === "ice_cream") {
       inventory.removeItem("ice_cream");
-      input.lock();
-      setTimeout(restoreItemBgm, 670);
+      lockItemUseWait();
       setTimeout(() => {
         STATE.flags.eatCount = (STATE.flags.eatCount || 0) + 1;
         if (STATE.flags.eatCount >= 10) achieveQuest("26");
@@ -3478,8 +3546,7 @@ const menu = createMenu({
     }
     if (id === "gyoza") {
       inventory.removeItem("gyoza");
-      input.lock();
-      setTimeout(restoreItemBgm, 670);
+      lockItemUseWait();
       setTimeout(() => {
         STATE.flags.eatCount = (STATE.flags.eatCount || 0) + 1;
         if (STATE.flags.eatCount >= 10) achieveQuest("26");
@@ -3493,8 +3560,7 @@ const menu = createMenu({
     }
     if (id === "yakisoba") {
       inventory.removeItem("yakisoba");
-      input.lock();
-      setTimeout(restoreItemBgm, 670);
+      lockItemUseWait();
       setTimeout(() => {
         STATE.flags.eatCount = (STATE.flags.eatCount || 0) + 1;
         if (STATE.flags.eatCount >= 10) achieveQuest("26");
@@ -3511,8 +3577,7 @@ const menu = createMenu({
       if (STATE.flags.pizzaJobActive && !STATE.flags.pizzaDelivered) {
         STATE.flags.pizzaAte = true;
       }
-      input.lock();
-      setTimeout(restoreItemBgm, 670);
+      lockItemUseWait();
       setTimeout(() => {
         input.unlock();
         dialog.open([
@@ -3524,8 +3589,7 @@ const menu = createMenu({
       return true;
     }
     if (id === "moon_stone") {
-      input.lock();
-      setTimeout(restoreItemBgm, 670);
+      lockItemUseWait();
       setTimeout(() => {
         input.unlock();
         dialog.open([
@@ -3538,8 +3602,7 @@ const menu = createMenu({
     }
     if (id === "iron_heart") {
       inventory.removeItem("iron_heart");
-      input.lock();
-      setTimeout(restoreItemBgm, 670);
+      lockItemUseWait();
       setTimeout(() => {
         STATE.flags.eatCount = (STATE.flags.eatCount || 0) + 1;
         if (STATE.flags.eatCount >= 10) achieveQuest("26");
@@ -3566,8 +3629,7 @@ const menu = createMenu({
     }
     if (id === "densetsu_no_ken") {
       inventory.removeItem("densetsu_no_ken");
-      input.lock();
-      setTimeout(restoreItemBgm, 670);
+      lockItemUseWait();
       setTimeout(() => {
         STATE.flags.eatCount = (STATE.flags.eatCount || 0) + 1;
         if (STATE.flags.eatCount >= 10) achieveQuest("26");
@@ -3580,8 +3642,7 @@ const menu = createMenu({
       return true;
     }
     if (id === "temp_item_1") {
-      input.lock();
-      setTimeout(restoreItemBgm, 670);
+      lockItemUseWait();
       setTimeout(() => {
         input.unlock();
         dialog.open([["仮アイテム１をつかった！"]], null, "sign");
@@ -3589,8 +3650,7 @@ const menu = createMenu({
       return true;
     }
     if (id === "temp_item_2") {
-      input.lock();
-      setTimeout(restoreItemBgm, 670);
+      lockItemUseWait();
       setTimeout(() => {
         input.unlock();
         dialog.open([["仮アイテム２をつかった！"]], null, "sign");
@@ -3601,8 +3661,7 @@ const menu = createMenu({
       const n = parseInt(id.slice(7), 10);
       const quest = QUESTS.find(q => q.id === String(n).padStart(2, "0"));
       const cond = quest?.cond ?? "？？？";
-      input.lock();
-      setTimeout(restoreItemBgm, 670);
+      lockItemUseWait();
       setTimeout(() => {
         input.unlock();
         dialog.open([
@@ -3620,8 +3679,7 @@ const menu = createMenu({
     };
     if (HEADWEAR_DEFS[id]) {
       const def = HEADWEAR_DEFS[id];
-      input.lock();
-      setTimeout(restoreItemBgm, 670);
+      lockItemUseWait();
       if (STATE.headwear === def.key) {
         STATE.headwear = null;
         setTimeout(() => { input.unlock(); dialog.open([[def.off]], null, "sign"); }, 700);
@@ -3634,6 +3692,7 @@ const menu = createMenu({
       return true;
     }
     return false;
+    });
   },
 });
 
@@ -4042,6 +4101,7 @@ function drawShootingDifficultyUi(tt) {
 }
 
 function phoneCallSequence(pages, onDone, opts = {}) {
+  interactionSession.begin();
   input.lock();
   startPhoneRing();
   dialog.open([
@@ -4112,13 +4172,14 @@ function clearFlags() {
 function resetProgress() {
   collectedItems.clear();
   clearFlags();
-  STATE.money    = 0;
+  STATE.money    = 10000;
   STATE.headwear = null;
   STATE.achievedQuests.clear();
   resetHeightState();
 }
 
 function isSceneActive() {
+  if (interactionSession.isActive()) return true;
   if (fade.isActive()) return true;
   if (dialog.isActive()) return true;
   if (choice.isActive()) return true;
@@ -4210,7 +4271,7 @@ const battle = createBattleSystem({
       onBlack: () => {
         done();
         stopHeartbeat();
-        bgmCtl.setOverride(null);
+        popBgmOverride({ safe: false });
         setGameResolution(BASE_W, BASE_H);
         pendingBattlePages = null;
       },
@@ -4232,7 +4293,7 @@ const battle = createBattleSystem({
       onBlack: () => {
         done(); // st=null: バトル描画終了
         stopHeartbeat();
-        bgmCtl.setOverride(null);
+        popBgmOverride({ safe: false });
         setGameResolution(BASE_W, BASE_H);
         pendingBattlePages = null;
         charHeight.leader = charHeight.p2 = charHeight.p3 = charHeight.p4 = "ground";
@@ -4264,7 +4325,7 @@ const battle = createBattleSystem({
   onExitToField: (result) => {
     input.clear();
     stopHeartbeat();
-    bgmCtl.setOverride(null);
+    popBgmOverride({ safe: false });
     setGameResolution(BASE_W, BASE_H);
     const pages      = result === "win" ? pendingBattlePages?.win  : pendingBattlePages?.lose;
     const isEnding   = result === "win" && !!pendingBattlePages?.winEnding;
@@ -4285,7 +4346,11 @@ const battle = createBattleSystem({
 
     if (pages && pages.length) {
       input.lock();
-      setTimeout(() => { input.unlock(); dialog.open(pages, isEnding ? triggerEnding : null, "talk"); }, 1000);
+      setTimeout(() => {
+        input.unlock();
+        interactionSession.begin();
+        dialog.open(pages, isEnding ? triggerEnding : null, "talk");
+      }, 1000);
     } else if (isEnding) {
       input.lock();
       setTimeout(() => { input.unlock(); triggerEnding(); }, 1000);
@@ -6255,6 +6320,7 @@ function activateShootingLobbyDoor(act, t) {
   bgmCtl.setOverride("about:blank");
   setGameResolution(SHOOTING_W, SHOOTING_H);
   startShootingBgm();
+  interactionSession.end();
   shooting.start((earnedEN, result) => {
     stopShootingBgm();
     bgmCtl.setOverride("about:blank");
@@ -6350,6 +6416,7 @@ function updateShootingDoorMarkers(t) {
 
 // ★ここを t を受け取る形にする
 function tryInteract(t) {
+  if (interactionSession.isActive()) return;
   if (dialog.isActive()) return;
   if (choice.isActive()) return;
   if (fade.isActive()) return;
@@ -6369,6 +6436,7 @@ function tryInteract(t) {
     if (act.kind === "npc") {
       if (current.id === "shooting_lobby" && act.name?.startsWith("door_")) {
         if (!STATE.flags.shootingLobbyLuchaTalked) return;
+        interactionSession.begin();
         choice.open(["はい", "いいえ"], (idx) => {
           if (idx === 0) activateShootingLobbyDoor(act, nowMs());
         }, "このドアにはいる？", { instant: true });
@@ -6385,12 +6453,14 @@ function tryInteract(t) {
         STATE.flags.pizzaDelivered = true;
         STATE.flags.pizzaDeliveredAtMs = nowMs();
         refreshPizzaJobMarkers();
+        interactionSession.begin();
         dialog.open([["ピザを配達した！"]], null, "sign");
         return;
       }
       if (act.showWhenBgm && bgmCtl.getOverrideSrc() !== act.showWhenBgm) continue;
+      interactionSession.begin();
       dialog.setVoice(act.voice || "default");
-      const handled = runNpcEvent(act, {
+      const handled = interactionSession.trackSync(() => runNpcEvent(act, {
         nowMs, // ★重要：rAFのtを渡す（freeze防止）
         choice,
         shop,
@@ -6523,30 +6593,36 @@ function tryInteract(t) {
         startSpaceWarp,
         startKakoMovie: () => {
           kakoMovieScene = { active: true, startMs: nowMs(), exitWaitStartMs: 0, phase: "intro", messageShown: false, _lastStep: -1, _lastBird: -1, _lastWing: -1 };
-          bgmCtl.setOverride("about:blank");
+          pushBgmOverride("about:blank", { safe: false });
           startWaterfall();
         },
         startDiving: (onDone) => {
-          bgmCtl.setOverride("about:blank");
+          pushBgmOverride("about:blank", { safe: false });
           setGameResolution(DIVE_W, DIVE_H);
           startDivingBgm();
+          interactionSession.end();
           diving.start(() => {
             stopDivingBgm();
-            bgmCtl.setOverride(null);
+            popBgmOverride({ safe: false });
             setGameResolution(BASE_W, BASE_H);
             if (!STATE.flags.diveFirstStarted) {
               STATE.flags.diveFirstStarted = true;
               achieveQuest("18");
             }
-            if (typeof onDone === "function") onDone();
+            if (typeof onDone === "function") {
+              interactionSession.begin();
+              interactionSession.trackSync(() => onDone());
+            }
           });
         },
         startShake: (ms = 500, intensity = 3) => {
           _shakeUntil = performance.now() + ms;
           _shakeIntensity = intensity;
         },
+        beginInteraction: () => interactionSession.begin(),
+        endInteraction: () => interactionSession.end(),
         startPhoneBrawl,
-      });
+      }));
       if (handled) return;
 
       if (act.shootingTrigger) {
@@ -6571,8 +6647,9 @@ function tryInteract(t) {
           startBattleTransition(() => {
             setGameResolution(BATTLE_W, BATTLE_H);
             bgmCtl.unlock();
-            bgmCtl.setOverride("about:blank"); // フィールドBGMを停止
+            pushBgmOverride("about:blank", { safe: false }); // フィールドBGMを停止
             startHeartbeat(68, BGM_VOLUME);
+            interactionSession.end();
             battle.start(input);
           });
         };
@@ -6591,7 +6668,11 @@ function tryInteract(t) {
           };
           if (winPages && winPages.length) {
             input.lock();
-            setTimeout(() => { input.unlock(); dialog.open(winPages, isEnding ? triggerEnd : null, "talk"); }, 1000);
+            setTimeout(() => {
+              input.unlock();
+              interactionSession.begin();
+              dialog.open(winPages, isEnding ? triggerEnd : null, "talk");
+            }, 1000);
           } else if (isEnding) {
             input.lock();
             setTimeout(() => { input.unlock(); triggerEnd(); }, 1000);
@@ -6653,6 +6734,7 @@ function tryInteract(t) {
     if (act.kind === "pickup") {
       const id = act.itemId;
       if (!id) return;
+      interactionSession.begin();
 
       collectedItems.add(id);
       inventory.addItem(id);
@@ -6743,10 +6825,12 @@ function update(t) {
         else bgmCtl.setOverride(null);
         input.lock();
         mechaEvolution.active = false;
-        setTimeout(() => {
-          achieveQuest("23");
-          input.unlock();
-        }, 300);
+        interactionSession.trackSync(() => {
+          setTimeout(() => {
+            achieveQuest("23");
+            input.unlock();
+          }, 300);
+        });
       }
       updateCam();
       return;
@@ -6965,7 +7049,7 @@ function update(t) {
       const cb = timeMachineFx.onDone;
       timeMachineFx = { active: false, start: 0, until: 0, onDone: null };
       input.unlock();
-      if (cb) cb();
+      if (cb) interactionSession.trackSync(() => cb());
     }
     updateCam();
     return;
@@ -6992,6 +7076,14 @@ function update(t) {
   // dialog
   if (dialog.isActive()) {
     dialog.update();
+    leader.frame = 0;
+    p2.frame = p3.frame = p4.frame = 0;
+    for (const act of actors) act.frame = 0;
+    updateCam();
+    return;
+  }
+
+  if (interactionSession.blockFieldInput()) {
     leader.frame = 0;
     p2.frame = p3.frame = p4.frame = 0;
     for (const act of actors) act.frame = 0;
@@ -7045,7 +7137,7 @@ function update(t) {
       kakoMovieScene.phase = "await_exit";
       kakoMovieScene.active = false;
       stopWaterfall();
-      bgmCtl.setOverride(null);
+      popBgmOverride({ safe: false });
       input.lock();
       setTimeout(() => {
         input.unlock();

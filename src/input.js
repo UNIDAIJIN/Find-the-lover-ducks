@@ -68,6 +68,7 @@ export function createInput() {
     },
     // タッチ用：押し始め
     press(key) {
+      if (_locked) return;
       const k = normKey(key);
       if (!downSet.has(k)) hitSet.add(k);
       downSet.add(k);

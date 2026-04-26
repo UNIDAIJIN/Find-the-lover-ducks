@@ -11,6 +11,10 @@
 
 ## 🔧 作業レシピ
 
+### 入力制御 / Interaction Session
+
+フィールド上の会話、選択肢、ショップ、短い演出、アイテム使用後メッセージなどの入力制御は `docs/interaction_session.md` を参照。
+
 ### レシピ: NPCを追加する
 
 1. **スプライトを登録**: `src/sprites.js` に `myNpc: loadSprite("assets/sprites/myNpc.png"),`

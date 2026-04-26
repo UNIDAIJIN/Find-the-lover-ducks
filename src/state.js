@@ -26,7 +26,7 @@ export const STATE = {
 
   // ---- Persistent field state ----
   collectedItems: new Set(), // item IDs collected across map transitions
-  money: 0,
+  money: 10000,
   headwear: null, // null | "helmet" | "afro" | "kingyobachi"
   leaderIdx: 0,   // 0..3 which party member is the leader
 
