@@ -298,6 +298,7 @@ let orcaRide = { active: false, startMs: 0, durationMs: 15000, ending: false };
 let mechaEvolution = { active: false, phase: "idle", startMs: 0, fromImg: null, toImg: null };
 let theaterScene = { active: false, startMs: 0, exitWaitStartMs: 0, phase: "intro", messageShown: false };
 let kakoMovieScene = { active: false, startMs: 0, exitWaitStartMs: 0, phase: "intro", messageShown: false };
+let gateWarpFx = null;
 const RAIN_DROP_COUNT = IS_MOBILE_DEVICE ? 48 : 84;
 const RAIN_DURATION_MS = 60000;
 let rainScene = {
@@ -5124,6 +5125,11 @@ function loadMap(id, opt = null) {
   current.hasBgShrine    = !!def.bgShrineSrc;
   current.hasBgShrineTop = !!def.bgShrineTopSrc;
   current.hasBgShore     = !!def.bgShoreSrc;
+  current.bgMidOffset    = def.bgMidOffset    || null;
+  current.bgTopOffset    = def.bgTopOffset    || null;
+  current.bgShrineOffset = def.bgShrineOffset || null;
+  current.bgShrineTopOffset = def.bgShrineTopOffset || null;
+  current.bgShoreOffset  = def.bgShoreOffset  || null;
   if (!current.hasBgShore) bgShoreReady = false;
   shrineMode = false;
   shrineFade = 0;
@@ -5140,13 +5146,17 @@ function loadMap(id, opt = null) {
 
 // ---- Draw ----
 // カメラが映している範囲だけ描画（巨大マップのGPU負荷削減）
-function drawMapImg(img, alpha) {
+function drawMapImg(img, alpha, offset) {
   if (!img.complete || img.naturalWidth <= 0) return;
+  const ox = (offset && offset.x) | 0;
+  const oy = (offset && offset.y) | 0;
+  const camX = cam.x - ox;
+  const camY = cam.y - oy;
   if (IS_MOBILE_DEVICE && current.id === "outdoor" && img.naturalWidth > 2048) {
-    const startCx = Math.max(0, (cam.x / MOBILE_MAP_CHUNK) | 0);
-    const startCy = Math.max(0, (cam.y / MOBILE_MAP_CHUNK) | 0);
-    const endCx = Math.min(((img.naturalWidth - 1) / MOBILE_MAP_CHUNK) | 0, ((cam.x + canvas.width) / MOBILE_MAP_CHUNK) | 0);
-    const endCy = Math.min(((img.naturalHeight - 1) / MOBILE_MAP_CHUNK) | 0, ((cam.y + canvas.height) / MOBILE_MAP_CHUNK) | 0);
+    const startCx = Math.max(0, (camX / MOBILE_MAP_CHUNK) | 0);
+    const startCy = Math.max(0, (camY / MOBILE_MAP_CHUNK) | 0);
+    const endCx = Math.min(((img.naturalWidth - 1) / MOBILE_MAP_CHUNK) | 0, ((camX + canvas.width) / MOBILE_MAP_CHUNK) | 0);
+    const endCy = Math.min(((img.naturalHeight - 1) / MOBILE_MAP_CHUNK) | 0, ((camY + canvas.height) / MOBILE_MAP_CHUNK) | 0);
     if (alpha !== undefined && alpha < 1) {
       ctx.save();
       ctx.globalAlpha = alpha;
@@ -5154,8 +5164,8 @@ function drawMapImg(img, alpha) {
         for (let cx = startCx; cx <= endCx; cx++) {
           const chunk = getMapChunk(img, cx, cy);
           if (!chunk) continue;
-          const dx = cx * MOBILE_MAP_CHUNK - cam.x;
-          const dy = cy * MOBILE_MAP_CHUNK - cam.y;
+          const dx = cx * MOBILE_MAP_CHUNK - camX;
+          const dy = cy * MOBILE_MAP_CHUNK - camY;
           ctx.drawImage(chunk, dx | 0, dy | 0);
         }
       }
@@ -5165,27 +5175,29 @@ function drawMapImg(img, alpha) {
         for (let cx = startCx; cx <= endCx; cx++) {
           const chunk = getMapChunk(img, cx, cy);
           if (!chunk) continue;
-          const dx = cx * MOBILE_MAP_CHUNK - cam.x;
-          const dy = cy * MOBILE_MAP_CHUNK - cam.y;
+          const dx = cx * MOBILE_MAP_CHUNK - camX;
+          const dy = cy * MOBILE_MAP_CHUNK - camY;
           ctx.drawImage(chunk, dx | 0, dy | 0);
         }
       }
     }
     return;
   }
-  const sx = cam.x | 0;
-  const sy = cam.y | 0;
-  const sw = Math.min(canvas.width,  img.naturalWidth  - sx);
-  const sh = Math.min(canvas.height, img.naturalHeight - sy);
+  const sx = Math.max(0, camX | 0);
+  const sy = Math.max(0, camY | 0);
+  const dxOff = sx - camX;
+  const dyOff = sy - camY;
+  const sw = Math.min(canvas.width  - dxOff, img.naturalWidth  - sx);
+  const sh = Math.min(canvas.height - dyOff, img.naturalHeight - sy);
   if (sw <= 0 || sh <= 0) return;
   if (alpha !== undefined && alpha < 1) {
     ctx.save();
     ctx.globalAlpha = alpha;
     ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+    ctx.drawImage(img, sx, sy, sw, sh, dxOff | 0, dyOff | 0, sw, sh);
     ctx.restore();
   } else {
-    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+    ctx.drawImage(img, sx, sy, sw, sh, dxOff | 0, dyOff | 0, sw, sh);
   }
 }
 
@@ -5684,14 +5696,14 @@ function draw() {
   } else if (shrineFade >= 1) {
     ctx.fillStyle = "#fff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    if (current.hasBgShrine) drawMapImg(bgShrineImg);
+    if (current.hasBgShrine) drawMapImg(bgShrineImg, undefined, current.bgShrineOffset);
   } else {
     drawMapImg(bgImg);
     drawWaterSea(ctx);
     if (current.hasBgShore && bgShoreReady && (((tt / 800) | 0) & 1) === 0) {
       drawBgShore();
     }
-    if (shrineFade > 0 && current.hasBgShrine) drawMapImg(bgShrineImg, shrineFade);
+    if (shrineFade > 0 && current.hasBgShrine) drawMapImg(bgShrineImg, shrineFade, current.bgShrineOffset);
   }
 
   _groundList.length = 0;
@@ -5744,6 +5756,14 @@ function draw() {
       pushParty("p4", ip4); pushParty("p3", ip3); pushParty("p2", ip2);
     }
     const il = _poolItem(); il.img = leader.img; il.x = (playerHoleDrawX !== null ? playerHoleDrawX : leader.x) + cOff + panicOx(0.5); il.y = (playerHoleDrawY !== null ? playerHoleDrawY : leader.y) + rideBob + panicOy(0.5); il.frame = holeTransition ? 0 : leader.frame; il.alpha = undefined; il.scale = playerHoleScale; il.rotation = moonRot; il.metImg = _hwImg(leader.img); il.spr = undefined; il.sprH = undefined; il.shadowImg = undefined; il.sweat = spaceDanger; il.sweatPhase = 0.5;
+    if (gateWarpFx) {
+      const gp = Math.min(1, (nowMs() - gateWarpFx.startMs) / gateWarpFx.duration);
+      il.alpha = Math.max(0, 1 - gp * 0.7);
+      il.scale = Math.max(0.05, 1 - gp);
+      il.rotation = gp * Math.PI * 4;
+      il.pivotMode = "center";
+      il.glow = true;
+    }
     pushParty("leader", il);
   }
   for (const act of actors) {
@@ -5835,7 +5855,7 @@ function draw() {
   groundList.sort(sortFn);
   upperList.sort(sortFn);
   for (let i = 0; i < groundList.length; i++) drawEntry(groundList[i]);
-  if (current.hasBgMid) drawMapImg(bgMidImg);
+  if (current.hasBgMid) drawMapImg(bgMidImg, undefined, current.bgMidOffset);
   for (let i = 0; i < upperList.length; i++) drawEntry(upperList[i]);
   for (let i = 0; i < groundList.length; i++) drawPizzaMarkOverlay(groundList[i]);
   for (let i = 0; i < upperList.length; i++) drawPizzaMarkOverlay(upperList[i]);
@@ -5897,10 +5917,10 @@ function draw() {
   if (current.id === "space" || current.id === "space_boss") {
     // no top layer
   } else if (shrineFade >= 1) {
-    if (current.hasBgShrineTop) drawMapImg(bgShrineTopImg);
+    if (current.hasBgShrineTop) drawMapImg(bgShrineTopImg, undefined, current.bgShrineTopOffset);
   } else {
-    if (current.hasBgTop) drawMapImg(bgTopImg);
-    if (shrineFade > 0 && current.hasBgShrineTop) drawMapImg(bgShrineTopImg, shrineFade);
+    if (current.hasBgTop) drawMapImg(bgTopImg, undefined, current.bgTopOffset);
+    if (shrineFade > 0 && current.hasBgShrineTop) drawMapImg(bgShrineTopImg, shrineFade, current.bgShrineTopOffset);
   }
 
   for (let i = 0; i < aboveTopList.length; i++) drawEntry(aboveTopList[i]);
@@ -6088,6 +6108,7 @@ function draw() {
   questAlert.update(); drainQuestQueue();
   questAlert.draw(ctx);
   drawSpaceBossOutdoorDeadParty();
+  drawGateWarpFx();
   ending.draw(ctx, tt);
 
   // 赤→黒フェード（orca 衝撃）
@@ -6559,8 +6580,9 @@ function activateShootingLobbyDoor(act, t) {
     if (!result?.cleared) {
       shootingKnockback = {
         vx: 0,
-        vy: 4.6,
-        until: nowMs() + 420,
+        vy: -1.4,
+        gravity: 0.32,
+        until: nowMs() + 350,
       };
     }
     shootingDoorCooldown = nowMs() + 800;
@@ -6598,6 +6620,101 @@ function updateShootingDoorMarkers(t) {
 }
 
 let _letterboxTalkPending = false;
+
+function startGateWarp(act) {
+  if (gateWarpFx) return;
+  input.lock();
+  gateWarpFx = {
+    startMs:       nowMs(),
+    gx:            act.x + ((act.spr ?? SPR) >> 1),
+    gy:            act.y + ((act.sprH ?? act.spr ?? SPR) >> 1),
+    leaderStartX:  leader.x,
+    leaderStartY:  leader.y,
+    duration:      720,
+    faded:         false,
+  };
+}
+
+function checkGateWarpTriggers() {
+  if (gateWarpFx) return;
+  if (current.id !== "outdoor") return;
+  if (autoWalk) return;
+  const fb = footBox(leader.x, leader.y);
+  for (const act of actors) {
+    if (!act.shootingTrigger) continue;
+    if (act.showWhenBgm && bgmCtl.getOverrideSrc() !== act.showWhenBgm) continue;
+    const tb = talkRectActor(act);
+    if (hitRect(fb, tb)) {
+      startGateWarp(act);
+      return;
+    }
+  }
+}
+
+function drawGateWarpFx() {
+  if (!gateWarpFx) return;
+  const elapsed = nowMs() - gateWarpFx.startMs;
+  const p = Math.min(1, elapsed / gateWarpFx.duration);
+  const cx = (gateWarpFx.gx - cam.x) | 0;
+  const cy = (gateWarpFx.gy - cam.y) | 0;
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  // 外側ハロー
+  const r1 = 6 + p * 36;
+  const a1 = (1 - p) * 0.7;
+  const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r1);
+  grad.addColorStop(0, `rgba(255,255,255,${a1})`);
+  grad.addColorStop(0.4, `rgba(180,220,255,${a1 * 0.7})`);
+  grad.addColorStop(1, "rgba(120,180,255,0)");
+  ctx.fillStyle = grad;
+  ctx.fillRect(cx - r1, cy - r1, r1 * 2, r1 * 2);
+  // 中心の白フラッシュ（ピーク後半）
+  if (p > 0.55) {
+    const fp = (p - 0.55) / 0.45;
+    ctx.globalAlpha = fp * fp;
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+  ctx.restore();
+  // スパークル
+  ctx.save();
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2 + p * 6;
+    const r = 8 + p * 18;
+    const px = cx + Math.cos(a) * r;
+    const py = cy + Math.sin(a) * r;
+    ctx.globalAlpha = (1 - p) * 0.95;
+    ctx.fillStyle = i % 2 === 0 ? "#fff" : "#aef";
+    ctx.fillRect((px - 1) | 0, (py - 1) | 0, 2, 2);
+  }
+  ctx.restore();
+}
+
+function updateGateWarpFx(t) {
+  if (!gateWarpFx) return false;
+  if (gateWarpFx.faded) return false; // fade 進行中は通常フローに任せる
+  const elapsed = t - gateWarpFx.startMs;
+  const p = Math.min(1, elapsed / gateWarpFx.duration);
+  const ep = p * p; // ease-in
+  leader.x = gateWarpFx.leaderStartX + (gateWarpFx.gx - 8 - gateWarpFx.leaderStartX) * ep;
+  leader.y = gateWarpFx.leaderStartY + (gateWarpFx.gy - 8 - gateWarpFx.leaderStartY) * ep;
+  followers.reset({ leader, p2, p3, p4 });
+  if (p >= 0.55) {
+    gateWarpFx.faded = true;
+    fade.startCutFade(nowMs(), {
+      outMs:  220,
+      holdMs: 80,
+      inMs:   300,
+      onBlack: () => {
+        gateWarpFx = null;
+        input.unlock();
+        loadMap("shooting_lobby");
+      },
+    });
+  }
+  updateCam();
+  return true;
+}
 
 function findInteractTarget() {
   const a = talkBoxLeader();
@@ -7000,6 +7117,8 @@ function update(t) {
   }
 
   letterbox.setAuto(!ending.isActive() && (interactionSession.isActive() || _letterboxTalkPending));
+
+  if (updateGateWarpFx(t)) return;
 
   if (mechaEvolution.active) {
     if (mechaEvolution.phase === "queued") {
@@ -7465,8 +7584,8 @@ function update(t) {
     followers.reset({ leader, p2, p3, p4 });
     leader.frame = 1;
     shootingKnockback.vx *= 0.88;
-    shootingKnockback.vy = shootingKnockback.vy * 0.9 + 0.12;
-    if (t >= shootingKnockback.until || (Math.abs(shootingKnockback.vx) < 0.2 && Math.abs(shootingKnockback.vy) < 0.2)) {
+    shootingKnockback.vy += shootingKnockback.gravity ?? 0.12;
+    if (t >= shootingKnockback.until) {
       shootingKnockback = null;
       leader.frame = 0;
     }
@@ -7830,6 +7949,7 @@ function update(t) {
   }
 
   followers.update(t, { p2, p3, p4 });
+  checkGateWarpTriggers();
 
   // seahole 泡の生成・更新
   if (current.id === "seahole") {

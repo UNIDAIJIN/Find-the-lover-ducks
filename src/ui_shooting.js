@@ -64,7 +64,7 @@ export const SHOOTING_DIFFICULTIES = {
     id: "easy",
     label: "EASY",
     scoreMul: 0.7,
-    lives: 7,
+    lives: 9,
     enemySpeedMul: 0.86,
     enemyBulletSpeedMul: 0.82,
     bossHpMul: 0.82,
