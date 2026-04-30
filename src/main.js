@@ -3587,6 +3587,7 @@ const menu = createMenu({
     }
     if (id === "pizza") {
       inventory.removeItem("pizza");
+      const ateDeliveryPizza = STATE.flags.pizzaJobActive && !STATE.flags.pizzaDelivered;
       if (STATE.flags.pizzaJobActive && !STATE.flags.pizzaDelivered) {
         STATE.flags.pizzaAte = true;
       }
@@ -3594,10 +3595,15 @@ const menu = createMenu({
       setTimeout(() => {
         input.unlock();
         dialog.open([
+          ["ナツミはピザをたべてしまった！"],
           ["激うま！"],
           ["商品をたべてしまった。"],
           ["あやまりにいこう。"],
-        ], null, "sign");
+        ], () => {
+          if (ateDeliveryPizza) {
+            setTimeout(() => achieveQuest("16"), 1000);
+          }
+        }, "sign");
       }, 700);
       return true;
     }
@@ -6894,7 +6900,6 @@ function tryInteract(t) {
           STATE.money += reward;
           STATE.flags.pizzaLastReward = reward;
           STATE.flags.pizzaSuccessCount = (STATE.flags.pizzaSuccessCount | 0) + 1;
-          if ((STATE.flags.pizzaSuccessCount | 0) >= 5) achieveQuest("16");
           delete STATE.flags.pizzaJobActive;
           delete STATE.flags.pizzaTargetNpc;
           delete STATE.flags.pizzaDelivered;

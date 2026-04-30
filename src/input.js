@@ -4,6 +4,8 @@
 export function createInput() {
   const downSet = new Set(); // 押されているキー
   const hitSet = new Set(); // 押された瞬間（1回だけ）
+  let gamepadDownSet = new Set();
+  const gamepadIgnoreSet = new Set();
   let _locked = false;
 
   function normKey(k) {
@@ -44,6 +46,54 @@ export function createInput() {
   function onBlur() {
     downSet.clear();
     hitSet.clear();
+    gamepadDownSet.clear();
+    gamepadIgnoreSet.clear();
+  }
+
+  function addPadButton(keys, buttons, idx, key) {
+    if (buttons && buttons[idx] && buttons[idx].pressed) keys.add(key);
+  }
+
+  function pollGamepads() {
+    if (typeof navigator === "undefined" || typeof navigator.getGamepads !== "function") return;
+
+    const keys = new Set();
+    const pads = navigator.getGamepads();
+    for (const pad of pads) {
+      if (!pad) continue;
+      const buttons = pad.buttons || [];
+      const axes = pad.axes || [];
+      const ax0 = axes[0] || 0;
+      const ax1 = axes[1] || 0;
+      const DEAD = 0.45;
+
+      // Mobile controller parity: stick/D-pad, A/B, save/load, and audio toggle.
+      addPadButton(keys, buttons, 0, "z"); // A: 決定・話す
+      addPadButton(keys, buttons, 1, "x"); // B: キャンセル・メニュー
+      addPadButton(keys, buttons, 4, "s"); // L1: セーブ
+      addPadButton(keys, buttons, 5, "l"); // R1: ロード
+      addPadButton(keys, buttons, 8, "v"); // Select/Back: おんがくていし
+      addPadButton(keys, buttons, 12, "ArrowUp");
+      addPadButton(keys, buttons, 13, "ArrowDown");
+      addPadButton(keys, buttons, 14, "ArrowLeft");
+      addPadButton(keys, buttons, 15, "ArrowRight");
+
+      if (ax0 <= -DEAD) keys.add("ArrowLeft");
+      if (ax0 >= DEAD) keys.add("ArrowRight");
+      if (ax1 <= -DEAD) keys.add("ArrowUp");
+      if (ax1 >= DEAD) keys.add("ArrowDown");
+    }
+
+    const nextDown = new Set();
+    for (const key of keys) {
+      if (gamepadIgnoreSet.has(key)) continue;
+      nextDown.add(key);
+      if (!gamepadDownSet.has(key)) hitSet.add(key);
+    }
+    for (const key of gamepadIgnoreSet) {
+      if (!keys.has(key)) gamepadIgnoreSet.delete(key);
+    }
+    gamepadDownSet = nextDown;
   }
 
   window.addEventListener("keydown", onKeyDown, { passive: false });
@@ -51,15 +101,25 @@ export function createInput() {
   window.addEventListener("blur", onBlur);
 
   return {
-    lock()   { _locked = true;  downSet.clear(); hitSet.clear(); },
+    lock()   {
+      pollGamepads();
+      for (const key of gamepadDownSet) gamepadIgnoreSet.add(key);
+      _locked = true;
+      downSet.clear();
+      hitSet.clear();
+      gamepadDownSet.clear();
+    },
     unlock() { _locked = false; },
     isLocked() { return _locked; },
     down(key) {
       if (_locked) return false;
-      return downSet.has(normKey(key));
+      pollGamepads();
+      const k = normKey(key);
+      return downSet.has(k) || gamepadDownSet.has(k);
     },
     consume(key) {
       if (_locked) return false;
+      pollGamepads();
       const k = normKey(key);
       if (hitSet.has(k)) {
         hitSet.delete(k);
@@ -79,8 +139,11 @@ export function createInput() {
       downSet.delete(normKey(key));
     },
     clear() {
+      pollGamepads();
+      for (const key of gamepadDownSet) gamepadIgnoreSet.add(key);
       downSet.clear();
       hitSet.clear();
+      gamepadDownSet.clear();
     },
     destroy() {
       window.removeEventListener("keydown", onKeyDown);
@@ -88,6 +151,8 @@ export function createInput() {
       window.removeEventListener("blur", onBlur);
       downSet.clear();
       hitSet.clear();
+      gamepadDownSet.clear();
+      gamepadIgnoreSet.clear();
     },
   };
 }
