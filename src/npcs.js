@@ -33,6 +33,7 @@ import { balloondogNpc }    from "./data/npcs/balloondog.js";
 import { balloonNpc }       from "./data/npcs/balloon.js";
 import { workmangirlNpc }  from "./data/npcs/workmangirl.js";
 import { workmanNpc }      from "./data/npcs/workman.js";
+import { ninjaNpc }        from "./data/npcs/ninja.js";
 import { diggyNpc }        from "./data/npcs/diggy.js";
 import { yahhyNpc }        from "./data/npcs/yahhy.js";
 import { yashiNpc }        from "./data/npcs/yashi.js";
@@ -120,6 +121,17 @@ export const NPCS_BY_MAP = {
       talkHit: { x: 0, y: 0, w: 26, h: 16 },
       talkType: "sign",
       talkPages: [["恐竜の化石と一緒に出土したなぞの望遠鏡。今はもう動かない。"]],
+      solid: false,
+      noRender: true,
+    }),
+    resolve({
+      kind: "npc",
+      name: "board_tenant_wanted",
+      x: 1649,
+      y: 822,
+      talkHit: { x: 0, y: 0, w: 16, h: 16 },
+      talkType: "sign",
+      talkPages: [["入居テナント募集"]],
       solid: false,
       noRender: true,
     }),
@@ -322,6 +334,10 @@ export const NPCS_BY_MAP = {
 
   house08: [
     resolve(ufogirlNpc),
+  ],
+
+  house11: [
+    resolve(ninjaNpc),
   ],
 
   mirai: [

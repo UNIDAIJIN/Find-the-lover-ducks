@@ -429,15 +429,18 @@ export function runNpcEvent(act, ctx) {
     const { dialog, choice, startPizzaJob, settlePizzaJob, cancelPizzaJob, inventory } = ctx;
     if (STATE.flags.pizzaJobActive) {
       if (STATE.flags.pizzaDelivered) {
-        const reward = typeof settlePizzaJob === "function" ? settlePizzaJob() : 1000;
         const elapsedMs = Math.max(0, (STATE.flags.pizzaDeliveredAtMs | 0) - (STATE.flags.pizzaStartMs | 0));
-        const totalSec = (elapsedMs / 1000) | 0;
-        const mm = ((totalSec / 60) | 0).toString();
-        const ss = (totalSec % 60).toString().padStart(2, "0");
+        const sec = (elapsedMs / 1000) | 0;
+        const speedLine = sec <= 30 ? "すごくはやいね！"
+                        : sec <= 60 ? "はやかったね！"
+                        : sec <= 120 ? "まあまあだね！"
+                        : sec <= 180 ? "もうちょっとがんばって！"
+                        : "ちょっとおそい！";
+        const reward = typeof settlePizzaJob === "function" ? settlePizzaJob() : 1000;
         playCoin();
         dialog.open([
           ["おつかれさま！"],
-          [`${mm}:${ss}！がんばったね！`],
+          [speedLine],
           ["これお給料ね！"],
           [`${reward}EN をもらった！`],
         ]);

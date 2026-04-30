@@ -174,6 +174,7 @@ export const SPRITES = {
   dive_treasure: loadSprite("assets/sprites/dive_treasure.png"),
   dive_wall:     loadSprite("assets/sprites/dive_wall.png"),
   yasu:          loadSprite("assets/sprites/yasu.png"),
+  ninja:         loadSprite("assets/sprites/ninja.png"),
 
   // phone brawl prototype
   phoneBrawlEnemy: loadSprite("assets/phone_brawl/enemy.png"),

@@ -8,4 +8,5 @@ export const equipmentItems = [
   { id: "kingyobachi",    name: "きんぎょばち",   bgmSrc: null, throwDmg: 1 },
   { id: "s_hat",          name: "サボテンハット", bgmSrc: null, throwDmg: 1 },
   { id: "densetsu_no_ken", name: "伝説の剣",    bgmSrc: null, throwDmg: 10000 },
+  { id: "ninja_stone",    name: "ニンジャストーン", bgmSrc: null, throwDmg: 1000 },
 ];

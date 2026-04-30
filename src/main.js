@@ -3501,6 +3501,20 @@ const menu = createMenu({
       }, 700);
       return true;
     }
+    if (id === "ninja_stone") {
+      inventory.removeItem("ninja_stone");
+      lockItemUseWait();
+      setTimeout(() => {
+        STATE.flags.eatCount = (STATE.flags.eatCount || 0) + 1;
+        if (STATE.flags.eatCount >= 10) achieveQuest("26");
+        input.unlock();
+        dialog.open([
+          ["ナツミはニンジャストーンをたべてみた！"],
+          ["カチカチ！"],
+        ], null, "sign");
+      }, 700);
+      return true;
+    }
     if (id === "hone") {
       inventory.removeItem("hone");
       lockItemUseWait();
