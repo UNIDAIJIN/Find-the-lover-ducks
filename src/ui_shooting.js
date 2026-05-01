@@ -185,6 +185,7 @@ export function createShooting({ BASE_W, BASE_H, input, sprites, getLeaderImg } 
   let supportDeck, supportTimer, rapidTimer;
   let autoEndOnClear = false;
   let autoEndOnResult = false;
+  let bossSpriteKey = "skull_r";
   let cleared = false;
   let playerFrame, playerFrameTimer, playerTrail;
   let enemyFrame, enemyFrameTimer;
@@ -463,7 +464,7 @@ export function createShooting({ BASE_W, BASE_H, input, sprites, getLeaderImg } 
     countdownTimer = COUNTDOWN_FRAMES * 3;
     player  = { x: PLAY_CX, y: BASE_H - 30, invTimer: 0, vx: 0, vy: 0, recoil: 0, sway: 0, dead: false };
     bullets = []; enemyBullets = []; enemies = []; particles = []; popTexts = []; supportDrops = [];
-    score = 0; wave = 0; waveTimer = 999; shootTimer = 0;
+    score = 0; wave = opt.bossOnly ? BOSS_EVERY : 0; waveTimer = 999; shootTimer = 0;
     lives = diffCfg.lives || PLAYER_LIVES; hitFlash = 0;
     boss = null;
     hue = 0; wobblePhase = 0; wobbleAmp = 2;
@@ -486,6 +487,7 @@ export function createShooting({ BASE_W, BASE_H, input, sprites, getLeaderImg } 
     scheduleSupportDrop();
     autoEndOnClear = !!opt.autoEndOnClear;
     autoEndOnResult = !!opt.autoEndOnResult;
+    bossSpriteKey = opt.bossSpriteKey || "skull_r";
     cleared = false;
     playerFrame = 0; playerFrameTimer = 0;
     playerTrail = [];
@@ -905,10 +907,11 @@ export function createShooting({ BASE_W, BASE_H, input, sprites, getLeaderImg } 
     const sw = SPR * s, sh = SPR * s;
     const sx = (boss.x - sw / 2) | 0, sy = (boss.y - sh / 2) | 0;
     if (boss.flickerTimer > 0 && Math.floor(boss.flickerTimer / 2) % 2) return;
-    if (sprites?.skull_r && sprites.skull_r.naturalWidth > 0) {
+    const bossImg = sprites?.[bossSpriteKey];
+    if (bossImg && bossImg.naturalWidth > 0) {
       ctx.save();
       ctx.filter = `hue-rotate(${hue % 360}deg) brightness(1.4)`;
-      ctx.drawImage(sprites.skull_r, enemyFrame * SPR, 0, SPR, SPR, sx, sy, sw, sh);
+      ctx.drawImage(bossImg, enemyFrame * SPR, 0, SPR, SPR, sx, sy, sw, sh);
       ctx.filter = "none";
       ctx.restore();
     } else {

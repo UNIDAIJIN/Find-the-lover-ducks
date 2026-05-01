@@ -56,6 +56,13 @@ export const outdoorMap = {
       entryWalk: { dx: 0, dy: 1, frames: 20 },
     },
     {
+      id:        41,
+      to:        "flowers",
+      trigger:   { x: 1887, y: 683, w: 16, h: 8 }, // 底辺中心 (1895,687) 基準
+      entryAt:   { x: 1887, y: 675 },
+      entryWalk: { dx: 0, dy: 1, frames: 20 },
+    },
+    {
       id:        39,
       to:        "musium",
       trigger:   { x: 1577, y: 823, w: 16, h: 8 }, // 底辺中心 (1585,827)

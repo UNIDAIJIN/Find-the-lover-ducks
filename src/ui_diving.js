@@ -17,16 +17,16 @@ const ZONES = [
 ];
 
 const ITEMS_DB = [
-  { name: "かいがら", emoji: "◇", minD: 0, maxD: 6, val: 15, rare: 0.6 },
-  { name: "ヒトデ", emoji: "☆", minD: 0, maxD: 8, val: 25, rare: 0.5 },
-  { name: "サンゴ", emoji: "▽", minD: 3, maxD: 10, val: 50, rare: 0.4 },
-  { name: "しんじゅ", emoji: "○", minD: 8, maxD: 18, val: 150, rare: 0.3 },
-  { name: "コイン", emoji: "●", minD: 10, maxD: 22, val: 280, rare: 0.18 },
-  { name: "こはく", emoji: "◆", minD: 15, maxD: 26, val: 450, rare: 0.15 },
-  { name: "くろしんじゅ", emoji: "★", minD: 20, maxD: 32, val: 900, rare: 0.12 },
-  { name: "こだいのぞう", emoji: "▲", minD: 25, maxD: 40, val: 1600, rare: 0.08 },
-  { name: "しんかいほうせき", emoji: "◎", minD: 35, maxD: 999, val: 3000, rare: 0.06 },
-  { name: "りゅうのなみだ", emoji: "♦", minD: 37, maxD: 999, val: 6000, rare: 0.03 },
+  { name: "かいがら", emoji: "◇", spriteKey: "dive_kaigara", minD: 0, maxD: 6, val: 15, rare: 0.6 },
+  { name: "ヒトデ", emoji: "☆", spriteKey: "dive_hitode", minD: 0, maxD: 8, val: 25, rare: 0.5 },
+  { name: "サンゴ", emoji: "▽", spriteKey: "dive_sango", minD: 3, maxD: 10, val: 50, rare: 0.4 },
+  { name: "しんじゅ", emoji: "○", spriteKey: "dive_shinju", minD: 8, maxD: 18, val: 150, rare: 0.3 },
+  { name: "コイン", emoji: "●", spriteKey: "dive_coin", minD: 10, maxD: 22, val: 280, rare: 0.18 },
+  { name: "こはく", emoji: "◆", spriteKey: "dive_kohaku", minD: 15, maxD: 26, val: 450, rare: 0.15 },
+  { name: "くろしんじゅ", emoji: "★", spriteKey: "dive_kuroshinju", minD: 20, maxD: 32, val: 900, rare: 0.12 },
+  { name: "こだいのぞう", emoji: "▲", spriteKey: "dive_kodaizo", minD: 25, maxD: 40, val: 1600, rare: 0.08 },
+  { name: "しんかいほうせき", emoji: "◎", spriteKey: "dive_houseki", minD: 35, maxD: 999, val: 3000, rare: 0.06 },
+  { name: "りゅうのなみだ", emoji: "♦", spriteKey: "dive_ryunonamida", minD: 37, maxD: 999, val: 6000, rare: 0.03 },
 ];
 
 const UPG = [
@@ -99,7 +99,7 @@ function placeEnts(map, rows) {
   const treasureX = Math.floor(COLS / 2) * TILE + TILE / 2;
   const treasureY = (rows - 2) * TILE + TILE / 2;
   items.push({
-    name: "おうかん", emoji: "W", val: 8000, rare: 1, minD: 0, maxD: 999,
+    name: "おうかん", emoji: "W", spriteKey: "dive_treasure", val: 8000, rare: 1, minD: 0, maxD: 999,
     x: treasureX, y: treasureY, col: false, bp: 0, isTreasure: true,
   });
   return { items, jelly, urchins, currents };
@@ -583,8 +583,10 @@ export function createDiving({ BASE_W: _origW, BASE_H: _origH, input, getLeaderI
           ctx.fillText(it.emoji, ix, iy + 3);
         }
       } else {
-        ctx.fillStyle = "#aaddff"; ctx.font = '20px PixelMplus10'; ctx.textAlign = "center";
-        ctx.fillText(it.emoji, ix, iy + 3);
+        if (!it.spriteKey || !drawSpr(ctx, it.spriteKey, ix, iy, 16)) {
+          ctx.fillStyle = "#aaddff"; ctx.font = '20px PixelMplus10'; ctx.textAlign = "center";
+          ctx.fillText(it.emoji, ix, iy + 3);
+        }
       }
     });
 
@@ -742,6 +744,22 @@ export function createDiving({ BASE_W: _origW, BASE_H: _origH, input, getLeaderI
     }
   }
 
+  function drawResultRow(ctx, it, text, y) {
+    const ICON = 16, GAP = 4;
+    const tw = ctx.measureText(text).width;
+    const totalW = ICON + GAP + tw;
+    const startX = BASE_W / 2 - totalW / 2;
+    const drewIcon = it.spriteKey ? drawSpr(ctx, it.spriteKey, startX + ICON / 2, y - 8, ICON) : false;
+    const prevAlign = ctx.textAlign;
+    ctx.textAlign = "left";
+    if (drewIcon) {
+      ctx.fillText(text, startX + ICON + GAP, y);
+    } else {
+      ctx.fillText(it.emoji + " " + text, startX, y);
+    }
+    ctx.textAlign = prevAlign;
+  }
+
   function drawResult(ctx) {
     const r = g.result;
     if (!r) return;
@@ -762,7 +780,7 @@ export function createDiving({ BASE_W: _origW, BASE_H: _origH, input, getLeaderI
       const fa = Math.min(1, (g.resTimer - i * 8) / 12);
       if (fa <= 0) return;
       ctx.globalAlpha = fa; ctx.fillStyle = "#ffdd44";
-      ctx.fillText(it.emoji + " " + it.name + " " + it.val + "EN", BASE_W / 2, 136 + i * 26);
+      drawResultRow(ctx, it, it.name + " " + it.val + "EN", 136 + i * 26);
     });
     ctx.globalAlpha = 1;
 
@@ -774,7 +792,7 @@ export function createDiving({ BASE_W: _origW, BASE_H: _origH, input, getLeaderI
       const showCount = Math.min(3, sorted.length);
       for (let i = 0; i < showCount; i++) {
         ctx.fillStyle = i === 0 ? "#ff8888" : "#996666";
-        ctx.fillText(sorted[i].emoji + " " + sorted[i].name + " -" + sorted[i].val + "EN", BASE_W / 2, ly + 26 + i * 24);
+        drawResultRow(ctx, sorted[i], sorted[i].name + " -" + sorted[i].val + "EN", ly + 26 + i * 24);
       }
     }
 

@@ -3,7 +3,7 @@ export const redDoorVjRoom01Npc = {
   kind:      "npc",
   name:      "red_door_block",
   spriteKey: null,
-  hidden:    true,
+  noRender:  true,
   x:         153,
   y:         114,
   talkHit:   { x: 0, y: 0, w: 16, h: 14 },

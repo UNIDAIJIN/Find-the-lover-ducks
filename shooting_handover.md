@@ -1,18 +1,24 @@
 # 引き継ぎ書
 
-最終確認日: 2026-04-14
+最終確認日: 2026-05-01
 
 このファイルは「次のセッションで何を読むべきか」「今の実装がどこまで進んでいるか」「ローカル差分が何か」を短時間で把握するための引き継ぎ用メモ。
-古いシューティング専用メモを置き換えた。実装の正本はコードで、特に `src/main.js` / `src/npc_events.js` / `src/ui_shooting.js` を優先すること。
+実装の正本はコード。特に `src/main.js` / `src/input.js` / `src/mobile_controller.js` / `src/data/quests.js` / `src/data/maps/*` を優先すること。
 
 ## まず読むファイル
 
 1. `src/main.js`
-2. `src/npc_events.js`
-3. `src/ui_shooting.js`
-4. `src/data/quests.js`
-5. `SPEC.md`
-6. `quest_impl.md` は参考程度。実装状況と一部ズレる可能性あり
+2. `src/input.js`
+3. `src/mobile_controller.js`
+4. `src/title.js`
+5. `src/data/quests.js`
+6. `src/data/maps/outdoor.js`
+7. `src/data/maps/flowers.js`
+8. `src/data/npcs/red_door_vj_room01.js`
+9. `src/npcs.js`
+10. `SPEC.md`
+
+`quest_impl.md` は参考程度。実装状況と一部ズレる可能性あり。
 
 ## ローカル起動
 
@@ -27,161 +33,140 @@ python3 -m http.server 8080 --bind 127.0.0.1
 
 ## 現在の未コミット差分
 
-主な差分:
+`git status --short --branch` で確認した現状:
 
-- `src/main.js`
-  `theater` 演出と、`theater -> outdoor` 復帰後1分の雨演出を追加
-- `src/maps.js`
-  仮想マップ `theater` を追加
+- `assets/maps/.DS_Store`
+- `assets/maps/house04.png`
+- `assets/maps/flowers.png` 未追跡
+- `assets/maps/flowers_col.png` 未追跡
+- `assets/maps/flowers_top.png` 未追跡
+- `src/data/maps/flowers.js` 未追跡
 - `src/data/maps/outdoor.js`
-  `id:34` のドアを追加。`2512,1323` の trigger から `theater` に入る
-- `src/sprites.js`
-  `assets/sprites/movie.png` を `SPRITES.movie` として追加
-- `src/audio_bgm.js`
-  `bgm_movie.mp3` の音量補正を追加
-
-今回の差分は `theater` 関連のまとまった実装。次セッションで消さないこと。
-
-## 実装の大枠
-
-今の追加要素は大きく5本ある。
-
-1. 地獄ゲートから入る `shooting_lobby`
-2. ロビー内の7枚ドアごとのシューティング
-3. ピザ配達バイト
-4. クエストの追加達成条件
-5. `theater` 仮想マップ演出
-
-## theater 演出
-
-### 導線
-
-- `src/data/maps/outdoor.js`
-- `outdoor` に `id: 34` のドアを追加
-- trigger は `2512,1323,16x8`
-- 遷移先は `theater`
-- `theater` から戻る時は同じ `doorId: 34` を使って `outdoor` に復帰
-
-### マップ構成
-
-- `src/maps.js`
-- `theater` は黒背景 + 透明当たり判定の仮想マップ
-- `spawn` は中央付近。通常のフィールド描画は使わず、`src/main.js` の専用描画分岐で映像を出している
-
-### 映像仕様
-
-- `src/sprites.js`
-  `movie.png` は `384x180`。横2フレームの画像として扱う
+- `src/data/npcs/minami_vj_room01.js`
+- `src/data/npcs/red_door_vj_room01.js`
+- `src/input.js`
 - `src/main.js`
-  `drawTheaterScene()` で `192x180` + `192x180` の2フレームを表示
-- 演出内容:
-  - ゆっくりフェードイン
-  - 微小な揺れ
-  - ブラー気味のフレーム切り替え
-  - 青い被膜
-  - 映写機っぽいフリッカーと粒ノイズ
-- 左からスライドインは廃止済み
-- `PRESS Z` 表示は出さない
-
-### 入力と進行
-
-- `theater` 中は `Z` 以外の入力を無効化
-- 流れ:
-  1. 入場後5秒上映
-  2. ダイアログ表示
-     - 「白黒の映画だ。」
-     - 「女が砂糖をたべる映像が30分くらい続いている。」
-  3. ダイアログを閉じる
-  4. さらに5秒待機
-  5. `Z` で `outdoor` に戻る
-- ダイアログ後の待機は `startMs` と別に `exitWaitStartMs` を持っている。映像の再フェードインを避けるため
-
-### theater 専用BGM
-
-- `theater` 滞在中だけ `assets/audio/bgm_movie.mp3`
-- `src/audio_bgm.js` でこの曲だけ音量補正 `1.8x`
-
-### 復帰後の雨
-
-- `theater -> outdoor` を `doorId:34` で戻った時だけ発火
-- `src/main.js` に簡易雨エフェクトを実装
-- 持続時間は60秒
-- 雨は縦線。青っぽい薄い全体被膜あり
-- 他の遷移では雨は発火しない
-
-## シューティング導線
-
-### 入口
-
-- `src/data/npcs/gate.js`
-- NPC `gate` は `showWhenBgm: "assets/audio/duckJ.mp3"` の時だけ表示
-- 話しかけると `shootingTrigger: true` により `shooting_lobby` に遷移
-
-### ロビー構成
-
-- `src/data/maps/shooting_lobby.js`
-  1x1の透明画像を使った専用マップ。背景は `shootingBackdrop: true` で `drawShootingBackdrop()` を直接描画
+- `src/maps.js`
+- `src/mobile_controller.js`
 - `src/npcs.js`
-  `lucha_shooting` と `door_0`〜`door_7` を配置
-- `door_0` は出口。屋外へ戻る
-- `door_1`〜`door_7` は個別のシューティング入口
+- `src/title.js`
 
-### 解放条件
+次に触る時は、これらをユーザー作業込みの現行差分として扱うこと。勝手に戻さない。
 
-- ロビーで最初に `lucha_shooting` に話しかけるまでドアは使えない
-- 初回会話後に `STATE.flags.shootingLobbyLuchaTalked = true`
-- この時点でクエスト `12: じごくへん` を達成
+## 直近で入った大きな変更
 
-### ドアの動作
+### クエスト16
 
-- 実装は `activateShootingLobbyDoor()` in `src/main.js`
-- `door_1`〜`door_7` は1ドア=1回のシューティング
-- 開始時:
-  - フィールドBGMを `about:blank` で止める
-  - `startShootingBgm()`
-  - `shooting.start(..., { autoEndOnClear: true })`
-- クリア時:
-  - 該当ドアに `STATE.flags.shootingCleared_<door name>` を立てる
-  - ドアマークを `door_noclear` から `door_clear` にアニメ付きで切替
-  - 7枚全部クリアでクエスト `15: 魔王誕生`
-- 失敗時:
-  - ロビーに戻される
-  - 下方向ノックバックあり
+- `src/data/quests.js`
+- 旧: `ピザ名人 / ピザを5枚とどける`
+- 新: `炎上 / 配達中のピザを食べてしまう`
+- 配達中に `pizza` を食べると `STATE.flags.pizzaAte = true`
+- ピザの使用メッセージに `ナツミはピザをたべてしまった！` を入れている
+- メッセージ後、1秒待ってからクエストアラートで `achieveQuest("16")`
+- `pizzaSuccessCount >= 5` での達成は撤去済み
 
-### シューティング本体
+### ゲームパッド
 
-ファイル: `src/ui_shooting.js`
+- `src/input.js`
+- Gamepad API 対応済み
+- モバイルコントローラー相当の操作だけを割り当てる方針
+- 現在の割り当て:
+  - 左スティック / 十字: 移動
+  - A / button 0: `z`
+  - B / button 1: `x`
+  - L1 / button 4: `s`
+  - R1 / button 5: `l`
+  - SELECT / button 8: `v`
+- `src/ui_menu.js` の操作説明は、`C` デバッグ表記を出さず、ゲームパッド表記を追加済み
 
-- フェーズ: `idle -> countdown -> playing -> result`
-- 自機:
-  - 矢印移動
-  - `Z` 射撃
-  - `C` シールド
-  - `B` でライフ全回復（デバッグ）
-- ライフ: 3
-- 被弾無敵: 90f
-- スロー演出:
-  - 600fごとに候補
-  - 敵が3体超の時に180f発動
-- 敵:
-  - `small`
-  - `zigzag`
-  - `shooter`
-- 3waveごとにボス `EL JIGOKU`
-- スコア:
-  - small/zigzag 100
-  - shooter 300
-  - boss 3000
-- 報酬:
-  - `earnedEN = floor(score / 10)`
-  - 終了時に所持金へ加算
-- `autoEndOnClear: true` のため、ボス撃破後は短い結果表示ののち自動終了
+### 音楽停止
 
-### 既知の状態
+- `V` / SELECT が音楽停止操作
+- 操作説明にも反映済み
 
-- 旧メモにあった「Dキーで起動」はもう主導線ではない。現状の正式導線は `gate -> shooting_lobby -> door`
-- ライフ0で `result` へ遷移する処理は実装済み
-- ロビー滞在中は `startShootingBgm()` を使い続ける構成
+### セーブ / ロード
+
+- L1 にセーブ、R1 にロードを割り当て済み
+- キーボードでは `S` セーブ、`L` ロード
+
+### デバッグ高速移動とダッシュ
+
+- `src/main.js`
+- 旧: `C` がデバッグ高速移動
+- 新: `B` がデバッグ高速移動 / 当たり判定表示 / 座標表示
+- `C` は通常ダッシュ
+- `C` ダッシュ:
+  - 通常速度の `1.6x`
+  - `space` / `space_boss` では無効
+  - 走っている間、既存の震え表現を等倍時間で使う
+  - 足元の土埃を4人全員から出す
+- 月の石デバッグ切替は `M` に移動済み
+
+### モバイル
+
+- `src/title.js`
+- モバイル版のみタイトル下に `POCKET EDITION` を表示
+- `src/main.js` から `createTitle({ pocketEdition: MOBILE })` で渡している
+- `src/mobile_controller.js`
+- タッチスティックは `stickTouchId` を追跡する形に修正済み。別指の `touchmove/touchend` でスティックが崩れにくい
+
+## upper / ground 管理
+
+### 何のための状態か
+
+- `src/col.js`
+- 当たり判定色:
+  - 透明: 通れる
+  - 緑: 階段ゾーン
+  - 青: `upper` の時だけ壁
+  - 黄: `ground` の時だけ壁
+  - その他の不透明色: 壁
+- `src/main.js` で `heightLevel` / `charHeight` / `stairZonePrev` を持つ
+- 緑の階段ゾーンに入った瞬間に `ground` と `upper` を切り替える
+
+### 現方針
+
+- upper / ground の切り替え判定は `outdoor` だけで使う
+- ただし upper 位置にある家もあるので、屋内に入った時に `charHeight` 自体は消さない
+- 屋内や別マップの当たり判定では一時的に `heightLevel = "ground"` として扱う
+- `outdoor` に戻ったら保存していた `charHeight.leader` から高さを戻す
+
+### ニューゲーム持ち越し対策
+
+- `startNewGameFlow()` で以下をリセットする
+  - `current.id = ""`
+  - `mapReady = false`
+  - `resetHeightState()`
+- キャラ選択後と、暗転して `moritasaki_room` を読む直前にも `resetHeightState()` を呼ぶ
+- `resetHeightState()` は全員 `ground` に戻し、`syncStairZonePrev()` で階段踏み状態も同期する
+- 目的は、前回プレーで `upper` のまま終わった状態がニューゲームに混ざる事故を防ぐこと
+
+## talkHit / hidden の注意
+
+`hidden: true` のNPCは、見えないだけでなく会話判定から外れる可能性がある。見えない当たり判定ボックスやトークヒットだけ必要なものは `noRender: true` を使う。
+
+直近修正:
+
+- `src/npcs.js`
+  - `timemachineSlotNpc` を `hidden: true` から `noRender: true` に変更
+  - つきのいしをはめるトークヒット用
+- `src/data/npcs/red_door_vj_room01.js`
+  - `red_door_block` を `hidden: true` から `noRender: true` に変更
+  - `vj_room01` の通れないドアのボックス用
+
+## flowers マップ追加中
+
+- `src/data/maps/outdoor.js`
+  - `flowers` へのドア追加中
+- `src/maps.js`
+  - `flowersMap` を import / 登録中
+- 未追跡:
+  - `src/data/maps/flowers.js`
+  - `assets/maps/flowers.png`
+  - `assets/maps/flowers_col.png`
+  - `assets/maps/flowers_top.png`
+
+この一式は未完成の可能性がある。次に触る時はマップ遷移、spawn、当たり判定画像、top画像の重なりを実機確認すること。
 
 ## ピザ配達
 
@@ -200,9 +185,9 @@ python3 -m http.server 8080 --bind 127.0.0.1
   - `yahhy`
   - `keeper`
 - 配達中は対象NPC頭上に `pizza_sign` マーカーを出す
-- `refreshPizzaJobMarkers()` が表示制御
 - 対象NPCに話しかけると `pizza` を消費して配達完了
 - 完了後にピザ屋へ戻ると報酬精算
+- 配達中に `pizza` を食べるとクエスト `16: 炎上`
 
 ### 報酬テーブル
 
@@ -211,22 +196,6 @@ python3 -m http.server 8080 --bind 127.0.0.1
 - 120秒以内: 1000EN
 - 180秒以内: 700EN
 - それ以降: 400EN
-
-### 失敗/例外
-
-- 配達中に `pizza` を食べると `STATE.flags.pizzaAte = true` になり、メッセージ後1秒でクエスト `16: 炎上` を達成
-- その状態でピザ屋に戻るとバイト失敗としてキャンセル
-- 配達中にインベントリから `pizza` が消えていたら、ピザ屋会話時に補充する
-
-### クエスト連動
-
-- 配達中に `pizza` を食べるとクエスト `16: 炎上`
-
-### 直近差分
-
-- `pizza_sign.png` がローカル未追跡
-- `drawPizzaMarkOverlay()` のY位置調整が `src/main.js` に未コミットで入っている
-- この2つはセットの作業
 
 ## クエスト状況
 
@@ -262,18 +231,71 @@ python3 -m http.server 8080 --bind 127.0.0.1
 - `29` 噴水30秒
 - `30` ベンチ10秒
 
-`18`, `24`, `25` は定義はあるが、この確認範囲では達成箇所を未追跡。次回必要なら `rg "achieveQuest\\(\"18|24|25"` で即確認すること。
+`18`, `24`, `25` は定義はあるが、この確認範囲では達成箇所を未追跡。次回必要なら `rg 'achieveQuest\\("18|24|25'` で確認すること。
+
+## シューティング導線
+
+### 入口
+
+- `src/data/npcs/gate.js`
+- NPC `gate` は `showWhenBgm: "assets/audio/duckJ.mp3"` の時だけ表示
+- 話しかけると `shootingTrigger: true` により `shooting_lobby` に遷移
+
+### ロビー構成
+
+- `src/data/maps/shooting_lobby.js`
+- 背景は `shootingBackdrop: true` で `drawShootingBackdrop()` を直接描画
+- `src/npcs.js`
+  - `lucha_shooting`
+  - `door_0`〜`door_7`
+- `door_0` は出口
+- `door_1`〜`door_7` は個別のシューティング入口
+
+### 既知の状態
+
+- 旧メモにあった「Dキーで起動」は正式導線ではない
+- 正式導線は `gate -> shooting_lobby -> door`
+- ロビー初回会話でクエスト `12: じごくへん`
+- 7枚全部クリアでクエスト `15: 魔王誕生`
+
+## theater 演出
+
+`theater` 関連は以前のまとまった実装。現在の直近作業の中心ではないが、消さないこと。
+
+- `src/data/maps/outdoor.js`
+  - `id: 34` のドアから `theater`
+- `src/maps.js`
+  - `theater` は黒背景 + 透明当たり判定の仮想マップ
+- `src/main.js`
+  - `drawTheaterScene()` で専用描画
+  - 入場後5秒上映、ダイアログ、さらに5秒待機、`Z` で `outdoor` 復帰
+  - `theater -> outdoor` 復帰後だけ60秒の雨演出
+- `src/audio_bgm.js`
+  - `bgm_movie.mp3` の音量補正あり
+
+## 確認済み
+
+直近作業中に以下の構文チェックは通過済み。
+
+```bash
+node --check src/main.js
+node --check src/input.js
+node --check src/title.js
+node --check src/npcs.js
+node --check src/data/npcs/red_door_vj_room01.js
+```
 
 ## 次に触る時の優先候補
 
-1. ピザ配達の表示/導線を実機確認して、`pizza_sign` の位置と視認性を最終調整
-2. `theater` 演出と雨の強さ/見た目を実機で微調整
-3. シューティングの正式入口条件を演出込みで詰める
-4. `quest_impl.md` を現行コードに合わせて更新
-5. 未接続クエスト `18`, `24`, `25` の実装有無を洗う
+1. `flowers` マップ一式の遷移、当たり判定、top画像の表示確認
+2. `upper / ground` のニューゲーム持ち越しが再現しないか実機確認
+3. `C` ダッシュの速度、土埃、4人分の見た目を実機調整
+4. ゲームパッドの L1/R1/SELECT とモバイル操作説明の実機確認
+5. クエスト `18`, `24`, `25` の達成箇所を洗う
 
 ## 注意点
 
 - `SPEC.md` の `nowMs` 利用ルールは守ること。フェードや暗転に `performance.now()` を直書きしない
-- 既存差分は消さない。特に `src/main.js` の `theater` / 雨実装
-- `shooting_lobby` は通常マップ画像を使わない特殊構成なので、背景追加を考えるなら `shootingBackdrop` 分岐も合わせて確認する
+- 既存差分は消さない。特に `flowers` 一式、`upper / ground`、入力周り、`noRender` 修正
+- 見えない接触判定を作る時は `hidden: true` ではなく `noRender: true` を検討する
+- `space` / `space_boss` では通常ダッシュを有効化しない

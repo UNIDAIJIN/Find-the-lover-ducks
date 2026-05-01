@@ -44,6 +44,7 @@ import { vjFactryMap }        from "./data/maps/vj_factry.js";
 import { spaceBossMap }       from "./data/maps/space_boss.js";
 import { musiumMap }          from "./data/maps/musium.js";
 import { pubMap }             from "./data/maps/pub.js";
+import { flowersMap }         from "./data/maps/flowers.js";
 
 // ---- util: ダミー画像（1px） ----
 const BLACK_1PX =
@@ -101,6 +102,7 @@ export const MAPS = {
   cdshop:    cdshopMap,
   musium:    musiumMap,
   pub:       pubMap,
+  flowers:   flowersMap,
   theater: {
     bgSrc: BLACK_1PX,
     colSrc: CLEAR_1PX,

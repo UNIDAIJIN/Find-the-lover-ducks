@@ -1092,6 +1092,8 @@ let timeMachineEnterMsA = 0;
 let timeMachineEnterMsB = 0;
 let heightLevel = "ground"; // "ground" | "upper"
 let exclamations = []; // { sx, sy, startMs, duration, char?, color? }
+let dashDust = []; // { x, y, vx, vy, born, life, size }
+let dashDustLastMs = 0;
 let chinanagoActivated = false;
 let cactusActivated    = false;
 const SHRINE_WHITE_SPEED = 1 / 8; // ~8フレームでフェードイン/アウト
@@ -2595,6 +2597,51 @@ function talkRectActor(a) {
   return { x: a.x + (th.x | 0), y: a.y + (th.y | 0), w: th.w | 0, h: th.h | 0 };
 }
 
+function spawnDashDustForChar(t, ch, dx, dy, phase = 0) {
+  if (current.id === "space" || current.id === "space_boss") return;
+  const len = Math.hypot(dx, dy) || 1;
+  const bx = ch.x + 8 - (dx / len) * (4 + phase);
+  const by = ch.y + 15;
+  dashDust.push({
+    x: bx + (Math.random() * 8 - 4),
+    y: by + (Math.random() * 3 - 1),
+    vx: -(dx / len) * (0.18 + Math.random() * 0.18) + (Math.random() - 0.5) * 0.12,
+    vy: -0.12 - Math.random() * 0.12,
+    born: t,
+    life: 260 + Math.random() * 120,
+    size: 1 + (Math.random() * 2 | 0),
+  });
+}
+
+function spawnDashDust(t, dx, dy) {
+  if (current.id === "space" || current.id === "space_boss") return;
+  if (t - dashDustLastMs < 55) return;
+  dashDustLastMs = t;
+  spawnDashDustForChar(t, leader, dx, dy, 0);
+  spawnDashDustForChar(t, p2, dx, dy, 0.7);
+  spawnDashDustForChar(t, p3, dx, dy, 1.4);
+  spawnDashDustForChar(t, p4, dx, dy, 2.1);
+  if (dashDust.length > 48) dashDust.splice(0, dashDust.length - 48);
+}
+
+function drawDashDust(t) {
+  if (!dashDust.length) return;
+  ctx.save();
+  dashDust = dashDust.filter((p) => {
+    const age = t - p.born;
+    if (age >= p.life) return false;
+    const k = age / p.life;
+    const x = p.x + p.vx * age * 0.08;
+    const y = p.y + p.vy * age * 0.08 - k * 2;
+    ctx.globalAlpha = (1 - k) * 0.55;
+    ctx.fillStyle = k < 0.45 ? "#c7b08a" : "#8d806b";
+    const s = p.size + (k > 0.5 ? 1 : 0);
+    ctx.fillRect((x - cam.x) | 0, (y - cam.y) | 0, s, s);
+    return true;
+  });
+  ctx.restore();
+}
+
 function pickupSpriteFor(itemId) {
   if (itemId === "rubber_duck_H") return SPRITES.duck_red;
   return SPRITES.duck;
@@ -2650,9 +2697,13 @@ function spawnActorsForMap(mapId) {
   if (mapId === "outdoor" && STATE.achievedQuests.has("12")) {
     const a = actors.find((a) => a.name === "lucha");
     if (a) {
-      a.hidden = true;
-      a.solid = false;
-      a.talkHit = { x: 0, y: 0, w: 0, h: 0 };
+      if (STATE.flags.luchadolaDefeated) {
+        a.talkPages = [["くそーー！"]];
+      } else {
+        a.hidden = true;
+        a.solid = false;
+        a.talkHit = { x: 0, y: 0, w: 0, h: 0 };
+      }
     }
   }
   if (mapId === "house07" && STATE.flags.ac1Gone) {
@@ -2733,6 +2784,14 @@ function applyFlagsToActors(mapId) {
     const a = actors.find(x => x.name === "cactus_14");
     if (a) {
       a.animMs  = 200;
+      a.talkHit = { x: 0, y: 0, w: 0, h: 0 };
+    }
+  }
+  if (mapId === "shooting_lobby" && STATE.flags.luchadolaDefeated) {
+    const a = actors.find(x => x.name === "lucha_shooting");
+    if (a) {
+      a.hidden = true;
+      a.solid = false;
       a.talkHit = { x: 0, y: 0, w: 0, h: 0 };
     }
   }
@@ -3827,7 +3886,7 @@ function startBattleTransition(onDone) {
   };
 }
 const ending     = createEnding({ BASE_W: CONFIG.BASE_W, BASE_H: CONFIG.BASE_H });
-const title      = createTitle({ BASE_W: CONFIG.BASE_W, BASE_H: CONFIG.BASE_H, input });
+const title      = createTitle({ BASE_W: CONFIG.BASE_W, BASE_H: CONFIG.BASE_H, input, pocketEdition: MOBILE });
 const charSelect = createCharSelect({ BASE_W: CONFIG.BASE_W, BASE_H: CONFIG.BASE_H, input, sprites: SPRITES });
 const loading    = createLoading({ BASE_W: CONFIG.BASE_W, BASE_H: CONFIG.BASE_H });
 
@@ -3844,13 +3903,17 @@ function hasSaveData() {
 }
 
 function startNewGameFlow() {
+  resetProgress();
+  inventory.resetItems(START_INVENTORY_NORMAL);
+  current.id = "";
+  mapReady = false;
   bgmCtl.setOverride("assets/audio/bgm_select.mp3");
   bgmCtl.unlock();
   charSelect.start((leaderIdx) => {
     bgmCtl.setOverride(null);
-    setupParty(leaderIdx);
     setGameResolution(BASE_W, BASE_H);
-    resetProgress();
+    setupParty(leaderIdx);
+    resetHeightState();
     inventory.resetItems(START_INVENTORY_NORMAL);
     fade.startCutFade(nowMs(), {
       outMs:  1,
@@ -4344,8 +4407,9 @@ function loadGame(opt = {}) {
     inventory.resetItems(data.inventoryItems || []);
     setupParty(data.leaderIdx | 0);
     applySkinLevel(STATE.flags.skinLevel | 0);
-    bgmCtl.setOverride(null);
-    loadMap(data.mapId || "outdoor", {
+    const targetMapId = data.mapId || "outdoor";
+    bgmCtl.setMap(MAPS[targetMapId]?.bgmSrc || "assets/audio/bgm0.mp3");
+    loadMap(targetMapId, {
       spawnAt: { x: data.leaderX, y: data.leaderY },
       onReady: opt.fromTitle ? startContinueReveal : null,
     });
@@ -4637,17 +4701,32 @@ function resetHeightState() {
   charHeight.p3 = "ground";
   charHeight.p4 = "ground";
   heightLevel = "ground";
-  stairZonePrev.leader = false;
-  stairZonePrev.p2 = false;
-  stairZonePrev.p3 = false;
-  stairZonePrev.p4 = false;
+  syncStairZonePrev();
 }
 
-function checkStairForChar(name, cx, cy) {
+function isStairAtChar(cx, cy) {
   const f  = footBox(cx, cy);
   const fx = (f.x + (f.w >> 1)) | 0;
   const fy = (f.y + (f.h >> 1)) | 0;
-  const on = col.getZone(fx, fy) === "stair";
+  return col.getZone(fx, fy) === "stair";
+}
+
+function syncStairZonePrev() {
+  if (!mapReady || current.id !== "outdoor") {
+    stairZonePrev.leader = false;
+    stairZonePrev.p2 = false;
+    stairZonePrev.p3 = false;
+    stairZonePrev.p4 = false;
+    return;
+  }
+  stairZonePrev.leader = isStairAtChar(leader.x, leader.y);
+  stairZonePrev.p2 = isStairAtChar(p2.x, p2.y);
+  stairZonePrev.p3 = isStairAtChar(p3.x, p3.y);
+  stairZonePrev.p4 = isStairAtChar(p4.x, p4.y);
+}
+
+function checkStairForChar(name, cx, cy) {
+  const on = isStairAtChar(cx, cy);
   if (on === stairZonePrev[name]) return;
   stairZonePrev[name] = on;
   if (on) charHeight[name] = charHeight[name] === "ground" ? "upper" : "ground";
@@ -4655,6 +4734,10 @@ function checkStairForChar(name, cx, cy) {
 
 function stairTriggerCheck() {
   if (!mapReady) return;
+  if (current.id !== "outdoor") {
+    heightLevel = "ground";
+    return;
+  }
   checkStairForChar("leader", leader.x, leader.y);
   checkStairForChar("p2", p2.x, p2.y);
   checkStairForChar("p3", p3.x, p3.y);
@@ -5123,6 +5206,7 @@ function loadMap(id, opt = null) {
       });
     }
     mapReady = true;
+    syncStairZonePrev();
     if (typeof opt?.onReady === "function") opt.onReady();
   }
 
@@ -5154,7 +5238,7 @@ function loadMap(id, opt = null) {
   shrineMode = false;
   shrineFade = 0;
   shrineTriggerActive = false;
-  heightLevel = charHeight.leader;
+  heightLevel = id === "outdoor" ? charHeight.leader : "ground";
   stairZonePrev.leader = stairZonePrev.p2 = stairZonePrev.p3 = stairZonePrev.p4 = false;
   shrineWhite = { phase: "off", alpha: 0, targetMode: false };
 
@@ -5734,10 +5818,13 @@ function draw() {
   const upperList  = _upperList;
   const aboveTopList = _aboveTopList;
   const isSpaceMap = current.id === "space" || current.id === "space_boss";
+  const isDashHeld = input.down("c") && !isSpaceMap;
   const spaceDanger = current.id === "space" && spaceO2 / SPACE_O2_MAX <= 0.2;
   const moonRot = isSpaceMap && spaceMoonAttach ? spaceMoonAngle + Math.PI / 2 : 0;
-  const panicOx = (phase = 0) => spaceDanger ? (((Math.sin(tt / 45 + phase) * 1.8) | 0)) : 0;
-  const panicOy = (phase = 0) => spaceDanger ? (((Math.sin(tt / 28 + phase) > 0 ? 1 : -1))) : 0;
+  const panicFx = spaceDanger || isDashHeld;
+  const panicT = tt;
+  const panicOx = (phase = 0) => panicFx ? (((Math.sin(panicT / 45 + phase) * 1.8) | 0)) : 0;
+  const panicOy = (phase = 0) => panicFx ? (((Math.sin(panicT / 28 + phase) > 0 ? 1 : -1))) : 0;
   const hidePartyForSpaceWarp = spaceWarpFx.active && (nowMs() - spaceWarpFx.start) >= WARP_SHAKE_MS;
   if (partyVisible && !hidePartyForSpaceWarp) {
     const singleLeaderOnly = current.id === "shooting_lobby";
@@ -5874,6 +5961,7 @@ function draw() {
   };
   groundList.sort(sortFn);
   upperList.sort(sortFn);
+  drawDashDust(tt);
   for (let i = 0; i < groundList.length; i++) drawEntry(groundList[i]);
   if (current.hasBgMid) drawMapImg(bgMidImg, undefined, current.bgMidOffset);
   for (let i = 0; i < upperList.length; i++) drawEntry(upperList[i]);
@@ -6278,7 +6366,7 @@ function draw() {
   }
 
   // デバッグ：座標表示
-  if (DEBUG && !MOBILE && input.down("c")) {
+  if (DEBUG && !MOBILE && input.down("b")) {
     const coord = `${leader.x | 0},${leader.y | 0}`;
     ctx.save();
     ctx.font = "normal 10px PixelMplus10";
@@ -6308,8 +6396,8 @@ function draw() {
     ctx.restore();
   }
 
-  // デバッグ：C ホールドで会話/当たり判定・ドアtrigger可視化
-  if (DEBUG && input.down("c")) {
+  // デバッグ：B ホールドで会話/当たり判定・ドアtrigger可視化
+  if (DEBUG && input.down("b")) {
     ctx.save();
     ctx.font = "6px monospace";
 
@@ -6524,6 +6612,74 @@ function updateNpcAnim(t) {
   }
 }
 
+function startLuchadolaEvent(act) {
+  const pages = [
+    ["おまえ！"],
+    ["おまえーー！"],
+    ["おーまーえーー！"],
+    ["ジゴクを、自分のものにする気だな！"],
+    ["ゆるせん！"],
+    ["ここは、ここは、"],
+    ["俺のジゴクだ！"],
+  ];
+  const returnPos = { x: act.x, y: act.y + 26 };
+  dialog.open(pages, () => {
+    startBattleTransition(() => {
+      bgmCtl.setOverride("about:blank");
+      setGameResolution(SHOOTING_W, SHOOTING_H);
+      startShootingBgm();
+      interactionSession.end();
+      shooting.start((earnedEN, result) => {
+        stopShootingBgm();
+        bgmCtl.setOverride("about:blank");
+        setGameResolution(BASE_W, BASE_H);
+        STATE.money = Math.min(STATE.money + earnedEN, 999999);
+        leader.x = returnPos.x;
+        leader.y = returnPos.y;
+        followers.reset({ leader, p2, p3, p4 });
+        startShootingBgm();
+        if (!result?.cleared) {
+          shootingKnockback = {
+            vx: 0,
+            vy: -1.4,
+            gravity: 0.32,
+            until: nowMs() + 350,
+          };
+          shootingDoorCooldown = nowMs() + 800;
+          return;
+        }
+        STATE.flags.luchadolaDefeated = true;
+        input.lock();
+        playBattleWinJingle();
+        interactionSession.begin();
+        setTimeout(() => {
+          dialog.open([["おぎゃーーーー！"]], () => {
+            act.markImg = null;
+            act.explodeStart = nowMs();
+            setTimeout(() => {
+              act.explodeStart = undefined;
+              act.hidden = true;
+              act.solid = false;
+              act.talkHit = { x: 0, y: 0, w: 0, h: 0 };
+              achieveQuest("15");
+              interactionSession.end();
+              input.unlock();
+            }, 500);
+          }, "talk");
+        }, 800);
+      }, {
+        autoEndOnClear: true,
+        autoEndOnResult: true,
+        difficulty: getShootingDifficultyId(),
+        progressLevel: 7,
+        supportDoors: [],
+        bossOnly: true,
+        bossSpriteKey: "lucha",
+      });
+    });
+  }, "talk");
+}
+
 function activateShootingLobbyDoor(act, t) {
   if (t < shootingDoorCooldown) return true;
   shootingDoorCooldown = t + 500;
@@ -6556,10 +6712,6 @@ function activateShootingLobbyDoor(act, t) {
       STATE.flags[`shootingCleared_${act.name}`] = true;
       const unlockExitDoor = !STATE.flags.shootingLobbyExitUnlocked;
       if (unlockExitDoor) STATE.flags.shootingLobbyExitUnlocked = true;
-      const allHellDoorsCleared = Array.from({ length: 7 }, (_, i) =>
-        STATE.flags[`shootingCleared_door_${i + 1}`]
-      ).every(Boolean);
-      if (allHellDoorsCleared) achieveQuest("15");
       leader.x = returnPos.x;
       leader.y = returnPos.y;
       followers.reset({ leader, p2, p3, p4 });
@@ -7052,6 +7204,13 @@ function tryInteract(t) {
         }
       } else {
         if (act.name === "lucha_shooting") {
+          const allHellDoorsCleared = Array.from({ length: 7 }, (_, i) =>
+            STATE.flags[`shootingCleared_door_${i + 1}`]
+          ).every(Boolean);
+          if (allHellDoorsCleared && !STATE.flags.luchadolaDefeated) {
+            startLuchadolaEvent(act);
+            return;
+          }
           const firstTalk = !STATE.flags.shootingLobbyLuchaTalked;
           const pages = firstTalk
             ? (act.talkPages || [["……"]])
@@ -7272,6 +7431,7 @@ function update(t) {
       input.consume("l") ||
       input.consume("v") ||
       input.consume("b") ||
+      input.consume("m") ||
       input.consume("p") ||
       input.consume("1") ||
       input.consume("2") ||
@@ -7582,16 +7742,21 @@ function update(t) {
     startTimeMachineTravel("mirai", undefined, "rtl");
     return;
   }
-  if (DEBUG && input.consume("b")) {
+  if (DEBUG && input.consume("m")) {
     const inv = inventory.getSnapshot();
     if (inv.includes("moon_stone")) inventory.removeItem("moon_stone");
     else inventory.addItem("moon_stone");
     return;
   }
 
-  // D で d_hole へワープ（デバッグ）
+  // D で 地獄（shooting_lobby）へワープ（全扉クリア状態・デバッグ）
   if (DEBUG && input.consume("d")) {
-    loadMap("d_hole");
+    STATE.flags.shootingLobbyLuchaTalked = true;
+    STATE.flags.shootingLobbyExitUnlocked = true;
+    if (!STATE.flags.shootingDifficulty) STATE.flags.shootingDifficulty = "normal";
+    for (let i = 1; i <= 7; i++) STATE.flags[`shootingCleared_door_${i}`] = true;
+    delete STATE.flags.luchadolaDefeated;
+    loadMap("shooting_lobby");
     return;
   }
 
@@ -7850,7 +8015,9 @@ function update(t) {
   let dx = 0,
     dy = 0;
 
-  const spd = SPEED * (input.down("c") ? 5 : 1);
+  const dashMul = current.id !== "space" && current.id !== "space_boss" && input.down("c") ? 1.6 : 1;
+  const debugSpeedMul = DEBUG && input.down("b") ? 5 : 1;
+  const spd = SPEED * debugSpeedMul * dashMul;
 
   if (current.id === "space") {
     if (SPACE_MOON_SYSTEM_ENABLED) {
@@ -7868,7 +8035,7 @@ function update(t) {
       }
 
       if (spaceMoonAttach) {
-        const angSpd = input.down("c") ? 0.05 : 0.032;
+        const angSpd = (DEBUG && input.down("b") ? 0.05 : 0.032) * dashMul;
         if (input.down("ArrowLeft"))  spaceMoonAngle -= angSpd;
         if (input.down("ArrowRight")) spaceMoonAngle += angSpd;
         if (input.down("ArrowUp"))    spaceMoonRadius = Math.min(SPACE_MOON.surfaceR + 18, spaceMoonRadius + 0.8);
@@ -7895,8 +8062,8 @@ function update(t) {
       }
     }
 
-    const acc = input.down("c") ? 0.12 : 0.06;
-    const max = input.down("c") ? 1.9 : 1.25;
+    const acc = (DEBUG && input.down("b") ? 0.12 : 0.06) * dashMul;
+    const max = (DEBUG && input.down("b") ? 1.9 : 1.25) * dashMul;
     if (input.down("ArrowLeft"))  spaceVel.x -= acc;
     if (input.down("ArrowRight")) spaceVel.x += acc;
     if (input.down("ArrowUp"))    spaceVel.y -= acc;
@@ -7957,6 +8124,7 @@ function update(t) {
     }
 
     if (moved) {
+      if (input.down("c")) spawnDashDust(t, dx, dy);
       followers.push(leader.x, leader.y);
       if (t - leader.last > FRAME_MS) {
         leader.frame ^= 1;

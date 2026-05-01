@@ -257,6 +257,7 @@ export function setupMobileController(input, {
   const CLAMP     = 38;   // ノブの最大移動量 (px)
 
   let stickActive = false;
+  let stickTouchId = null;
   let currentKeys = new Set();
 
   function setKeys(keys) {
@@ -306,24 +307,43 @@ export function setupMobileController(input, {
     stickKnob.style.transform = "translate(-50%, -50%)";
     setKeys(new Set());
     stickActive = false;
+    stickTouchId = null;
+  }
+
+  function findTouchById(touchList, id) {
+    for (let i = 0; i < touchList.length; i++) {
+      if (touchList[i].identifier === id) return touchList[i];
+    }
+    return null;
   }
 
   stickWrap.addEventListener("touchstart", e => {
     e.preventDefault();
+    if (stickTouchId != null) return;
+    const t = e.changedTouches[0];
+    if (!t) return;
+    stickTouchId = t.identifier;
     stickActive = true;
     wakeAudio();
     vibrate(8);
-    onStickMove(0, 0, e.touches[0]);
+    onStickMove(0, 0, t);
   }, { passive: false });
 
   stickWrap.addEventListener("touchmove", e => {
     e.preventDefault();
     wakeAudio();
-    if (stickActive) onStickMove(0, 0, e.touches[0]);
+    if (!stickActive || stickTouchId == null) return;
+    const t = findTouchById(e.touches, stickTouchId);
+    if (t) onStickMove(0, 0, t);
   }, { passive: false });
 
-  stickWrap.addEventListener("touchend",    e => { e.preventDefault(); onStickEnd(); }, { passive: false });
-  stickWrap.addEventListener("touchcancel", e => { e.preventDefault(); onStickEnd(); }, { passive: false });
+  function endStickIfMatched(e) {
+    e.preventDefault();
+    if (stickTouchId == null) return;
+    if (findTouchById(e.changedTouches, stickTouchId)) onStickEnd();
+  }
+  stickWrap.addEventListener("touchend",    endStickIfMatched, { passive: false });
+  stickWrap.addEventListener("touchcancel", endStickIfMatched, { passive: false });
 
   // マウスフォールバック
   stickWrap.addEventListener("mousedown", e => {

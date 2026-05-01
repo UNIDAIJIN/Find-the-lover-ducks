@@ -6,7 +6,7 @@ export const vjRoom01MinamiNpc = {
   y:            121,
   talkHit:      { x: 0, y: 0, w: 16, h: 14 },
   battleConfirmQuestion: "アルバムの制作費をよこせだって？",
-  battleConfirmPrompt: "ほしければ ちからづくで ・・・うばってみろ！！",
+  battleConfirmPrompt: "欲しければ力ずくで、奪ってみろ！",
   solid:        true,
   battleTrigger:   true,
   battleConfirm:   true,

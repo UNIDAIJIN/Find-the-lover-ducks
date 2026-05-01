@@ -2,7 +2,7 @@
 import { playCursor, playConfirm } from "./se.js";
 import { VERSION } from "./config.js";
 
-export function createTitle({ BASE_W, BASE_H, input }) {
+export function createTitle({ BASE_W, BASE_H, input, pocketEdition = false }) {
   let active     = false;
   let cursor     = 0; // 0=new game, 1=continue
   let onNewGame  = null;
@@ -58,6 +58,12 @@ export function createTitle({ BASE_W, BASE_H, input }) {
     const title  = "FIND THE LOVER DUCKS";
     const titleY = 60;
     ctx.fillText(title, ((BASE_W - ctx.measureText(title).width) / 2) | 0, titleY);
+    if (pocketEdition) {
+      const sub = "POCKET EDITION";
+      ctx.fillStyle = "#888";
+      ctx.fillText(sub, ((BASE_W - ctx.measureText(sub).width) / 2) | 0, titleY + 12);
+      ctx.fillStyle = "#fff";
+    }
 
     // ダック画像（タイトルの下）
     if (duckImg.complete && duckImg.naturalWidth > 0) {

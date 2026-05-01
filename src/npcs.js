@@ -74,7 +74,7 @@ const timemachineSlotNpc = {
   talkType: "sign",
   talkPages: [["なにかをおくばしょのようだ。"]],
   solid: false,
-  hidden: true,
+  noRender: true,
   event: { type: "timemachine_slot" },
 };
 
@@ -307,7 +307,7 @@ export const NPCS_BY_MAP = {
         ["あの世ってやつは、本当に最高なんだ。"],
         ["そう！"],
         ["ここが！ジ・ゴ・ク！"],
-        ["サイコーーーーーー！！"],
+        ["サイコーーーーーー！"],
       ],
     }),
     resolve({ kind: "npc", name: "door_4", spriteKey: "door4", x: 120, y: 40,  spr: 16, sprH: 32, frame: 0, animMs: Infinity, hitW: 12, hitH: 6, talkHit: { x: 0, y: 0, w: 0, h: 0 }, solid: false }),
