@@ -14,8 +14,10 @@ import { cat1Npc }          from "./data/npcs/cat1.js";
 import { fanFlowerNpc }     from "./data/npcs/fan_flower.js";
 import { fanOrangeNpc }     from "./data/npcs/fan_orange.js";
 import { sarferNpc }        from "./data/npcs/sarfer.js";
+import { beerNpc }          from "./data/npcs/beer.js";
 import { hyoryuNpc }        from "./data/npcs/hyoryu.js";
 import { hawaiiNpc }        from "./data/npcs/hawaii.js";
+import { lovesongNpc }      from "./data/npcs/lovesong.js";
 import { rickyNpc }         from "./data/npcs/ricky.js";
 import { oharaNpc }         from "./data/npcs/ohara.js";
 import { indoorMinamiNpc } from "./data/npcs/minami_indoor01.js";
@@ -162,8 +164,10 @@ export const NPCS_BY_MAP = {
     resolve(fanNpc),
     resolve(fanOrangeNpc),
     resolve(sarferNpc),
+    resolve(beerNpc),
     resolve(hyoryuNpc),
     resolve(hawaiiNpc),
+    resolve(lovesongNpc),
     resolve({ ...fanNpc, name: "fan_2", x: 2299, y: 1133 }),
     resolve({ ...fanNpc, name: "fan_3", x: 1522, y: 875 }),
     resolve({ ...fanNpc, name: "fan_4", x: 1595, y: 928 }),
@@ -318,6 +322,26 @@ export const NPCS_BY_MAP = {
     resolve({ kind: "npc", name: "door_7", spriteKey: "door7", x: 66,  y: 170, spr: 16, sprH: 32, frame: 0, animMs: Infinity, hitW: 12, hitH: 6, talkHit: { x: 0, y: 0, w: 0, h: 0 }, solid: false }),
     resolve({ kind: "npc", name: "door_6", spriteKey: "door6", x: 44,  y: 116, spr: 16, sprH: 32, frame: 0, animMs: Infinity, hitW: 12, hitH: 6, talkHit: { x: 0, y: 0, w: 0, h: 0 }, solid: false }),
     resolve({ kind: "npc", name: "door_5", spriteKey: "door5", x: 66,  y: 62,  spr: 16, sprH: 32, frame: 0, animMs: Infinity, hitW: 12, hitH: 6, talkHit: { x: 0, y: 0, w: 0, h: 0 }, solid: false }),
+    resolve({ kind: "npc", name: "door_demon", spriteKey: "door0", x: 120, y: 40, spr: 16, sprH: 32, frame: 0, animMs: Infinity, hitW: 12, hitH: 6, talkHit: { x: 0, y: 0, w: 0, h: 0 }, solid: false, hidden: true, rainbow: true }),
+  ],
+
+  dark_throne: [
+    resolve({ kind: "npc", name: "throne_exit", spriteKey: "door0", x: 120, y: 40, spr: 16, sprH: 32, frame: 0, animMs: Infinity, talkHit: { x: 0, y: 0, w: 0, h: 0 }, solid: false }),
+    resolve({ kind: "npc", name: "skull_t1",  spriteKey: "skull_a", x: 174, y: 62,  talkHit: { x: 0, y: 0, w: 16, h: 16 }, talkType: "talk", talkPages: [["魔王様、バンザーイ！"]], solid: true }),
+    resolve({ kind: "npc", name: "skull_t2",  spriteKey: "skull_b", x: 196, y: 116, talkHit: { x: 0, y: 0, w: 16, h: 16 }, talkType: "talk", talkPages: [["魔王様、カッコイー！"]], solid: true }),
+    resolve({ kind: "npc", name: "skull_t3",  spriteKey: "skull_r", x: 174, y: 170, talkHit: { x: 0, y: 0, w: 16, h: 16 }, talkType: "talk", talkPages: [["魔王様、サイコー！"]], solid: true }),
+    resolve({ kind: "npc", name: "skull_t4",  spriteKey: "skull_a", x: 66,  y: 170, talkHit: { x: 0, y: 0, w: 16, h: 16 }, talkType: "talk", talkPages: [["魔王様、ステキー！"]], solid: true }),
+    resolve({ kind: "npc", name: "skull_t5",  spriteKey: "skull_b", x: 44,  y: 116, talkHit: { x: 0, y: 0, w: 16, h: 16 }, talkType: "talk", talkPages: [["魔王様、ヒーロー！"]], solid: true }),
+    resolve({ kind: "npc", name: "skull_t6",  spriteKey: "skull_r", x: 66,  y: 62,  talkHit: { x: 0, y: 0, w: 16, h: 16 }, talkType: "talk", talkPages: [["魔王様、すげー！"]], solid: true }),
+    resolve({ kind: "npc", name: "skull_t7",  spriteKey: "skull_a", x: 90,  y: 90,  talkHit: { x: 0, y: 0, w: 16, h: 16 }, talkType: "talk", talkPages: [["魔王様、つえー！"]], solid: true }),
+    resolve({ kind: "npc", name: "skull_t8",  spriteKey: "skull_b", x: 150, y: 90,  talkHit: { x: 0, y: 0, w: 16, h: 16 }, talkType: "talk", talkPages: [["魔王様、シビレルー！"]], solid: true }),
+    resolve({ kind: "npc", name: "skull_t9",  spriteKey: "skull_r", x: 90,  y: 140, talkHit: { x: 0, y: 0, w: 16, h: 16 }, talkType: "talk", talkPages: [["魔王様、リーダー！"]], solid: true }),
+    resolve({ kind: "npc", name: "skull_t10", spriteKey: "skull_a", x: 150, y: 140, talkHit: { x: 0, y: 0, w: 16, h: 16 }, talkType: "talk", talkPages: [["魔王様、エラいー！"]], solid: true }),
+    resolve({ kind: "npc", name: "skull_t11", spriteKey: "skull_b", x: 40,  y: 80,  talkHit: { x: 0, y: 0, w: 16, h: 16 }, talkType: "talk", talkPages: [["魔王様、ハッピー！"]], solid: true }),
+    resolve({ kind: "npc", name: "skull_t12", spriteKey: "skull_r", x: 216, y: 80,  talkHit: { x: 0, y: 0, w: 16, h: 16 }, talkType: "talk", talkPages: [["魔王様、ファイトー！"]], solid: true }),
+    resolve({ kind: "npc", name: "skull_t13", spriteKey: "skull_a", x: 40,  y: 160, talkHit: { x: 0, y: 0, w: 16, h: 16 }, talkType: "talk", talkPages: [["魔王様、ハンサムー！"]], solid: true }),
+    resolve({ kind: "npc", name: "skull_t14", spriteKey: "skull_b", x: 216, y: 160, talkHit: { x: 0, y: 0, w: 16, h: 16 }, talkType: "talk", talkPages: [["魔王様、ナンバーワン！"]], solid: true }),
+    resolve({ kind: "npc", name: "skull_t15", spriteKey: "skull_r", x: 200, y: 200, talkHit: { x: 0, y: 0, w: 16, h: 16 }, talkType: "talk", talkPages: [["魔王様、オラーー！"]], solid: true }),
   ],
 
   inugoya: [

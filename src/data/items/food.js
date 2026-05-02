@@ -8,4 +8,6 @@ export const foodItems = [
   { id: "ice_cream", name: "アイスクリーム", bgmSrc: null, throwDmg: 1 },
   { id: "gyoza", name: "ギョウザ", bgmSrc: null, throwDmg: 1 },
   { id: "yakisoba", name: "やきそば", bgmSrc: null, throwDmg: 1 },
+  { id: "beer", name: "ビール", bgmSrc: null, throwDmg: 1 },
+  { id: "love_song_snack", name: "ラブソングのおやつ", bgmSrc: null, throwDmg: 1 },
 ];

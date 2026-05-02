@@ -45,6 +45,10 @@ import { spaceBossMap }       from "./data/maps/space_boss.js";
 import { musiumMap }          from "./data/maps/musium.js";
 import { pubMap }             from "./data/maps/pub.js";
 import { flowersMap }         from "./data/maps/flowers.js";
+import { darkThroneMap }      from "./data/maps/dark_throne.js";
+import { laundryMap }         from "./data/maps/laundry.js";
+import { furoMMap }           from "./data/maps/furo_m.js";
+import { furoFMap }           from "./data/maps/furo_f.js";
 
 // ---- util: ダミー画像（1px） ----
 const BLACK_1PX =
@@ -103,6 +107,10 @@ export const MAPS = {
   musium:    musiumMap,
   pub:       pubMap,
   flowers:   flowersMap,
+  dark_throne: darkThroneMap,
+  laundry:   laundryMap,
+  furo_m:    furoMMap,
+  furo_f:    furoFMap,
   theater: {
     bgSrc: BLACK_1PX,
     colSrc: CLEAR_1PX,

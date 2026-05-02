@@ -186,6 +186,8 @@ export function createShooting({ BASE_W, BASE_H, input, sprites, getLeaderImg } 
   let autoEndOnClear = false;
   let autoEndOnResult = false;
   let bossSpriteKey = "skull_r";
+  let bossName = "EL JIGOKU";
+  let bossOnlyMode = false;
   let cleared = false;
   let playerFrame, playerFrameTimer, playerTrail;
   let enemyFrame, enemyFrameTimer;
@@ -488,6 +490,8 @@ export function createShooting({ BASE_W, BASE_H, input, sprites, getLeaderImg } 
     autoEndOnClear = !!opt.autoEndOnClear;
     autoEndOnResult = !!opt.autoEndOnResult;
     bossSpriteKey = opt.bossSpriteKey || "skull_r";
+    bossName = opt.bossName || "EL JIGOKU";
+    bossOnlyMode = !!opt.bossOnly;
     cleared = false;
     playerFrame = 0; playerFrameTimer = 0;
     playerTrail = [];
@@ -679,6 +683,10 @@ export function createShooting({ BASE_W, BASE_H, input, sprites, getLeaderImg } 
         if (wave > 0 && wave % BOSS_EVERY === 0) startBossIntro();
         else spawnWave();
       }
+    } else if (bossOnlyMode) {
+      waveTimer++;
+      const allGone = enemies.length === 0;
+      if (allGone && waveTimer > 80) spawnWave();
     }
 
     // ---- enemies ----
@@ -795,6 +803,8 @@ export function createShooting({ BASE_W, BASE_H, input, sprites, getLeaderImg } 
     if (player.dead) return;
     lives--;
     feverActive = false;
+    comboCount = 0;
+    comboTimer = 0;
     playShootingHurt();
     player.invTimer = INVINCIBLE_FRAMES;
     hitFlash = 15;
@@ -930,7 +940,6 @@ export function createShooting({ BASE_W, BASE_H, input, sprites, getLeaderImg } 
     ctx.strokeRect(bx - 0.5, by - 0.5, bw + 1, bh + 1);
     ctx.font = "normal 10px PixelMplus10";
     ctx.fillStyle = "#fff"; ctx.textAlign = "left"; ctx.textBaseline = "top";
-    const bossName = "EL JIGOKU";
     const bossW = ctx.measureText(bossName).width;
     ctx.fillText(bossName, ((BASE_W - bossW) / 2) | 0, 2);
     ctx.textBaseline = "alphabetic";
@@ -1262,7 +1271,7 @@ export function createShooting({ BASE_W, BASE_H, input, sprites, getLeaderImg } 
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
     const t1 = "BOSS WAVE";
-    const t2 = "EL JIGOKU";
+    const t2 = bossName;
     const w1 = ctx.measureText(t1).width;
     const w2 = ctx.measureText(t2).width;
     const x1 = ((BASE_W - w1) / 2) | 0;

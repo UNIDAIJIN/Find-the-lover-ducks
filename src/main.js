@@ -14,7 +14,7 @@ import { createTitle  }     from "./title.js";
 import { createCharSelect } from "./char_select.js";
 import { createLoading }    from "./loading.js";
 import { setupMobileController } from "./mobile_controller.js";
-import { playSuzu, playDoor, playZazza, playHoleFall, playHoleRoll, playConfirm, playClickOn, playCursor, playTimeMachineShine, playWave, startHeartbeat, stopHeartbeat, playQuestJingleB, playPunch, startShootingBgm, stopShootingBgm, startAfloClubBgm, stopAfloClubBgm, stopJaws, playBattleWinJingle, getAfloClubKickPulseMs, unlockSeAudio, startRainLoop, stopRainLoop, startSeasideBgm, stopSeasideBgm, startDivingBgm, stopDivingBgm, playDinoStep, playBirdCall, playWingFlap, startWaterfall, setWaterfallVol, stopWaterfall, startPhoneRing, stopPhoneRing, playPhonePick, playPhoneHang, playDadaan, startMetalBgm, stopMetalBgm, startChaosMetalBgm, stopChaosMetalBgm, playAlienTypingNoise, playGlassShatter, playItemJingle } from "./se.js";
+import { playSuzu, playFuro, playDoor, playZazza, playHoleFall, playHoleRoll, playConfirm, playClickOn, playCursor, playTimeMachineShine, playWave, startHeartbeat, stopHeartbeat, playQuestJingleB, playPunch, startShootingBgm, stopShootingBgm, startAfloClubBgm, stopAfloClubBgm, stopJaws, playBattleWinJingle, getAfloClubKickPulseMs, unlockSeAudio, startRainLoop, stopRainLoop, startSeasideBgm, stopSeasideBgm, startDivingBgm, stopDivingBgm, playDinoStep, playBirdCall, playWingFlap, startWaterfall, setWaterfallVol, stopWaterfall, startPhoneRing, stopPhoneRing, playPhonePick, playPhoneHang, playDadaan, startMetalBgm, stopMetalBgm, startChaosMetalBgm, stopChaosMetalBgm, playAlienTypingNoise, playGlassShatter, playItemJingle } from "./se.js";
 import { createMenu } from "./ui_menu.js";
 import { createTripEffect }     from "./trip_effect.js";
 import { createGoodTripEffect } from "./trip_effect_good.js";
@@ -219,6 +219,7 @@ const bgShoreCanvas  = document.createElement("canvas");
 let bgShoreReady = false;
 let bgShoreOffsetX = 0;
 let bgShoreOffsetY = 0;
+let bgShoreData = null;
 bgShoreImg.onload = () => {
   if (!bgShoreImg.naturalWidth) return;
   const w = bgShoreImg.naturalWidth;
@@ -248,6 +249,7 @@ bgShoreImg.onload = () => {
   const bcx = bgShoreCanvas.getContext("2d");
   bcx.imageSmoothingEnabled = false;
   bcx.drawImage(bgShoreImg, minX, minY, cw, ch, 0, 0, cw, ch);
+  bgShoreData = bcx.getImageData(0, 0, cw, ch).data;
   bgShoreOffsetX = minX;
   bgShoreOffsetY = minY;
   bgShoreReady = true;
@@ -258,6 +260,27 @@ function drawBgShore() {
   const dx = (bgShoreOffsetX - cam.x) | 0;
   const dy = (bgShoreOffsetY - cam.y) | 0;
   ctx.drawImage(bgShoreCanvas, dx, dy);
+}
+function isOnShoreOverlay(wx, wy) {
+  if (current.id !== "outdoor" || !bgShoreReady || !bgShoreData) return false;
+  const x = (wx - bgShoreOffsetX) | 0;
+  const y = (wy - bgShoreOffsetY) | 0;
+  if (x < 0 || y < 0 || x >= bgShoreCanvas.width || y >= bgShoreCanvas.height) return false;
+  return bgShoreData[(y * bgShoreCanvas.width + x) * 4 + 3] > 0;
+}
+function isShoreOverlayInCamera() {
+  if (current.id !== "outdoor" || !bgShoreReady || !bgShoreData) return false;
+  const x0 = Math.max(0, Math.floor(cam.x - bgShoreOffsetX));
+  const y0 = Math.max(0, Math.floor(cam.y - bgShoreOffsetY));
+  const x1 = Math.min(bgShoreCanvas.width, Math.ceil(cam.x + canvas.width - bgShoreOffsetX));
+  const y1 = Math.min(bgShoreCanvas.height, Math.ceil(cam.y + canvas.height - bgShoreOffsetY));
+  if (x0 >= x1 || y0 >= y1) return false;
+  for (let y = y0; y < y1; y += 2) {
+    for (let x = x0; x < x1; x += 2) {
+      if (bgShoreData[(y * bgShoreCanvas.width + x) * 4 + 3] > 0) return true;
+    }
+  }
+  return false;
 }
 const col = makeColStore();
 const MOBILE_MAP_CHUNK = 512;
@@ -2477,6 +2500,13 @@ function getPartySprite(charNo) {
   return SPRITES[`p${n}${suffix}`];
 }
 
+function getPartyFuroSprite(charNo) {
+  const n = charNo | 0;
+  const lv = STATE.flags.skinLevel | 0;
+  const suffix = lv === 1 ? "_t1" : lv === 2 ? "_t2" : "";
+  return SPRITES[`p${n}${suffix}_furo`] || getPartySprite(n);
+}
+
 function getHeadwearSpriteForImg(img) {
   const hw = STATE.headwear;
   if (!hw) return null;
@@ -2503,6 +2533,34 @@ function setupParty(leaderIdx) {
   p4.img = getPartySprite(rest[2]);
 }
 setupParty(0); // デフォルト: P1 がリーダー
+
+function partyNoForSlot(name) {
+  const all = [1, 2, 3, 4];
+  const leaderNo = all[STATE.leaderIdx | 0] || 1;
+  if (name === "leader") return leaderNo;
+  const rest = all.filter((n) => n !== leaderNo);
+  if (name === "p2") return rest[0];
+  if (name === "p3") return rest[1];
+  if (name === "p4") return rest[2];
+  return null;
+}
+
+function isPartySlotVisibleOnCurrentMap(name) {
+  const no = partyNoForSlot(name);
+  if (current.id === "furo_f") return no !== 3 && no !== 4;
+  if (current.id === "furo_m") return no !== 1 && no !== 2;
+  return true;
+}
+
+function isFuroHotActive() {
+  return (STATE.flags.furoHotUntil || 0) > nowMs();
+}
+
+function getPartyDrawImgForSlot(name, fallbackImg) {
+  if (current.id !== "furo_f" && current.id !== "furo_m") return fallbackImg;
+  const no = partyNoForSlot(name);
+  return getPartyFuroSprite(no) || fallbackImg;
+}
 
 function applySkinLevel(level) {
   STATE.flags.skinLevel = level | 0;
@@ -2553,6 +2611,10 @@ function _poolItem() {
     item.tint = undefined;
     item.vanishStart = undefined;
     item.ironHeartMark = undefined;
+    item.sweat = undefined;
+    item.sweatPhase = undefined;
+    item.hotSteam = undefined;
+    item.hotPhase = undefined;
     return item;
   }
   return {}; // フォールバック（超えることはほぼない）
@@ -2687,6 +2749,10 @@ function spawnActorsForMap(mapId) {
         }
         continue;
       }
+      if (a.name === "door_demon") {
+        a.hidden = !STATE.flags.luchadolaDefeated;
+        continue;
+      }
       if (STATE.flags[`shootingCleared_${a.name}`]) {
         a.hidden = true;
         a.solid = false;
@@ -2694,15 +2760,23 @@ function spawnActorsForMap(mapId) {
       }
     }
   }
-  if (mapId === "outdoor" && STATE.achievedQuests.has("12")) {
+  if (mapId === "outdoor") {
     const a = actors.find((a) => a.name === "lucha");
     if (a) {
       if (STATE.flags.luchadolaDefeated) {
-        a.talkPages = [["くそーー！"]];
-      } else {
+        a.talkPages = [["チクショーーーー！"]];
+      } else if (STATE.achievedQuests.has("12")) {
         a.hidden = true;
         a.solid = false;
         a.talkHit = { x: 0, y: 0, w: 0, h: 0 };
+      }
+    }
+    if (STATE.flags.loveSongReturned) {
+      const loveSong = actors.find((a) => a.name === "lovesong");
+      const hawaii = actors.find((a) => a.name === "hawaii");
+      if (loveSong) {
+        loveSong.x = (hawaii?.x ?? 1828) + 18;
+        loveSong.y = hawaii?.y ?? 2475;
       }
     }
   }
@@ -3658,6 +3732,36 @@ const menu = createMenu({
       }, 700);
       return true;
     }
+    if (id === "beer") {
+      inventory.removeItem("beer");
+      const seaViewBeer = isShoreOverlayInCamera();
+      lockItemUseWait();
+      setTimeout(() => {
+        STATE.flags.eatCount = (STATE.flags.eatCount || 0) + 1;
+        if (STATE.flags.eatCount >= 10) achieveQuest("26");
+        if (seaViewBeer) achieveQuest("18");
+        input.unlock();
+        dialog.open([
+          ["ナツミはビールをのんでみた！"],
+          ["カーッ！"],
+        ], null, "sign");
+      }, 700);
+      return true;
+    }
+    if (id === "love_song_snack") {
+      inventory.removeItem("love_song_snack");
+      lockItemUseWait();
+      setTimeout(() => {
+        STATE.flags.eatCount = (STATE.flags.eatCount || 0) + 1;
+        if (STATE.flags.eatCount >= 10) achieveQuest("26");
+        input.unlock();
+        dialog.open([
+          ["ナツミはラブソングのおやつをたべてみた！"],
+          ["おいしい！"],
+        ], null, "sign");
+      }, 700);
+      return true;
+    }
     if (id === "pizza") {
       inventory.removeItem("pizza");
       const ateDeliveryPizza = STATE.flags.pizzaJobActive && !STATE.flags.pizzaDelivered;
@@ -4539,16 +4643,22 @@ function hitRect(a, b) {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 }
 function hitBg(nx, ny) {
-  if (current.id === "shooting_lobby" || current.id === "space" || current.id === "space_boss") return false;
+  if (current.id === "shooting_lobby" || current.id === "dark_throne" || current.id === "space" || current.id === "space_boss") return false;
   const f = footBox(nx, ny);
   for (let y = f.y; y < f.y + f.h; y++) {
     for (let x = f.x; x < f.x + f.w; x++) {
       if (col.isWallAt(x, y, heightLevel)) return true;
     }
   }
+  const def = MAPS[current.id];
+  for (const door of def.doors || []) {
+    const tr = door.trigger;
+    if (!tr || !isDoorBlockedForLeader(door)) continue;
+    if (f.x < tr.x + tr.w && f.x + f.w > tr.x &&
+        f.y < tr.y + tr.h && f.y + f.h > tr.y) return true;
+  }
   // ヘルメット未装備時、helmetRequired な穴 trigger は壁扱い
   if (STATE.headwear !== "helmet") {
-    const def = MAPS[current.id];
     for (const hole of def.holes || []) {
       if (!hole.helmetRequired || !hole.trigger) continue;
       const tr = hole.trigger;
@@ -4657,6 +4767,40 @@ function holeCheck(t) {
 // ---- Door warp ----
 let doorCooldown = 0;
 let ignoredDoorId = null;
+const FURO_HOT_MS = 60 * 1000;
+
+function leaderDoorKey() {
+  return `p${(STATE.leaderIdx | 0) + 1}`;
+}
+
+function isDoorBlockedForLeader(door) {
+  const blocked = door?.blockedByLeader;
+  if (!blocked) return false;
+  const key = leaderDoorKey();
+  return Array.isArray(blocked) ? blocked.includes(key) : !!blocked[key];
+}
+
+function resolveDoorTo(door) {
+  if (!door?.toByLeader) return door?.to;
+  return door.toByLeader[leaderDoorKey()] || door.to;
+}
+
+function startFuroSoak(t) {
+  input.lock();
+  fade.startCutFade(t, {
+    outMs: 420,
+    holdMs: 1800,
+    inMs: 520,
+    onBlack: () => {
+      playFuro();
+      STATE.flags.furoHotUntil = nowMs() + FURO_HOT_MS;
+    },
+    onEnd: () => {
+      input.unlock();
+    },
+  });
+}
+
 function doorCheck(t) {
   if (!mapReady || t < doorCooldown) return;
   if (menu.isOpen()) return;
@@ -4682,10 +4826,26 @@ function doorCheck(t) {
     if (door.id === ignoredDoorId) continue;
     const tr = door.trigger;
     if (fx >= tr.x && fx < tr.x + tr.w && fy >= tr.y && fy < tr.y + tr.h) {
+      if (isDoorBlockedForLeader(door)) continue;
+      if (door.action === "furo_soak") {
+        doorCooldown = t + DOOR_COOLDOWN_MS;
+        ignoredDoorId = door.id;
+        startFuroSoak(t);
+        return;
+      }
+      const to = resolveDoorTo(door);
+      if (!to) continue;
       doorCooldown = t + DOOR_COOLDOWN_MS;
       if (door.sound === 'zazza') playZazza();
       else playDoor();
-      fade.startMapFade(door.to, { doorId: door.id }, t, loadMap);
+      const doorId = door.doorIdByTo?.[to] ?? door.id;
+      const mapOpt = door.spawnAt
+        ? { spawnAt: door.spawnAt }
+        : { doorId };
+      if (door.preFadeInWalk) mapOpt.preFadeInWalk = door.preFadeInWalk;
+      if (door.fadeOutMs != null) mapOpt.fadeOutMs = door.fadeOutMs;
+      if (door.fadeInMs != null) mapOpt.fadeInMs = door.fadeInMs;
+      fade.startMapFade(to, mapOpt, t, loadMap);
       return;
     }
   }
@@ -4694,6 +4854,12 @@ function doorCheck(t) {
 // ---- Shrine trigger check ----
 const charHeight = { leader: "ground", p2: "ground", p3: "ground", p4: "ground" };
 const stairZonePrev = { leader: false, p2: false, p3: false, p4: false };
+const stairPosPrev = {
+  leader: { x: 0, y: 0 },
+  p2:     { x: 0, y: 0 },
+  p3:     { x: 0, y: 0 },
+  p4:     { x: 0, y: 0 },
+};
 
 function resetHeightState() {
   charHeight.leader = "ground";
@@ -4704,11 +4870,36 @@ function resetHeightState() {
   syncStairZonePrev();
 }
 
-function isStairAtChar(cx, cy) {
+function stairFootCenter(cx, cy) {
   const f  = footBox(cx, cy);
-  const fx = (f.x + (f.w >> 1)) | 0;
-  const fy = (f.y + (f.h >> 1)) | 0;
-  return col.getZone(fx, fy) === "stair";
+  return {
+    x: (f.x + (f.w >> 1)) | 0,
+    y: (f.y + (f.h >> 1)) | 0,
+  };
+}
+
+function isStairAtChar(cx, cy) {
+  const p = stairFootCenter(cx, cy);
+  return col.getZone(p.x, p.y) === "stair";
+}
+
+function isStairCrossedByChar(name, cx, cy) {
+  const from = stairPosPrev[name] || stairFootCenter(cx, cy);
+  const to = stairFootCenter(cx, cy);
+  const steps = Math.max(Math.abs(to.x - from.x), Math.abs(to.y - from.y), 1) | 0;
+  for (let i = 0; i <= steps; i += 1) {
+    const k = i / steps;
+    const x = (from.x + (to.x - from.x) * k) | 0;
+    const y = (from.y + (to.y - from.y) * k) | 0;
+    if (col.getZone(x, y) === "stair") return true;
+  }
+  return false;
+}
+
+function rememberStairPos(name, cx, cy) {
+  const p = stairFootCenter(cx, cy);
+  stairPosPrev[name].x = p.x;
+  stairPosPrev[name].y = p.y;
 }
 
 function syncStairZonePrev() {
@@ -4723,10 +4914,15 @@ function syncStairZonePrev() {
   stairZonePrev.p2 = isStairAtChar(p2.x, p2.y);
   stairZonePrev.p3 = isStairAtChar(p3.x, p3.y);
   stairZonePrev.p4 = isStairAtChar(p4.x, p4.y);
+  rememberStairPos("leader", leader.x, leader.y);
+  rememberStairPos("p2", p2.x, p2.y);
+  rememberStairPos("p3", p3.x, p3.y);
+  rememberStairPos("p4", p4.x, p4.y);
 }
 
 function checkStairForChar(name, cx, cy) {
-  const on = isStairAtChar(cx, cy);
+  const on = isStairCrossedByChar(name, cx, cy);
+  rememberStairPos(name, cx, cy);
   if (on === stairZonePrev[name]) return;
   stairZonePrev[name] = on;
   if (on) charHeight[name] = charHeight[name] === "ground" ? "upper" : "ground";
@@ -4968,13 +5164,13 @@ function loadMap(id, opt = null) {
 
     if (opt?.isEnding || opt?.skipBgm) {
       // BGM は呼び出し元が管理
-      if (current.id === "shooting_lobby") {
+      if (current.id === "shooting_lobby" || current.id === "dark_throne") {
         bgmCtl.setOverride("about:blank");
         startShootingBgm();
       } else {
         stopShootingBgm();
       }
-    } else if (current.id === "shooting_lobby") {
+    } else if (current.id === "shooting_lobby" || current.id === "dark_throne") {
       bgmCtl.setOverride("about:blank");
       stopAfloClubBgm();
       startShootingBgm();
@@ -5018,6 +5214,20 @@ function loadMap(id, opt = null) {
     chinanagoActivated = false;
     cactusActivated    = false;
     followers.reset({ leader, p2, p3, p4 });
+    if (opt?.preFadeInWalk) {
+      const walk = opt.preFadeInWalk;
+      const frames = Math.max(0, walk.frames | 0);
+      const dx = Number(walk.dx) || 0;
+      const dy = Number(walk.dy) || 0;
+      for (let i = 0; i < frames; i += 1) {
+        leader.x += dx;
+        leader.y += dy;
+        followers.push(leader.x, leader.y);
+        followers.update(nowMs(), { p2, p3, p4 });
+      }
+      leader.frame = 0;
+      p2.frame = p3.frame = p4.frame = 0;
+    }
     if (current.id === "space_boss") {
       bgmCtl.setOverride("assets/audio/duckE.mp3");
       partyVisible = false;
@@ -5234,7 +5444,10 @@ function loadMap(id, opt = null) {
   current.bgShrineOffset = def.bgShrineOffset || null;
   current.bgShrineTopOffset = def.bgShrineTopOffset || null;
   current.bgShoreOffset  = def.bgShoreOffset  || null;
-  if (!current.hasBgShore) bgShoreReady = false;
+  if (!current.hasBgShore) {
+    bgShoreReady = false;
+    bgShoreData = null;
+  }
   shrineMode = false;
   shrineFade = 0;
   shrineTriggerActive = false;
@@ -5435,7 +5648,8 @@ function drawEntry(o) {
   if (o.alpha !== undefined && o.alpha <= 0) return;
   const hasAlpha = o.alpha !== undefined && o.alpha < 1;
   const hasScale = o.scale !== undefined && o.scale !== 1;
-  const hasFilter = !!o.filter;
+  const rainbowOn = !!o.rainbow;
+  const hasFilter = !!o.filter || rainbowOn;
   const hasTint = !!o.tint;
   const hasRotation = typeof o.rotation === "number" && o.rotation !== 0;
   const sprSize  = o.spr  ?? SPR;
@@ -5471,7 +5685,14 @@ function drawEntry(o) {
   if (hasAlpha || hasScale || hasFilter || hasTint || hasRotation) {
     ctx.save();
     if (hasAlpha) ctx.globalAlpha = Math.max(0, o.alpha);
-    if (hasFilter) ctx.filter = o.filter;
+    if (hasFilter) {
+      if (rainbowOn) {
+        const hue = (nowMs() / 8) % 360;
+        ctx.filter = `hue-rotate(${hue}deg) saturate(2) brightness(1.3)`;
+      } else {
+        ctx.filter = o.filter;
+      }
+    }
     if (hasScale || hasRotation) {
       const sx = ((o.x - cam.x) | 0) + sprSize / 2;
       const sy = o.pivotMode === "center"
@@ -5604,6 +5825,31 @@ function drawEntry(o) {
     ctx.fillRect(p1x, p1y, 1, 2);
     ctx.fillRect(p2x, p2y, 1, 1);
     ctx.fillRect(p3x, p3y, 1, 1);
+    ctx.restore();
+  }
+
+  if (o.hotSteam) {
+    const baseX = ((o.x - cam.x) | 0) + sprSize / 2;
+    const baseY = ((o.y - cam.y) | 0) + 4;
+    const tt = nowMs() / 700 + (o.hotPhase || 0);
+    ctx.save();
+    for (let i = 0; i < 4; i += 1) {
+      const p = (tt + i * 0.33) % 1;
+      const wobble = Math.sin(tt * 4 + i * 1.7);
+      const x = baseX - 6 + i * 4 + wobble * 3;
+      const y = baseY - p * 15;
+      const r = 2.2 + p * 2.6 + (i % 2) * 0.7;
+      ctx.globalAlpha = (1 - p) * 0.52;
+      ctx.fillStyle = "rgba(255,255,255,0.82)";
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = (1 - p) * 0.28;
+      ctx.fillStyle = "rgba(255,220,210,0.75)";
+      ctx.beginPath();
+      ctx.arc(x + 2, y + 1, Math.max(1.5, r * 0.65), 0, Math.PI * 2);
+      ctx.fill();
+    }
     ctx.restore();
   }
 }
@@ -5787,7 +6033,7 @@ function draw() {
   }
 
   // ベースレイヤー：shrine完全移行後はbgImgを省略して描画コスト削減
-  if (current.id === "shooting_lobby") {
+  if (current.id === "shooting_lobby" || current.id === "dark_throne") {
     drawShootingBackdrop(ctx, BASE_W, BASE_H, tt);
   } else if (current.id === "space_boss") {
     drawSpaceBossBackdrop(tt);
@@ -5826,8 +6072,9 @@ function draw() {
   const panicOx = (phase = 0) => panicFx ? (((Math.sin(panicT / 45 + phase) * 1.8) | 0)) : 0;
   const panicOy = (phase = 0) => panicFx ? (((Math.sin(panicT / 28 + phase) > 0 ? 1 : -1))) : 0;
   const hidePartyForSpaceWarp = spaceWarpFx.active && (nowMs() - spaceWarpFx.start) >= WARP_SHAKE_MS;
+  const furoHot = isFuroHotActive();
   if (partyVisible && !hidePartyForSpaceWarp) {
-    const singleLeaderOnly = current.id === "shooting_lobby";
+    const singleLeaderOnly = current.id === "shooting_lobby" || current.id === "dark_throne";
     const followerAlpha = 1 - shrineFade;
     const emerging = holeTransition?.phase === 'emerging';
     const fx = emerging && playerHoleDrawX !== null ? playerHoleDrawX : null;
@@ -5857,12 +6104,41 @@ function draw() {
     }
     const pushParty = (name, o) => (charHeight[name] === "upper" ? upperList : groundList).push(o);
     if (!orcaRide.active && !singleLeaderOnly) {
-      const ip4 = _poolItem(); ip4.img = p4.img; ip4.x = (fx ?? p4.x) + cOff + panicOx(1.3); ip4.y = fy ?? p4.y + panicOy(1.3); ip4.frame = emerging ? 0 : p4.frame; ip4.alpha = followerAlpha; ip4.scale = fs; ip4.rotation = moonRot; ip4.metImg = _hwImg(p4.img); ip4.spr = undefined; ip4.sprH = undefined; ip4.shadowImg = undefined; ip4.sweat = spaceDanger; ip4.sweatPhase = 1.3;
-      const ip3 = _poolItem(); ip3.img = p3.img; ip3.x = (fx ?? p3.x) + cOff + panicOx(2.1); ip3.y = fy ?? p3.y + panicOy(2.1); ip3.frame = emerging ? 0 : p3.frame; ip3.alpha = followerAlpha; ip3.scale = fs; ip3.rotation = moonRot; ip3.metImg = _hwImg(p3.img); ip3.spr = undefined; ip3.sprH = undefined; ip3.shadowImg = undefined; ip3.sweat = spaceDanger; ip3.sweatPhase = 2.1;
-      const ip2 = _poolItem(); ip2.img = p2.img; ip2.x = (fx ?? p2.x) + cOff + panicOx(2.9); ip2.y = fy ?? p2.y + panicOy(2.9); ip2.frame = emerging ? 0 : p2.frame; ip2.alpha = followerAlpha; ip2.scale = fs; ip2.rotation = moonRot; ip2.metImg = _hwImg(p2.img); ip2.spr = undefined; ip2.sprH = undefined; ip2.shadowImg = undefined; ip2.sweat = spaceDanger; ip2.sweatPhase = 2.9;
-      pushParty("p4", ip4); pushParty("p3", ip3); pushParty("p2", ip2);
+      const followerSlots = [
+        { name: "p2", actor: p2, phase: 2.9 },
+        { name: "p3", actor: p3, phase: 2.1 },
+        { name: "p4", actor: p4, phase: 1.3 },
+      ];
+      const drawSlots = (current.id === "furo_f" || current.id === "furo_m")
+        ? followerSlots
+            .filter((slot) => isPartySlotVisibleOnCurrentMap(slot.name))
+            .map((slot, i) => ({ ...slot, actor: followerSlots[i].actor, phase: followerSlots[i].phase }))
+        : followerSlots;
+      for (let i = drawSlots.length - 1; i >= 0; i -= 1) {
+        const slot = drawSlots[i];
+        if (!isPartySlotVisibleOnCurrentMap(slot.name)) continue;
+        const img = getPartyDrawImgForSlot(slot.name, slot.actor.img);
+        const item = _poolItem();
+        item.img = img;
+        item.x = (fx ?? slot.actor.x) + cOff + panicOx(slot.phase);
+        item.y = fy ?? slot.actor.y + panicOy(slot.phase);
+        item.frame = emerging ? 0 : slot.actor.frame;
+        item.alpha = followerAlpha;
+        item.scale = fs;
+        item.rotation = moonRot;
+        item.metImg = _hwImg(img);
+        item.spr = undefined;
+        item.sprH = undefined;
+        item.shadowImg = undefined;
+        item.sweat = spaceDanger;
+        item.sweatPhase = slot.phase;
+        item.hotSteam = furoHot;
+        item.hotPhase = slot.phase;
+        pushParty(slot.name, item);
+      }
     }
-    const il = _poolItem(); il.img = leader.img; il.x = (playerHoleDrawX !== null ? playerHoleDrawX : leader.x) + cOff + panicOx(0.5); il.y = (playerHoleDrawY !== null ? playerHoleDrawY : leader.y) + rideBob + panicOy(0.5); il.frame = holeTransition ? 0 : leader.frame; il.alpha = undefined; il.scale = playerHoleScale; il.rotation = moonRot; il.metImg = _hwImg(leader.img); il.spr = undefined; il.sprH = undefined; il.shadowImg = undefined; il.sweat = spaceDanger; il.sweatPhase = 0.5;
+    const leaderImg = getPartyDrawImgForSlot("leader", leader.img);
+    const il = _poolItem(); il.img = leaderImg; il.x = (playerHoleDrawX !== null ? playerHoleDrawX : leader.x) + cOff + panicOx(0.5); il.y = (playerHoleDrawY !== null ? playerHoleDrawY : leader.y) + rideBob + panicOy(0.5); il.frame = holeTransition ? 0 : leader.frame; il.alpha = undefined; il.scale = playerHoleScale; il.rotation = moonRot; il.metImg = _hwImg(leaderImg); il.spr = undefined; il.sprH = undefined; il.shadowImg = undefined; il.sweat = spaceDanger; il.sweatPhase = 0.5; il.hotSteam = furoHot; il.hotPhase = 0.5;
     if (gateWarpFx) {
       const gp = Math.min(1, (nowMs() - gateWarpFx.startMs) / gateWarpFx.duration);
       il.alpha = Math.max(0, 1 - gp * 0.7);
@@ -5871,7 +6147,7 @@ function draw() {
       il.pivotMode = "center";
       il.glow = true;
     }
-    pushParty("leader", il);
+    if (isPartySlotVisibleOnCurrentMap("leader")) pushParty("leader", il);
   }
   for (const act of actors) {
     if (act.vanishStart && (nowMs() - act.vanishStart) >= 400) { act.hidden = true; act.vanishStart = undefined; }
@@ -6652,19 +6928,29 @@ function startLuchadolaEvent(act) {
         input.lock();
         playBattleWinJingle();
         interactionSession.begin();
+        letterbox.snapAuto(true);
         setTimeout(() => {
+          input.unlock();
           dialog.open([["おぎゃーーーー！"]], () => {
             act.markImg = null;
             act.explodeStart = nowMs();
             setTimeout(() => {
               act.explodeStart = undefined;
+              act.vanishUp = true;
+              act.vanishStart = nowMs();
+            }, 180);
+            setTimeout(() => {
               act.hidden = true;
               act.solid = false;
               act.talkHit = { x: 0, y: 0, w: 0, h: 0 };
+              act.vanishStart = undefined;
+              act.vanishUp = undefined;
+              const demonDoor = actors.find(x => x.name === "door_demon");
+              if (demonDoor) demonDoor.hidden = false;
               achieveQuest("15");
+              letterbox.reset();
               interactionSession.end();
-              input.unlock();
-            }, 500);
+            }, 620);
           }, "talk");
         }, 800);
       }, {
@@ -6675,6 +6961,7 @@ function startLuchadolaEvent(act) {
         supportDoors: [],
         bossOnly: true,
         bossSpriteKey: "lucha",
+        bossName: "LUCHADORA",
       });
     });
   }, "talk");
@@ -6690,6 +6977,15 @@ function activateShootingLobbyDoor(act, t) {
       holdMs: 80,
       inMs: 300,
       onBlack: () => loadMap("outdoor", { spawnAt: { x: gateNpc.x, y: gateNpc.y + 20 } }),
+    });
+    return true;
+  }
+  if (act.name === "door_demon") {
+    fade.startCutFade(t, {
+      outMs: 150,
+      holdMs: 80,
+      inMs: 300,
+      onBlack: () => loadMap("dark_throne"),
     });
     return true;
   }
@@ -7099,10 +7395,6 @@ function tryInteract(t) {
             stopDivingBgm();
             popBgmOverride({ safe: false });
             setGameResolution(BASE_W, BASE_H);
-            if (!STATE.flags.diveFirstStarted) {
-              STATE.flags.diveFirstStarted = true;
-              achieveQuest("18");
-            }
             if (typeof onDone === "function") {
               interactionSession.begin();
               letterbox.snapAuto(true);
@@ -7749,14 +8041,9 @@ function update(t) {
     return;
   }
 
-  // D で 地獄（shooting_lobby）へワープ（全扉クリア状態・デバッグ）
+  // D で 風呂前へワープ（デバッグ）
   if (DEBUG && input.consume("d")) {
-    STATE.flags.shootingLobbyLuchaTalked = true;
-    STATE.flags.shootingLobbyExitUnlocked = true;
-    if (!STATE.flags.shootingDifficulty) STATE.flags.shootingDifficulty = "normal";
-    for (let i = 1; i <= 7; i++) STATE.flags[`shootingCleared_door_${i}`] = true;
-    delete STATE.flags.luchadolaDefeated;
-    loadMap("shooting_lobby");
+    loadMap("outdoor", { spawnAt: { x: 1734, y: 838 } });
     return;
   }
 

@@ -45,6 +45,94 @@ export function runNpcEvent(act, ctx) {
     return true;
   }
 
+  if (ev.type === "yes_no_dialog") {
+    const { choice, dialog, inventory } = ctx;
+    const introPages = ev.introPages || [["……"]];
+    const question = ev.question || "……";
+    const options = ev.options || ["はい", "いいえ"];
+    if (ev.afterReturnFlag && STATE.flags[ev.afterReturnFlag] && ev.afterReturnPages) {
+      dialog.open(ev.afterReturnPages, null, ev.talkType || "talk");
+      return true;
+    }
+    if (ev.giveOnceFlag && STATE.flags[ev.giveOnceFlag] && ev.afterGivePages) {
+      dialog.open(ev.afterGivePages, null, ev.talkType || "talk");
+      return true;
+    }
+    const giveItem = () => {
+      if (!ev.giveItem || !inventory) return;
+      if (ev.giveOnceFlag && STATE.flags[ev.giveOnceFlag]) return;
+      if (ev.giveOnceFlag) STATE.flags[ev.giveOnceFlag] = true;
+      inventory.addItem(ev.giveItem);
+      playItemJingle();
+      dialog.open(ev.givePages || [[`${ev.giveItemName || ev.giveItem}を手に入れた。`]], null, ev.talkType || "sign");
+    };
+    const openCommon = () => {
+      const commonPages = ev.commonPages || [];
+      if (commonPages.length) dialog.open(commonPages, giveItem, ev.talkType || "talk");
+      else giveItem();
+    };
+    dialog.open(introPages, () => {
+      choice.open(options, (idx) => {
+        if (typeof choice.close === "function") choice.close();
+        const pages = idx === 0 ? ev.onYes : ev.onNo;
+        if (pages && pages.length) dialog.open(pages, openCommon, ev.talkType || "talk");
+        else openCommon();
+      }, question);
+    }, ev.talkType || "talk");
+    return true;
+  }
+
+  if (ev.type === "love_song") {
+    const {
+      dialog,
+      fade,
+      inventory,
+      nowMs,
+      lockInput,
+      unlockInput,
+      hasItem,
+      getNpcByName,
+      endInteraction,
+    } = ctx;
+    const snackItem = ev.snackItem || "love_song_snack";
+    const introPages = act.talkPages || [["わがはいはねこである。"], ["なまえはラブソング。"]];
+    if (typeof hasItem !== "function" || !hasItem(snackItem) || STATE.flags.loveSongReturned) {
+      dialog.open(introPages);
+      return true;
+    }
+
+    dialog.open(introPages, () => {
+      if (inventory) inventory.removeItem(snackItem);
+      dialog.open([["ラブソングのおやつをあげた。"]], () => {
+        dialog.open([
+          ["これはわがはいのおやつだ。"],
+          ["かえるにゃ。"],
+        ], () => {
+          if (typeof lockInput === "function") lockInput();
+          const t = typeof nowMs === "function"
+            ? nowMs()
+            : (typeof performance !== "undefined" && performance.now ? performance.now() : Date.now());
+          fade.startCutFade(t, {
+            outMs: 400,
+            holdMs: 250,
+            inMs: 500,
+            onBlack: () => {
+              STATE.flags.loveSongReturned = true;
+              const hawaii = typeof getNpcByName === "function" ? getNpcByName("hawaii") : null;
+              act.x = (hawaii?.x ?? 1828) + 18;
+              act.y = hawaii?.y ?? 2475;
+            },
+            onEnd: () => {
+              if (typeof unlockInput === "function") unlockInput();
+              if (typeof endInteraction === "function") endInteraction();
+            },
+          });
+        });
+      }, "sign");
+    });
+    return true;
+  }
+
   if (ev.type === "inn_stay") {
     const { choice, dialog, fade, nowMs, lockInput, unlockInput, teleportPlayer, spawnPickup } = ctx;
 

@@ -63,6 +63,29 @@ export const outdoorMap = {
       entryWalk: { dx: 0, dy: 1, frames: 20 },
     },
     {
+      id:        43,
+      to:        "laundry",
+      trigger:   { x: 1683, y: 821, w: 16, h: 8 },
+      entryAt:   { x: 1683, y: 813 },
+      entryWalk: { dx: 0, dy: 1, frames: 20 },
+    },
+    {
+      id:         44,
+      toByLeader: { p3: "furo_m", p4: "furo_m" },
+      blockedByLeader: ["p1", "p2"],
+      trigger:    { x: 1721, y: 822, w: 16, h: 8 },
+      entryAt:    { x: 1721, y: 814 },
+      entryWalk:  { dx: 0, dy: 1, frames: 20 },
+    },
+    {
+      id:         45,
+      toByLeader: { p1: "furo_f", p2: "furo_f" },
+      blockedByLeader: ["p3", "p4"],
+      trigger:    { x: 1742, y: 822, w: 16, h: 8 },
+      entryAt:    { x: 1742, y: 814 },
+      entryWalk:  { dx: 0, dy: 1, frames: 20 },
+    },
+    {
       id:        39,
       to:        "musium",
       trigger:   { x: 1577, y: 823, w: 16, h: 8 }, // 底辺中心 (1585,827)

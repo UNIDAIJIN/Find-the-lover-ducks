@@ -17,6 +17,8 @@ export function createFade({
   let nextMapId = null;
   let nextMapOpt = null;
   let onLoadMap = null;
+  let currentMapOutMs = mapOutMs;
+  let currentMapInMs = mapInMs;
 
   // cut
   let cutOutMs = 420;
@@ -61,6 +63,8 @@ export function createFade({
     nextMapId = null;
     nextMapOpt = null;
     onLoadMap = null;
+    currentMapOutMs = mapOutMs;
+    currentMapInMs = mapInMs;
 
     holdUntil = 0;
     onBlack = null;
@@ -90,6 +94,8 @@ export function createFade({
     nextMapId = id;
     nextMapOpt = opt || null;
     onLoadMap = typeof loadMapFn === "function" ? loadMapFn : null;
+    currentMapOutMs = opt?.fadeOutMs ?? mapOutMs;
+    currentMapInMs = opt?.fadeInMs ?? mapInMs;
 
     input.clear();
   }
@@ -166,8 +172,8 @@ export function createFade({
     if (!active) return;
 
     if (kind === "map") {
-      const outMs = dur(mapOutMs);
-      const inMs  = dur(mapInMs);
+      const outMs = dur(currentMapOutMs);
+      const inMs  = dur(currentMapInMs);
 
       if (phase === 0) {
         const p = (nowMs - t0) / outMs;

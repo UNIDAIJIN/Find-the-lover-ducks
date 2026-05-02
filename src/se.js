@@ -20,6 +20,7 @@ const SAMPLE_SE_SCALE = {
   "se_koke.mp3": 0.9,
   "se_battle_in.mp3": 0.8,
   "se_chibi.mp3": 0.8,
+  "se_furo.mp3": 1.0,
 };
 const GENERATED_SE_MASTER = 0.72;
 const GENERATED_BGM_MASTER = 0.72;
@@ -632,6 +633,7 @@ export function playBuzzer() {
 }
 
 export function playSuzu()    { play("se_suzu.mp3", 0.8); }
+export function playFuro()    { play("se_furo.mp3", 1.0); }
 
 // ---- コイン購入音: チャリン ----
 export function playCoin() {
