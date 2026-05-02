@@ -34,11 +34,11 @@ const FIELD_MAX_Y = 246;
 const HAND_SIZE = 5;
 const MAX_ENERGY = 10;
 const BASE_MAX_HP = 1000;
-const DEBUG_START_PLAYER_HP = 1;
-const DEBUG_START_ENEMY_HP = 1;
+const DEBUG_START_PLAYER_HP = 0;
+const DEBUG_START_ENEMY_HP = 0;
 const BASE_HP_SEGMENTS = 4;
 const BASE_SEGMENT_HP = BASE_MAX_HP / BASE_HP_SEGMENTS;
-const BASE_SEGMENT_DAMAGE = 38;
+const BASE_SEGMENT_DAMAGE = 82;
 const BASE_SEGMENT_KNOCKBACK = 92;
 const BASE_SEGMENT_KNOCK_DURATION = 1.05;
 const BASE_SEGMENT_KNOCK_HEIGHT = 54;
@@ -70,7 +70,7 @@ const CARDS = [
   { id: "guard", behavior: "nidhogg", name: "NIDHOGG", spriteNo: 4, cost: 4, hp: 330, damage: 24, speed: 13, range: 58, cooldown: 1.05, radius: 12, color: "#9b63ff", label: "TANK AoE", armor: 0.72, summonText: "（ ｉ _ ｉ ）", summonTextColor: "#b890ff" },
   { id: "bruiser", behavior: "bruiser", name: "LUCHADOR", spriteNo: 3, cost: 4, hp: 220, damage: 32, speed: 24, range: 18, cooldown: 0.78, radius: 9, color: "#ef3e45", label: "ATK UP", attackFx: "melee", summonText: "ジッゴクゥー！", summonTextColor: "#ef3e45", summonBuff: { type: "attack", factor: 1.32, duration: 4.4 } },
   { id: "blaster", behavior: "tower", name: "ANGLER", spriteNo: 2, cost: 4, hp: 255, damage: 30, speed: 0, range: 82, cooldown: 0.46, radius: 9, color: "#ff9a3d", label: "TOWER", summonText: "イェーイ！楽しんでるぅ？", summonTextColor: "#ff9a3d", spriteFlip: true },
-  { id: "sniper", behavior: "ranged", name: "GENERIC N2", spriteNo: 5, cost: 3, hp: 155, damage: 33, speed: 19, range: 78, cooldown: 1.05, radius: 8, color: "#5e8cff", label: "BEAM", deathExplosion: { damage: 28, radius: 28, knockback: 34 }, allowDuplicate: true, summonText: "ピピピ、ホッケ発見。", summonTextColor: "#5e8cff" },
+  { id: "sniper", behavior: "ranged", name: "GENERIC N2", spriteNo: 5, cost: 4, hp: 125, damage: 24, speed: 17, range: 70, cooldown: 1.18, radius: 8, color: "#5e8cff", label: "BEAM", deathExplosion: { damage: 18, radius: 24, knockback: 26 }, allowDuplicate: true, summonText: "ピピピ、ホッケ発見。", summonTextColor: "#5e8cff" },
   { id: "medic", behavior: "medic", name: "LEE", spriteNo: 8, cost: 3, hp: 125, damage: -26, speed: 24, range: 56, cooldown: 1.02, radius: 8, color: "#f1c84b", rangeColor: "#4fd18b", label: "GYOZA HEAL", summonText: "イーガーコーテル！", summonTextColor: "#f1c84b" },
   { id: "swarm", behavior: "swarm", name: "CHINANAGO", spriteNo: 7, cost: 3, hp: 72, damage: 13, speed: 39, range: 15, cooldown: 0.55, radius: 6, color: "#9be7ff", label: "×3", count: 3, spriteFlip: true, attackFx: "melee", summonText: "ニョロニョロですね。" },
   { id: "frost", behavior: "cactusCrew", name: "CACTUS CREW", spriteNo: 6, cost: 4, hp: 150, damage: 19, speed: 20, range: 18, cooldown: 0.92, radius: 8, color: "#55c768", label: "×4", count: 4, formation: "crew", summonText: "いくぜ！アミーゴ！", summonTextColor: "#55c768" },
@@ -110,16 +110,11 @@ const PLAYER_DECK_PRESETS = {
 };
 
 const ENEMY_CARDS = [
-  { id: "runner", behavior: "runner", name: "RUN", spriteNo: 1, cost: 2, hp: 110, damage: 18, speed: 36, range: 16, cooldown: 0.62, radius: 7, color: "#4fd18b", label: "FAST", attackFx: "melee" },
-  { id: "guard", behavior: "guard", name: "GRD", spriteNo: 2, cost: 3, hp: 230, damage: 20, speed: 22, range: 17, cooldown: 0.85, radius: 9, color: "#7ad66d", label: "SHLD", armor: 0.68, attackFx: "melee" },
-  { id: "bruiser", behavior: "bruiser", name: "BRU", spriteNo: 3, cost: 4, hp: 290, damage: 34, speed: 22, range: 18, cooldown: 0.9, radius: 10, color: "#ff8d4f", label: "HEAVY", attackFx: "melee" },
-  { id: "blaster", behavior: "ranged", name: "BLT", spriteNo: 4, cost: 3, hp: 130, damage: 23, speed: 27, range: 64, cooldown: 0.86, radius: 8, color: "#5e8cff", label: "RNG" },
-  { id: "sniper", behavior: "sniper", name: "SNP", spriteNo: 5, cost: 4, hp: 92, damage: 62, speed: 18, range: 98, cooldown: 1.35, radius: 7, color: "#b890ff", label: "LONG" },
-  { id: "medic", behavior: "medic", name: "MED", spriteNo: 6, cost: 3, hp: 125, damage: -24, speed: 25, range: 52, cooldown: 1.05, radius: 8, color: "#f1c84b", label: "HEAL" },
-  { id: "swarm", behavior: "swarm", name: "SWM", spriteNo: 7, cost: 3, hp: 72, damage: 13, speed: 39, range: 15, cooldown: 0.55, radius: 6, color: "#9be7ff", label: "x3", count: 3, attackFx: "melee" },
-  { id: "frost", behavior: "frost", name: "FRZ", spriteNo: 8, cost: 4, hp: 118, damage: 14, speed: 24, range: 62, cooldown: 1, radius: 8, color: "#8ee7f2", label: "SLOW", slow: 0.45, slowTime: 1.8 },
-  { id: "spark", behavior: "spark", name: "SPK", spriteNo: 9, cost: 5, hp: 85, damage: 96, speed: 36, range: 20, cooldown: 0.2, radius: 7, color: "#4ecbe2", label: "BOOM", suicide: true, splash: 34 },
-  { id: "mechanic", behavior: "mechanic", name: "FIX", spriteNo: 10, cost: 4, hp: 150, damage: 19, speed: 22, range: 44, cooldown: 1.1, radius: 8, color: "#d6d0c2", label: "REPR", repairBase: 28, allyRepair: 16 },
+  { id: "runner", behavior: "runner", name: "FLY", spriteNo: 1, cost: 3, hp: 70, damage: 13, speed: 43, range: 15, cooldown: 0.58, radius: 6, color: "#d6d0c2", label: "×5 AIR", count: 5, formation: "line", attackFx: "melee", meleeImmune: true, noEnemyFlip: true },
+  { id: "guard", behavior: "nidhogg", name: "GRD", spriteNo: 2, cost: 4, hp: 260, damage: 24, speed: 13, range: 58, cooldown: 1.05, radius: 12, color: "#ef3e45", label: "TANK AoE", armor: 0.72, noEnemyFlip: true },
+  { id: "bruiser", behavior: "bruiser", name: "BRU", spriteNo: 3, cost: 4, hp: 290, damage: 34, speed: 22, range: 18, cooldown: 0.9, radius: 10, color: "#ff8d4f", label: "HEAVY", attackFx: "melee", noEnemyFlip: true },
+  { id: "blaster", behavior: "tower", name: "BLT", spriteNo: 4, cost: 4, hp: 180, damage: 28, speed: 0, range: 82, cooldown: 0.72, radius: 9, color: "#ffe45c", label: "TOWER", noEnemyFlip: true },
+  { id: "swarm", behavior: "swarm", name: "SWM", spriteNo: 7, cost: 3, hp: 72, damage: 13, speed: 39, range: 15, cooldown: 0.55, radius: 6, color: "#9be7ff", label: "x3", count: 3, attackFx: "melee", noEnemyFlip: true },
 ];
 
 export function createPhoneBrawl({
@@ -1341,7 +1336,7 @@ export function createPhoneBrawl({
       const base = side === "enemy" ? { x: ENEMY_BASE_X, y: BASE_Y } : { x: PLAYER_BASE_X, y: BASE_Y };
       applyBaseDamage(side, Math.ceil(damage), unit);
       if (unit.team === "enemy") beam(unit.x, unit.y, base.x, base.y, card.color, false);
-      else if (isNidhoggUnit(unit)) nidhoggFlameFx(nidhoggMouthX(unit), nidhoggMouthY(unit), base.x, base.y - 4);
+      else if (isNidhoggUnit(unit)) nidhoggFlameFx(nidhoggMouthX(unit), nidhoggMouthY(unit), base.x, base.y - 4, undefined, card.color);
       else if (isMeleeUnit(unit)) meleeHitFx(base.x, base.y - 3, card.color, 1.45);
       else beam(unit.x, unit.y, base.x, base.y, card.color, false);
       if (card.suicide && card.splash) {
@@ -1355,7 +1350,7 @@ export function createPhoneBrawl({
       }
     } else if (target.target) {
       if (isNidhoggUnit(unit)) nidhoggFlameAttack(unit, target.target, damage);
-      else damageUnit(target.target, damage);
+      else damageUnit(target.target, damage, true, true, unit);
       if (!isNidhoggUnit(unit) && card.suicide && card.splashKnockback) {
         applyExplosionKnockback(target.target, unit.x, unit.y, card.splash || 1, card.splashKnockback);
       }
@@ -1363,7 +1358,11 @@ export function createPhoneBrawl({
         target.target.slowTimer = card.slowTime || 1.5;
         target.target.slowFactor = card.slow;
       }
-      if (unit.team === "enemy") {
+      if (unit.team === "enemy" && isMeleeUnit(unit)) {
+        meleeHitFx(target.target.x, target.target.y - target.target.card.radius + 7, card.color);
+      } else if (unit.team === "enemy" && card.id === "blaster") {
+        lightningFx(unit.x, unit.y, target.target.x, target.target.y, card.color);
+      } else if (unit.team === "enemy") {
         beam(unit.x, unit.y, target.target.x, target.target.y, card.color, false);
       } else if (isNidhoggUnit(unit)) {
         // NIDHOGG draws its own purple flame in nidhoggFlameAttack.
@@ -1374,7 +1373,7 @@ export function createPhoneBrawl({
         for (const other of state.units) {
           if (other.team === unit.team || other.id === target.target.id || other.hp <= 0) continue;
           const dist = Math.hypot(other.x - target.target.x, other.y - target.target.y);
-          if (dist <= card.splash) damageUnit(other, damage * 0.45);
+          if (dist <= card.splash) damageUnit(other, damage * 0.45, true, true, unit);
           if (dist <= card.splash && card.splashKnockback) applyExplosionKnockback(other, target.target.x, target.target.y, card.splash, card.splashKnockback);
         }
         if (card.suicide) explosionFx(target.target.x, target.target.y, card.explosionColor || card.color, card.splash);
@@ -1387,7 +1386,11 @@ export function createPhoneBrawl({
     }
   }
 
-  function damageUnit(unit, amount, playSound = true, showFloat = true) {
+  function damageUnit(unit, amount, playSound = true, showFloat = true, attacker = null) {
+    if (unit.card.meleeImmune && attacker && isMeleeUnit(attacker)) {
+      if (showFloat) floatText(unit.x, unit.y - 14, "MISS", "#dff6ff");
+      return;
+    }
     const finalAmount = amount * (unit.card.armor || 1);
     unit.hp -= finalAmount;
     unit.hitFlash = 1;
@@ -1402,7 +1405,7 @@ export function createPhoneBrawl({
     const ex = target.x;
     const ey = target.y - target.card.radius * 0.35;
     const ticks = Math.round(NIDHOGG_FLAME_DURATION / NIDHOGG_FLAME_TICK);
-    const particle = nidhoggFlameFx(sx, sy, ex, ey, NIDHOGG_FLAME_DURATION);
+    const particle = nidhoggFlameFx(sx, sy, ex, ey, NIDHOGG_FLAME_DURATION, unit.card.color);
     state.nidhoggFlames.push({
       unitId: unit.id,
       targetId: target.id,
@@ -2509,7 +2512,10 @@ export function createPhoneBrawl({
 
   function unitSprite(unit) {
     if (!unit) return null;
-    if (unit.team === "enemy") return sprites.enemy;
+    if (unit.team === "enemy") {
+      const spriteId = unit.card.spriteCardId || unit.card.id;
+      return sprites.enemyCards?.[spriteId] || sprites.enemy;
+    }
     const spriteId = unit.card.spriteCardId || unit.card.id;
     const set = sprites.cards?.[spriteId] || sprites.cardImages?.[spriteId];
     if (Array.isArray(set)) {
@@ -2794,7 +2800,9 @@ export function createPhoneBrawl({
     const attackGlow = unit.attackBoostTimer > 0;
     if (metrics) {
       const frame = walking ? ((unit.bob / Math.PI) | 0) % 2 : 0;
-      const flip = unit.team === "enemy" ? !unit.card.spriteFlip : !!unit.card.spriteFlip;
+      const flip = unit.team === "enemy"
+        ? (unit.card.noEnemyFlip ? !!unit.card.spriteFlip : !unit.card.spriteFlip)
+        : !!unit.card.spriteFlip;
       const drawX = unit.x - metrics.w / 2 + sway + panicX + setupJitterX;
       const drawY = y + r + 2 - metrics.h + panicY + setupJitterY;
       if (settingUpCurry) {
@@ -2883,7 +2891,9 @@ export function createPhoneBrawl({
     ctx.globalAlpha = alpha;
     if (metrics) {
       const frame = ((unit.bob / Math.PI) | 0) % 2;
-      const flip = unit.team === "enemy" ? !unit.card.spriteFlip : !!unit.card.spriteFlip;
+      const flip = unit.team === "enemy"
+        ? (unit.card.noEnemyFlip ? !!unit.card.spriteFlip : !unit.card.spriteFlip)
+        : !!unit.card.spriteFlip;
       ctx.translate(unit.x, unit.y - metrics.h * 0.45);
       ctx.rotate(unit.exitAngle || 0);
       ctx.scale(scale, scale);
@@ -2955,6 +2965,28 @@ export function createPhoneBrawl({
         ctx.beginPath();
         ctx.moveTo(p.x1, p.y1);
         ctx.lineTo(p.x2, p.y2);
+        ctx.stroke();
+      } else if (p.lightning) {
+        const progress = clamp(1 - p.life / p.maxLife, 0, 1);
+        ctx.globalAlpha = Math.max(0, 1 - progress);
+        ctx.lineJoin = "miter";
+        ctx.strokeStyle = "#fff7b0";
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        for (let i = 0; i < p.points.length; i += 1) {
+          const pt = p.points[i];
+          if (i === 0) ctx.moveTo(pt.x, pt.y);
+          else ctx.lineTo(pt.x, pt.y);
+        }
+        ctx.stroke();
+        ctx.strokeStyle = p.color;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        for (let i = 0; i < p.points.length; i += 1) {
+          const pt = p.points[i];
+          if (i === 0) ctx.moveTo(pt.x, pt.y);
+          else ctx.lineTo(pt.x, pt.y);
+        }
         ctx.stroke();
       } else if (p.gyozaHeal) {
         const progress = clamp(1 - p.life / p.maxLife, 0, 1);
@@ -3393,6 +3425,11 @@ function drawTinyStarBurst(ctx, x, y, color = "#f7f2e8", progress = 0) {
 
 function drawNidhoggFlame(ctx, flame, progress) {
   const fade = progress < 0.76 ? 1 : clamp((1 - progress) / 0.24, 0, 1);
+  const red = flame.color === "#ef3e45";
+  const smokeDark = red ? "#180708" : "#0b0710";
+  const smokeA = red ? "#7f1f24" : "#4a285f";
+  const smokeB = red ? "#b32a2f" : "#663674";
+  const smokeHi = red ? "#ff8a62" : "#9a73a8";
   const reach = 0.12 + 0.88 * (1 - Math.pow(1 - clamp(progress / 0.28, 0, 1), 2.4));
   const dx = flame.x2 - flame.x1;
   const dy = flame.y2 - flame.y1;
@@ -3418,19 +3455,19 @@ function drawNidhoggFlame(ctx, flame, progress) {
     const angle = Math.sin(flame.phase + i) * 0.42;
 
     ctx.globalAlpha = 0.28 * fade * edgeFade;
-    drawSmokeBlob(ctx, x, y, r + 3.6, squash, angle, "#0b0710");
+    drawSmokeBlob(ctx, x, y, r + 3.6, squash, angle, smokeDark);
 
     ctx.globalAlpha = 0.42 * fade * edgeFade;
-    drawSmokeBlob(ctx, x, y, r, squash, angle, i % 2 === 0 ? "#4a285f" : "#663674");
+    drawSmokeBlob(ctx, x, y, r, squash, angle, i % 2 === 0 ? smokeA : smokeB);
 
     ctx.globalAlpha = 0.22 * fade * edgeFade;
-    ctx.fillStyle = "#120717";
+    ctx.fillStyle = red ? "#2a0808" : "#120717";
     ctx.fillRect((x + nx * r * 0.32) | 0, (y - r * 0.1) | 0, Math.max(1, r * 0.42) | 0, Math.max(1, r * 0.28) | 0);
     ctx.fillRect((x - nx * r * 0.42) | 0, (y + r * 0.18) | 0, Math.max(1, r * 0.34) | 0, Math.max(1, r * 0.22) | 0);
 
     if (i % 2 === 0) {
       ctx.globalAlpha = 0.18 * fade * edgeFade;
-      drawSmokeBlob(ctx, x - nx * r * 0.45, y - ny * r * 0.35, r * 0.62, squash * 0.9, -angle, "#9a73a8");
+      drawSmokeBlob(ctx, x - nx * r * 0.45, y - ny * r * 0.35, r * 0.62, squash * 0.9, -angle, smokeHi);
     }
   }
   ctx.restore();
@@ -3523,7 +3560,7 @@ function drawFloating(ctx) {
           }
         }
       }
-      if (!p.beam && !p.ring && !p.flash && !p.melee && !p.fishingLine && !p.nidhoggFlame && !p.gyozaHeal && !p.bossWhiteoutBlast) {
+      if (!p.beam && !p.ring && !p.flash && !p.melee && !p.fishingLine && !p.lightning && !p.nidhoggFlame && !p.gyozaHeal && !p.bossWhiteoutBlast) {
         p.x += p.vx * dt;
         p.y += p.vy * dt;
         p.vy += 90 * dt;
@@ -3740,7 +3777,31 @@ function drawFloating(ctx) {
     state.particles.push({ fishingLine: true, x: sx, y: sy, vx: 0, vy: 0, x1: sx, y1: sy, x2: ex, y2: ey, color, life: 0.2, maxLife: 0.2 });
   }
 
-  function nidhoggFlameFx(x1, y1, x2, y2, duration = 0.22) {
+  function lightningFx(x1, y1, x2, y2, color) {
+    const sx = x1 + 2;
+    const sy = y1 - 13;
+    const ex = x2;
+    const ey = y2 - 5;
+    if (!isFinitePoint(sx, sy, ex, ey)) return;
+    const dx = ex - sx;
+    const dy = ey - sy;
+    const len = Math.hypot(dx, dy) || 1;
+    const nx = -dy / len;
+    const ny = dx / len;
+    const points = [];
+    const segments = 7;
+    for (let i = 0; i <= segments; i += 1) {
+      const t = i / segments;
+      const jitter = i === 0 || i === segments ? 0 : ((Math.random() - 0.5) * 14);
+      points.push({
+        x: sx + dx * t + nx * jitter,
+        y: sy + dy * t + ny * jitter,
+      });
+    }
+    state.particles.push({ lightning: true, points, color, life: 0.16, maxLife: 0.16 });
+  }
+
+  function nidhoggFlameFx(x1, y1, x2, y2, duration = 0.22, color = "#9b63ff") {
     if (!isFinitePoint(x1, y1, x2, y2)) return null;
     const particle = {
       nidhoggFlame: true,
@@ -3749,6 +3810,7 @@ function drawFloating(ctx) {
       x2,
       y2,
       phase: Math.random() * Math.PI * 2,
+      color,
       life: duration,
       maxLife: duration,
     };
@@ -4223,9 +4285,11 @@ function indexedSprite(value, index = 0) {
 
 function spriteMetrics(img) {
   if (!img || !img.complete || img.naturalWidth < 2 || img.naturalHeight < 1) return null;
+  const frameCount = img.frameCount || (img.naturalWidth >= img.naturalHeight * 1.5 ? 2 : 1);
   return {
-    w: Math.max(1, Math.floor(img.naturalWidth / 2)),
+    w: Math.max(1, Math.floor(img.naturalWidth / frameCount)),
     h: img.naturalHeight,
+    frameCount,
   };
 }
 
@@ -4261,7 +4325,7 @@ function drawBaseSprite(ctx, img, cx, cy, maxW, maxH) {
 function drawSpriteFrame(ctx, img, frame, x, y, w, h, flip = false) {
   const metrics = spriteMetrics(img);
   if (!metrics) return;
-  const sx = (frame % 2) * metrics.w;
+  const sx = (frame % metrics.frameCount) * metrics.w;
   const sy = 0;
   const sw = metrics.w;
   const sh = metrics.h;
@@ -4292,7 +4356,7 @@ function drawSpriteFrameTint(ctx, img, frame, x, y, w, h, flip = false, color = 
   ox.globalAlpha = 1;
   ox.globalCompositeOperation = "source-over";
   ox.clearRect(0, 0, tw, th);
-  ox.drawImage(img, (frame % 2) * metrics.w, 0, metrics.w, metrics.h, 0, 0, tw, th);
+  ox.drawImage(img, (frame % metrics.frameCount) * metrics.w, 0, metrics.w, metrics.h, 0, 0, tw, th);
   ox.globalCompositeOperation = "source-in";
   ox.fillStyle = color;
   ox.fillRect(0, 0, tw, th);

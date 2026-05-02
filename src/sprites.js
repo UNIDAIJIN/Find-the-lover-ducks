@@ -1,6 +1,7 @@
 // sprites.js
-function loadSprite(src){
+function loadSprite(src, opts = {}){
   const img = new Image();
+  if (opts.frameCount) img.frameCount = opts.frameCount | 0;
   img.onload = () => console.log("[SPRITE OK]", src, img.naturalWidth, img.naturalHeight);
   img.onerror = () => console.error("[SPRITE NG]", src);
   img.src = src;
@@ -113,7 +114,7 @@ export const SPRITES = {
   // hole マップ
   nidhogg:  loadSprite("assets/sprites/nidhogg.png"),
   nidhogg2: loadSprite("assets/sprites/nidhogg2.png"),
-  angler:   loadSprite("assets/sprites/angler.png"),
+  angler:   loadSprite("assets/sprites/angler.png", { frameCount: 2 }),
 
   // ura_ketchupug マップ
   ura_yahhy: loadSprite("assets/sprites/ura_yahhy.png"),
@@ -175,6 +176,11 @@ export const SPRITES = {
   urabossLow: loadSprite("assets/sprites/uraboss_low.png"),
   urabossMid: loadSprite("assets/sprites/uraboss_mid.png"),
   urabossTop: loadSprite("assets/sprites/uraboss_top.png"),
+  boss_main:  loadSprite("assets/sprites/boss_main.png"),
+  boss_cat:   loadSprite("assets/sprites/boss_cat.png"),
+  boss_tower: loadSprite("assets/sprites/boss_tower.png"),
+  boss_fly:   loadSprite("assets/sprites/boss_fly.png"),
+  boss_three: loadSprite("assets/sprites/boss_three.png"),
   curry: loadSprite("assets/sprites/curry.png"),
 
   dive_tank:  loadSprite("assets/sprites/dive_tank.png"),

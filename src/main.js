@@ -109,6 +109,13 @@ const phoneBrawl = createPhoneBrawl({
       top: SPRITES.urabossTop,
     },
     enemy: SPRITES.phoneBrawlEnemy,
+    enemyCards: {
+      runner: SPRITES.boss_fly,
+      guard: SPRITES.boss_cat,
+      bruiser: SPRITES.boss_main,
+      blaster: SPRITES.boss_tower,
+      swarm: SPRITES.boss_three,
+    },
     curry: SPRITES.curry,
     pepper: SPRITES.pepper,
     gyoza: SPRITES.gyoza,
@@ -1184,7 +1191,7 @@ function startSpaceBossFirstBattle() {
     if (current.id !== "space_boss") return;
     stopHeartbeat();
     startSpaceBossReunionEvent();
-  }, { playerDeckIds: "n2_msitp", giveUpAction: "interventionReturn", internalBgm: false, enemyInvincible: true });
+  }, { playerDeckIds: "n2_msitp", giveUpAction: "interventionReturn", internalBgm: false });
 }
 
 function startSpaceBossFirstBattleGameOverDebug() {
@@ -5253,7 +5260,7 @@ function loadMap(id, opt = null) {
         if (act.name === "sb_ss1") act.glow = true;
       }
       input.lock();
-      let sbIdx = opt?.spaceBossStartAt === "blackHole" || opt?.spaceBossStartAt === "gameOver"
+      let sbIdx = opt?.spaceBossStartAt === "blackHole" || opt?.spaceBossStartAt === "gameOver" || opt?.spaceBossStartAt === "firstBattle"
         ? SPACE_BOSS_TALK.findIndex(step => step.action === "suck")
         : 0;
       if (sbIdx < 0) sbIdx = 0;
@@ -5263,7 +5270,7 @@ function loadMap(id, opt = null) {
       sbWhiteFlash = null;
       sbBossType = null;
       sbLastBattleStarted = false;
-      if (opt?.spaceBossStartAt === "blackHole" || opt?.spaceBossStartAt === "gameOver") {
+      if (opt?.spaceBossStartAt === "blackHole" || opt?.spaceBossStartAt === "gameOver" || opt?.spaceBossStartAt === "firstBattle") {
         sbBlackHole = { y: -20, r: 50 };
         const party = actors.filter(a => a.name?.startsWith("sb_party_"));
         for (let i = 0; i < party.length; i++) {
@@ -5271,6 +5278,33 @@ function loadMap(id, opt = null) {
         }
         const ss = actors.find(a => a.name === "sb_ss1");
         if (ss) ss.ironHeartMark = true;
+      }
+      if (opt?.spaceBossStartAt === "firstBattle") {
+        sbBlackHole = null;
+        sbSuck = null;
+        sbBoss = {
+          startMs: nowMs(),
+          duration: 1,
+          startY: 55,
+          endY: 55,
+          size: 90,
+        };
+        const ss = actors.find(a => a.name === "sb_ss1");
+        if (ss) ss.hidden = true;
+        const px = leader.x;
+        const py = leader.y;
+        const party = actors.filter(a => a.name?.startsWith("sb_party_"));
+        for (let i = 0; i < party.length; i++) {
+          party[i].x = px - 30 + i * 20;
+          party[i].y = py + 60;
+          party[i].glow = true;
+        }
+        setTimeout(() => {
+          if (current.id === "space_boss" && !sbLastBattleStarted) {
+            startSpaceBossBossSpeech(() => startSpaceBossFirstBattle());
+          }
+        }, 250);
+        return;
       }
       if (opt?.spaceBossStartAt === "gameOver") {
         sbBlackHole = null;
@@ -8041,9 +8075,9 @@ function update(t) {
     return;
   }
 
-  // D で 風呂前へワープ（デバッグ）
+  // D でクエスト全達成（デバッグ）
   if (DEBUG && input.consume("d")) {
-    loadMap("outdoor", { spawnAt: { x: 1734, y: 838 } });
+    for (const q of QUESTS) achieveQuest(q.id);
     return;
   }
 
