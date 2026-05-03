@@ -95,7 +95,7 @@ const MSITP_SOLO_CARDS = [
   range: 15,
   cooldown: 0.88,
   radius: 7,
-  label: "MSITP",
+  label: "FEVER",
   attackFx: "melee",
   msitpSolo: true,
   summonTextColor: card.color,
@@ -106,7 +106,7 @@ const PLAYER_CARDS = [...CARDS, ...MSITP_SOLO_CARDS];
 const CARD_BY_ID = Object.fromEntries(PLAYER_CARDS.map((card) => [card.id, card]));
 const PLAYER_DECK_PRESETS = {
   n2_msitp: ["sniper", "sniper", "sniper", ...MSITP_SOLO_CARD_IDS],
-  lastbattle2: ["sniper", "sniper", "sniper", ...MSITP_SOLO_CARD_IDS],
+  lastbattle2: CARDS.map((card) => card.id),
 };
 
 const ENEMY_CARDS = [
@@ -1902,6 +1902,9 @@ export function createPhoneBrawl({
       }
       over.phase = "shatterPending";
       over.phaseTimer = 0;
+      setTimeout(() => {
+        if (state.gameOverFall === over && over.phase === "shatterPending") finishInterventionGameOver();
+      }, 1200);
       input?.clear?.();
       return;
     }
@@ -1930,15 +1933,16 @@ export function createPhoneBrawl({
   }
 
   function finishInterventionGameOver() {
+    if (endedOnce) return;
     const payload = {
       result: state.gameOverFall?.result || "giveup",
       playerHp: 0,
       enemyHp: Math.max(0, state.enemyHp | 0),
       elapsed: state.elapsed,
     };
+    endedOnce = true;
     close();
-    if (!endedOnce && typeof onEnd === "function") {
-      endedOnce = true;
+    if (typeof onEnd === "function") {
       onEnd(payload);
     }
   }
@@ -2291,6 +2295,9 @@ export function createPhoneBrawl({
     over.shatter = { off, shards, timer: 0, duration: 0.78, flashUntil: 0.12 };
     over.phase = "shatter";
     playGlassShatter();
+    setTimeout(() => {
+      if (state.gameOverFall === over && over.phase === "shatter") finishInterventionGameOver();
+    }, (over.shatter.duration * 1000) + 120);
   }
 
   function drawGameOverShatter(ctx, over) {

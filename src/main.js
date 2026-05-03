@@ -269,14 +269,14 @@ function drawBgShore() {
   ctx.drawImage(bgShoreCanvas, dx, dy);
 }
 function isOnShoreOverlay(wx, wy) {
-  if (current.id !== "outdoor" || !bgShoreReady || !bgShoreData) return false;
+  if (!current.hasBgShore || !bgShoreReady || !bgShoreData) return false;
   const x = (wx - bgShoreOffsetX) | 0;
   const y = (wy - bgShoreOffsetY) | 0;
   if (x < 0 || y < 0 || x >= bgShoreCanvas.width || y >= bgShoreCanvas.height) return false;
   return bgShoreData[(y * bgShoreCanvas.width + x) * 4 + 3] > 0;
 }
 function isShoreOverlayInCamera() {
-  if (current.id !== "outdoor" || !bgShoreReady || !bgShoreData) return false;
+  if (!current.hasBgShore || !bgShoreReady || !bgShoreData) return false;
   const x0 = Math.max(0, Math.floor(cam.x - bgShoreOffsetX));
   const y0 = Math.max(0, Math.floor(cam.y - bgShoreOffsetY));
   const x1 = Math.min(bgShoreCanvas.width, Math.ceil(cam.x + canvas.width - bgShoreOffsetX));
@@ -1461,60 +1461,58 @@ function startSpaceBossReunionEvent() {
   bgmCtl.setOverride("assets/audio/duckC.mp3");
   restoreSpaceBossPreBattleLayout();
   input.lock();
-  interactionSession.trackSync(() => {
-    setTimeout(() => startSpaceBossCactusIntro(() => {
-      input.unlock();
-      dialog.open([["またせたな、アミーゴ！"]], () => {
-        dialog.open([["みんなを集めるのに時間がかかっちまった！"]], () => {
-          input.lock();
-          startSpaceBossCactusLeadHop(() => {
-            input.unlock();
-            dialog.open([["みんなー！"]], () => {
-              input.lock();
-              startSpaceBossCactusFriendsIntro(() => {
-                startSpaceBossCactusHatHop(() => {
-                  input.unlock();
-                  dialog.open([["俺たちだけじゃないぜ！"]], () => {
-                    input.lock();
-                    setTimeout(() => {
-                      startSpaceBossAlliesIntro(() => {
-                        startSpaceBossAllMembersAnim(() => {
-                          startSpaceBossSpacesistersHop(() => {
-                            input.unlock();
-                            dialog.open([
-                              ["間に合ってよかったよ！"],
-                              ["さぁ、力を合わせてあいつを倒すんだ！"],
-                            ], () => {
-                              input.lock();
-                              startSpaceBossAllMembersHop(() => {
-                                input.unlock();
-                                dialog.open([["うおーーー！"]], null, "talk", 0, {
-                                  position: "top",
-                                  textScale: 2,
-                                  align: "center",
-                                  valign: "center",
-                                  highlights: [{ text: "うおーーー！", rainbow: true }],
-                                  onFinalAdvance: () => {
-                                    input.lock();
-                                    startBattleTransition(() => startSpaceBossFinalBattle());
-                                    dialog.close();
-                                  },
-                                });
+  interactionSession.trackSync(() => startSpaceBossCactusIntro(() => {
+    input.unlock();
+    dialog.open([["またせたな、アミーゴ！"]], () => {
+      dialog.open([["みんなを集めるのに時間がかかっちまった！"]], () => {
+        input.lock();
+        startSpaceBossCactusLeadHop(() => {
+          input.unlock();
+          dialog.open([["みんなー！"]], () => {
+            input.lock();
+            startSpaceBossCactusFriendsIntro(() => {
+              startSpaceBossCactusHatHop(() => {
+                input.unlock();
+                dialog.open([["俺たちだけじゃないぜ！"]], () => {
+                  input.lock();
+                  setTimeout(() => {
+                    startSpaceBossAlliesIntro(() => {
+                      startSpaceBossAllMembersAnim(() => {
+                        startSpaceBossSpacesistersHop(() => {
+                          input.unlock();
+                          dialog.open([
+                            ["間に合ってよかったよ！"],
+                            ["さぁ、力を合わせてあいつを倒すんだ！"],
+                          ], () => {
+                            input.lock();
+                            startSpaceBossAllMembersHop(() => {
+                              input.unlock();
+                              dialog.open([["うおーーー！"]], null, "talk", 0, {
+                                position: "top",
+                                textScale: 2,
+                                align: "center",
+                                valign: "center",
+                                highlights: [{ text: "うおーーー！", rainbow: true }],
+                                onFinalAdvance: () => {
+                                  input.lock();
+                                  startBattleTransition(() => startSpaceBossFinalBattle());
+                                  dialog.close();
+                                },
                               });
-                            }, "talk", 0, { position: "top" });
-                          });
+                            });
+                          }, "talk", 0, { position: "top" });
                         });
                       });
-                    }, 1000);
-                  }, "talk", 0, { position: "top" });
-                });
+                    });
+                  }, 1000);
+                }, "talk", 0, { position: "top" });
               });
-            }, "talk", 0, { position: "top" });
-          });
-        }, "talk", 0, { position: "top" });
+            });
+          }, "talk", 0, { position: "top" });
+        });
       }, "talk", 0, { position: "top" });
-    }), 1000);
-  });
+    }, "talk", 0, { position: "top" });
+  }, 1000));
 }
 
 function startSpaceBossCactusLeadHop(onDone) {
@@ -1584,8 +1582,8 @@ function restoreSpaceBossPreBattleLayout() {
   updateCam();
 }
 
-function startSpaceBossCactusIntro(onDone) {
-  const now = nowMs();
+function startSpaceBossCactusIntro(onDone, delayMs = 0) {
+  const now = nowMs() + Math.max(0, delayMs | 0);
   const holeX = 26;
   const holeY = 92;
   const targetX = BASE_W / 2;
@@ -2253,91 +2251,85 @@ function startSpaceBossFinalBattle() {
       return;
     }
     returnToTitleAfterLastBattleGameOver();
-  });
+  }, { playerDeckIds: "lastbattle2", internalBgm: false });
 }
 
 function startSpaceBossWinEvent() {
   if (current.id !== "space_boss") return;
-  interactionSession.begin();
+  interactionSession.end();
   STATE.flags.galaxyBossDefeated = true;
   bgmCtl.setOverride("assets/audio/duckE.mp3");
   spaceBossWhiteReunion = { startMs: nowMs() };
   partyVisible = false;
   input.lock();
-  interactionSession.trackSync(() => {
-    setTimeout(() => {
-      input.unlock();
+  setTimeout(() => {
+    input.unlock();
+    dialog.open([
+      ["すごいすごい！"],
+      ["本当にすごいよきみたち！"],
+      ["ついにやったんだ！"],
+      ["はぁ、、、。"],
+      ["感動でなんにも言えないや。"],
+      ["ありがとう。"],
+      ["きみたちのおかげで、たくさんの世界が救われた。"],
+    ], () => {
       dialog.open([
-        ["すごいすごい！"],
-        ["本当にすごいよきみたち！"],
-        ["ついにやったんだ！"],
-        ["はぁ、、、。"],
-        ["感動でなんにも言えないや。"],
-        ["ありがとう。"],
-        ["きみたちのおかげで、たくさんの世界が救われた。"],
+        ["・・・・・・。"],
+        ["うん。"],
       ], () => {
-        dialog.open([
-          ["・・・・・・。"],
-          ["うん。"],
-        ], () => {
-          startSpaceBossReturnHomeSequence(() => {
-            input.lock();
-            setTimeout(() => {
-              input.unlock();
-              dialog.open([
-                ["さ。"],
-                ["かえろっか。"],
-              ], () => {
-                startSpaceBossAfterHeartReturnSequence();
-              }, "talk");
-            }, 3000);
-          });
-        }, "talk");
+        startSpaceBossReturnHomeSequence(() => {
+          input.lock();
+          setTimeout(() => {
+            input.unlock();
+            dialog.open([
+              ["さ。"],
+              ["かえろっか。"],
+            ], () => {
+              startSpaceBossAfterHeartReturnSequence();
+            }, "talk");
+          }, 3000);
+        });
       }, "talk");
-    }, 6100);
-  });
+    }, "talk");
+  }, 6100);
 }
 
 function startSpaceBossReturnHomeSequence(onDone = startSpaceBossAfterHeartReturnSequence) {
-  interactionSession.begin();
+  interactionSession.end();
   input.lock();
-  interactionSession.trackSync(() => {
-    setTimeout(() => {
-      input.unlock();
-      dialog.open([["それから、"]], () => {
-        startSpaceBossHeartReturnSequence(onDone);
-      }, "talk");
-    }, 1000);
-  });
+  setTimeout(() => {
+    input.unlock();
+    dialog.open([["それから、"]], () => {
+      startSpaceBossHeartReturnSequence(onDone);
+    }, "talk");
+  }, 1000);
 }
 
 function startSpaceBossHeartReturnSequence(onDone = startSpaceBossAfterHeartReturnSequence) {
-  interactionSession.begin();
+  interactionSession.end();
   input.lock();
   if (spaceBossWhiteReunion) {
     spaceBossWhiteReunion.heartFx = { startMs: nowMs(), duration: 1700 };
   }
-  interactionSession.trackSync(() => {
-    setTimeout(() => {
-      input.unlock();
-      dialog.open([["これは返してもらわなきゃね。"]], () => {
-        input.lock();
-        setTimeout(() => {
-          input.unlock();
-          dialog.open([
-            ["また別の時空のきみたちが見つけられるように、"],
-            ["ほろびた世界に隠しておかなきゃいけないからさ。"],
-          ], () => {
-            onDone?.();
-          }, "talk");
-        }, 1000);
-      }, "talk");
-    }, 1850);
-  });
+  setTimeout(() => {
+    input.unlock();
+    dialog.open([["これは返してもらわなきゃね。"]], () => {
+      input.lock();
+      setTimeout(() => {
+        input.unlock();
+        dialog.open([
+          ["また別の時空のきみたちが見つけられるように、"],
+          ["ほろびた世界に隠しておかなきゃいけないからさ。"],
+        ], () => {
+          onDone?.();
+        }, "talk");
+      }, 1000);
+    }, "talk");
+  }, 1850);
 }
 
 function startSpaceBossAfterHeartReturnSequence() {
-  interactionSession.begin();
+  interactionSession.end();
   dialog.open([
     ["みんながまってる。"],
   ], () => {
@@ -2367,18 +2359,16 @@ function startSpaceBossAfterHeartReturnSequence() {
 }
 
 function startSpaceBossReturnWave() {
-  interactionSession.begin();
+  interactionSession.end();
   input.lock();
   if (spaceBossWhiteReunion) {
     spaceBossWhiteReunion.heartFx = null;
     spaceBossWhiteReunion.waveFx = { startMs: nowMs(), duration: 1800 };
   }
-  interactionSession.trackSync(() => {
-    setTimeout(() => {
-      fadeOutBgmToSilence(1400);
-      startSpaceBossMoonScene();
-    }, 1900);
-  });
+  setTimeout(() => {
+    fadeOutBgmToSilence(1400);
+    startSpaceBossMoonScene();
+  }, 1900);
 }
 
 function triggerSpaceBossEnding() {
@@ -3186,14 +3176,17 @@ function drawSpaceBossCactusHole(tt) {
   ctx.globalAlpha = alpha;
   ctx.translate(fx.holeX, fx.holeY);
   ctx.rotate(tt / 360 + jumpP * 2.6);
-  const ring = ctx.createRadialGradient(0, 0, r * 0.28, 0, 0, r);
-  ring.addColorStop(0, "rgba(0,0,0,1)");
-  ring.addColorStop(0.48, "rgba(0,0,0,0.95)");
-  ring.addColorStop(0.72, "rgba(92,55,170,0.55)");
-  ring.addColorStop(1, "rgba(120,190,255,0)");
-  ctx.fillStyle = ring;
+  ctx.fillStyle = "rgba(92,55,170,0.32)";
   ctx.beginPath();
   ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "rgba(20,10,42,0.74)";
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 0.72, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#000";
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 0.48, 0, Math.PI * 2);
   ctx.fill();
   ctx.strokeStyle = "rgba(190,220,255,0.45)";
   ctx.lineWidth = 1;
@@ -4014,10 +4007,10 @@ function hasSaveData() {
 }
 
 function startNewGameFlow() {
-  resetProgress();
-  inventory.resetItems(START_INVENTORY_NORMAL);
   current.id = "";
   mapReady = false;
+  resetProgress();
+  inventory.resetItems(START_INVENTORY_NORMAL);
   bgmCtl.setOverride("assets/audio/bgm_select.mp3");
   bgmCtl.unlock();
   charSelect.start((leaderIdx) => {
@@ -4031,8 +4024,8 @@ function startNewGameFlow() {
       holdMs: 80,
       inMs:   500,
       onBlack: () => {
-        resetHeightState();
-        loadMap("moritasaki_room");
+        forceGroundHeightState();
+        loadMap("moritasaki_room", { resetHeight: true });
       },
     });
   });
@@ -4383,7 +4376,7 @@ function resetProgress() {
   STATE.money    = 0;
   STATE.headwear = null;
   STATE.achievedQuests.clear();
-  resetHeightState();
+  forceGroundHeightState();
 }
 
 function isSceneActive() {
@@ -4874,7 +4867,28 @@ function resetHeightState() {
   charHeight.p3 = "ground";
   charHeight.p4 = "ground";
   heightLevel = "ground";
+  resetStairTracking();
   syncStairZonePrev();
+}
+
+function forceGroundHeightState() {
+  charHeight.leader = "ground";
+  charHeight.p2 = "ground";
+  charHeight.p3 = "ground";
+  charHeight.p4 = "ground";
+  heightLevel = "ground";
+  resetStairTracking();
+}
+
+function resetStairTracking() {
+  stairZonePrev.leader = false;
+  stairZonePrev.p2 = false;
+  stairZonePrev.p3 = false;
+  stairZonePrev.p4 = false;
+  rememberStairPos("leader", leader.x, leader.y);
+  rememberStairPos("p2", p2.x, p2.y);
+  rememberStairPos("p3", p3.x, p3.y);
+  rememberStairPos("p4", p4.x, p4.y);
 }
 
 function stairFootCenter(cx, cy) {
@@ -5146,6 +5160,7 @@ function loadMap(id, opt = null) {
     leader.y = sy;
     leader.frame = 0;
     leader.last = 0;
+    if (opt?.resetHeight) forceGroundHeightState();
 
     const entryDoor = (def.doors || []).find(d => d.id === opt?.doorId);
     autoWalk = entryDoor?.entryWalk ? { ...entryDoor.entryWalk } : null;
@@ -7988,11 +8003,14 @@ function update(t) {
       stopWaterfall();
       popBgmOverride({ safe: false });
       input.lock();
+      _letterboxTalkPending = true;
+      letterbox.snapAuto(true);
       setTimeout(() => {
         input.unlock();
         dialog.open([
           ["すごいものをみてしまった。"],
         ], () => {
+          _letterboxTalkPending = false;
           achieveQuest("22");
         }, "sign");
       }, 2000);
@@ -8332,6 +8350,14 @@ function update(t) {
   }
 
   updateNpcAnim(t);
+
+  if (current.id === "space_boss") {
+    leader.frame = 0;
+    p2.frame = p3.frame = p4.frame = 0;
+    input.clear();
+    updateCam();
+    return;
+  }
 
   let dx = 0,
     dy = 0;

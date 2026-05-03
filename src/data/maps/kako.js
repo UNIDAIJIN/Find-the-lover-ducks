@@ -1,6 +1,7 @@
 export const kakoMap = {
   bgSrc: "assets/maps/kako.png",
   bgTopSrc: "assets/maps/kako_top.png",
+  bgShoreSrc: "assets/maps/kako_shore.png",
   colSrc: "assets/maps/kako_col.png",
   waterColor: [61, 209, 195],
   bgmSrc: null,

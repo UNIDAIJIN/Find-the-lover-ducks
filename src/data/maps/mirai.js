@@ -1,6 +1,7 @@
 export const miraiMap = {
   bgSrc: "assets/maps/mirai.png",
   bgTopSrc: "assets/maps/mirai_top.png",
+  bgShoreSrc: "assets/maps/mirai_shore.png",
   colSrc: "assets/maps/mirai_col.png",
   waterColor: [61, 209, 195],
   bgmSrc: null,

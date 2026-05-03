@@ -313,7 +313,7 @@ export const outdoorMap = {
       id:        35,
       to:        "vj_factry",
       trigger:   { x: 1787, y: 682, w: 16, h: 8 },
-      entryAt:   { x: 1787, y: 674 },
+      entryAt:   { x: 1787, y: 677 },
       entryWalk: { dx: 0, dy: 1, frames: 20 },
     },
   ],
