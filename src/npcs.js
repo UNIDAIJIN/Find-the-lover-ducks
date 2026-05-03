@@ -131,7 +131,7 @@ export const NPCS_BY_MAP = {
       name: "board_tenant_wanted",
       x: 1649,
       y: 822,
-      talkHit: { x: 0, y: 0, w: 16, h: 16 },
+      talkHit: { x: 0, y: 0, w: 32, h: 26 },
       talkType: "sign",
       talkPages: [["入居テナント募集"]],
       solid: false,

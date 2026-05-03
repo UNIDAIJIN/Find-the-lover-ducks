@@ -4,7 +4,7 @@ export const iceNpc = {
   spriteKey: "ice",
   x:         1672,
   y:         1519,
-  talkHit:   { x: 0, y: 0, w: 16, h: 16 },
+  talkHit:   { x: 0, y: 0, w: 32, h: 26 },
   solid:     true,
   event: {
     type:      "item_shop",

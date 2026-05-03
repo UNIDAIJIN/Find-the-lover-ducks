@@ -4,7 +4,7 @@ export const beerNpc = {
   spriteKey: "beer",
   x:         1278,
   y:         1962,
-  talkHit:   { x: 0, y: 0, w: 16, h: 16 },
+  talkHit:   { x: 0, y: 0, w: 32, h: 26 },
   solid:     true,
   event: {
     type:      "item_shop",

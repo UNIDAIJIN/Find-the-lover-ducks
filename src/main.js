@@ -6515,7 +6515,7 @@ function draw() {
   }
 
   menu.draw(ctx);
-  if (!ending.isActive()) letterbox.draw(ctx, tt);
+  if (!ending.isActive() && current.id !== "space_boss") letterbox.draw(ctx, tt);
   dialog.draw(ctx);
   choice.draw(ctx);
   shop.draw(ctx);
@@ -7620,7 +7620,7 @@ function update(t) {
     return;
   }
 
-  letterbox.setAuto(!ending.isActive() && (interactionSession.isActive() || _letterboxTalkPending));
+  letterbox.setAuto(!ending.isActive() && current.id !== "space_boss" && (interactionSession.isActive() || _letterboxTalkPending));
 
   if (updateGateWarpFx(t)) return;
 
@@ -8034,7 +8034,7 @@ function update(t) {
         !fade.isActive() && !menu.isOpen() && !battle.isActive();
       const target = noUiBlocking ? findInteractTarget() : null;
       const skipPreroll = target?.event?.type === "careful_letterbox";
-      const wantPreroll = target && (target.kind === "npc" || target.kind === "pickup") && !skipPreroll;
+      const wantPreroll = current.id !== "space_boss" && target && (target.kind === "npc" || target.kind === "pickup") && !skipPreroll;
       if (wantPreroll) {
         _letterboxTalkPending = true;
         input.lock();

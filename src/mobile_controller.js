@@ -76,17 +76,15 @@ export function setupMobileController(input, {
       transition: transform 0.05s;
     }
 
-    /* ---- A/B ---- */
+    /* ---- A/B/C ---- */
     .ab-group {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      flex-shrink: 0;
-    }
-    .ab-row {
-      display: flex;
+      display: grid;
+      grid-template-columns: repeat(2, 58px);
+      grid-template-rows: repeat(2, 58px);
       gap: 10px;
       align-items: center;
+      justify-items: center;
+      flex-shrink: 0;
     }
     .btn-ab {
       width: 58px;
@@ -111,7 +109,18 @@ export function setupMobileController(input, {
       transform: translateY(4px);
       background: #333;
     }
-    .btn-ab.btn-b { margin-top: 20px; }
+    .btn-ab.btn-c {
+      grid-column: 2;
+      grid-row: 2;
+    }
+    .btn-ab.btn-b {
+      grid-column: 1;
+      grid-row: 2;
+    }
+    .btn-ab.btn-a {
+      grid-column: 1 / 3;
+      grid-row: 1;
+    }
 
     /* ---- 下段 ---- */
     .row-bottom {
@@ -224,10 +233,9 @@ export function setupMobileController(input, {
         <div class="stick-knob" id="stick-knob"></div>
       </div>
       <div class="ab-group">
-        <div class="ab-row">
-          <button class="btn-ab btn-b" data-key="x">B</button>
-          <button class="btn-ab btn-a" data-key="z">A</button>
-        </div>
+        <button class="btn-ab btn-a" data-key="z">A</button>
+        <button class="btn-ab btn-b" data-key="x">B</button>
+        <button class="btn-ab btn-c" data-key="c">C</button>
       </div>
     </div>
     <div class="row-bottom">
@@ -356,7 +364,7 @@ export function setupMobileController(input, {
     window.addEventListener("mouseup",   up);
   });
 
-  // ---- A/B ボタン ----
+  // ---- A/B/C ボタン ----
   ctrl.querySelectorAll("[data-key]").forEach(btn => {
     const key = btn.dataset.key;
     const press   = e => { e.preventDefault(); wakeAudio(); btn.classList.add("pressed"); vibrate(12); input.press(key); };
