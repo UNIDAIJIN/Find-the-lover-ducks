@@ -8974,32 +8974,21 @@ function drawFpsWarn(ctx) {
   ctx.fillStyle = "#ccc";
   ctx.font = "8px PixelMplus10";
   ctx.fillText("低電力モードをOFFにしてから", px + pw / 2, py + 30);
-  ctx.fillText("リロードしてください", px + pw / 2, py + 42);
-  const bw = 90, bh = 18;
+  ctx.fillText("Safariのタブを閉じて", px + pw / 2, py + 42);
+  ctx.fillText("開き直してください", px + pw / 2, py + 54);
+  const bw = 70, bh = 18;
   const bx = px + ((pw - bw) / 2 | 0);
-  const by = py + ph - bh - 10;
+  const by = py + ph - bh - 8;
   ctx.fillStyle = "#fff";
   ctx.fillRect(bx, by, bw, bh);
   ctx.fillStyle = "#000";
   ctx.font = "10px PixelMplus10";
-  ctx.fillText("リロード", bx + bw / 2, by + 4);
+  ctx.fillText("閉じる", bx + bw / 2, by + 4);
   fpsWarn.buttonRect = { x: bx, y: by, w: bw, h: bh };
   ctx.restore();
 }
 function fpsWarnTap(ev) {
   if (!fpsWarn.shown) return false;
-  const rect = canvas.getBoundingClientRect();
-  let cx, cy;
-  if (ev.touches && ev.touches[0]) { cx = ev.touches[0].clientX; cy = ev.touches[0].clientY; }
-  else { cx = ev.clientX; cy = ev.clientY; }
-  if (cx == null || cy == null) return false;
-  const x = ((cx - rect.left) / rect.width) * canvas.width;
-  const y = ((cy - rect.top) / rect.height) * canvas.height;
-  const r = fpsWarn.buttonRect;
-  if (r && x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) {
-    location.replace(location.pathname + "?_=" + Date.now());
-    return true;
-  }
   fpsWarn.shown = false;
   return true;
 }
