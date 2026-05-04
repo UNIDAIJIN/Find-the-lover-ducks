@@ -38,6 +38,7 @@ export function createFade({
   let irisPauseMs = 0;   // 停止時間
   let irisSubPhase = 0;  // 0=縮む前半, 1=停止, 2=縮む後半
   let irisSubT0 = 0;
+  let irisInMode = "fade"; // "fade" = phase2 でアルファフェード, "iris" = phase2 で円が広がる
 
   function dur(ms) {
     ms = ms | 0;
@@ -78,6 +79,7 @@ export function createFade({
     irisPauseMs = 0;
     irisSubPhase = 0;
     irisSubT0 = 0;
+    irisInMode = "fade";
   }
 
   function isActive() {
@@ -133,20 +135,22 @@ export function createFade({
     cy = null,
     pauseR = 28,   // 途中停止する半径（px）
     pauseMs = 400, // 停止時間（ms）
+    inMode = "fade", // "fade" or "iris"（phase2 を円のオープンにする）
+    skipClose = false, // true で phase0 のアイリス閉じを省略（既に黒い前提で hold へ即移行）
     onBlack: onBlackFn = null,
     onEnd: onEndFn = null,
   } = {}) {
     active = true;
     kind = "iris";
-    phase = 0;
+    phase = skipClose ? 1 : 0;
     t0 = nowMs;
-    alpha = 0;
+    alpha = skipClose ? 1 : 0;
 
     cutOutMs = dur(outMs);
     cutHoldMs = dur(holdMs);
     cutInMs  = dur(inMs);
 
-    holdUntil = 0;
+    holdUntil = skipClose ? nowMs + cutHoldMs : 0;
     onBlack = typeof onBlackFn === "function" ? onBlackFn : null;
     blackDone = false;
     onEnd = typeof onEndFn === "function" ? onEndFn : null;
@@ -159,11 +163,17 @@ export function createFade({
     irisMaxR = Math.max(...corners.map(([cx2,cy2]) =>
       Math.sqrt((cx2-irisCx)**2+(cy2-irisCy)**2)
     )) + 4;
-    irisRadius = irisMaxR;
+    irisRadius = skipClose ? 0 : irisMaxR;
     irisPauseR  = pauseR;
     irisPauseMs = dur(pauseMs);
-    irisSubPhase = 0;
+    irisSubPhase = skipClose ? 2 : 0;
     irisSubT0 = nowMs;
+    irisInMode = inMode === "iris" ? "iris" : "fade";
+
+    if (skipClose) {
+      blackDone = true;
+      if (onBlack) onBlack();
+    }
 
     input.clear();
   }
@@ -268,6 +278,18 @@ export function createFade({
       }
       if (phase === 2) {
         const p = (nowMs - t0) / cutInMs;
+        if (kind === "iris" && irisInMode === "iris") {
+          alpha = 1;
+          irisRadius = irisMaxR * ease01(p);
+          if (p >= 1) {
+            alpha = 0;
+            irisRadius = 0;
+            const cb = onEnd;
+            reset();
+            if (cb) cb();
+          }
+          return;
+        }
         alpha = 1 - ease01(p);
         if (p >= 1) {
           alpha = 0;

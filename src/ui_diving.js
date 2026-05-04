@@ -1,4 +1,5 @@
 // ui_diving.js — DEEP DIVE minigame (vanilla JS, no React)
+import { controlPrompt } from "./control_prompts.js";
 import { STATE } from "./state.js";
 import { playCoin, playCursor, playConfirm, playBuzzer, playSpearShot, playDiveHit, playDiveResult } from "./se.js";
 
@@ -137,7 +138,7 @@ export const DIVE_H = 540;
 
 const DIVE_ICONS = ["dive_tank", "dive_fin", "dive_light", "dive_spear", "dive_swim", "dive_go"];
 
-export function createDiving({ BASE_W: _origW, BASE_H: _origH, input, getLeaderImg, getHeadwearImg, sprites }) {
+export function createDiving({ BASE_W: _origW, BASE_H: _origH, input, getLeaderImg, getHeadwearImg, sprites, mobile = false }) {
   const BASE_W = DIVE_W;
   const BASE_H = DIVE_H;
   let phase = "idle";
@@ -161,6 +162,7 @@ export function createDiving({ BASE_W: _origW, BASE_H: _origH, input, getLeaderI
       bestDepthSession: s.bestDepth, currentMaxDepth: 0, newRecordTimer: 0,
       pickingUp: null, heartbeat: 0,
       shopCursor: UPG.length, shopConfirm: false, sonarSweep: 0,
+      helpPage: 0,
     };
   }
 
@@ -368,7 +370,13 @@ export function createDiving({ BASE_W: _origW, BASE_H: _origH, input, getLeaderI
 
     if (g.state === "title") {
       if (input.consume("z")) { g.state = "shop"; input.clear(); }
-      input.consume("x");
+      if (input.consume("x")) { g.state = "help"; g.helpPage = 0; input.clear(); playCursor(); }
+      return;
+    }
+    if (g.state === "help") {
+      if (input.consume("ArrowLeft")) { g.helpPage = (g.helpPage + 2) % 3; playCursor(); }
+      if (input.consume("ArrowRight")) { g.helpPage = (g.helpPage + 1) % 3; playCursor(); }
+      if (input.consume("z") || input.consume("x")) { g.state = "title"; input.clear(); playCursor(); }
       return;
     }
     if (g.state === "shop") {
@@ -413,6 +421,7 @@ export function createDiving({ BASE_W: _origW, BASE_H: _origH, input, getLeaderI
     ctx.save();
 
     if (g.state === "title") drawTitle(ctx);
+    else if (g.state === "help") drawHelp(ctx);
     else if (g.state === "shop") drawShop(ctx);
     else if (g.state === "diving") drawDiveScene(ctx);
     else if (g.state === "result") drawResult(ctx);
@@ -437,7 +446,99 @@ export function createDiving({ BASE_W: _origW, BASE_H: _origH, input, getLeaderI
     ctx.fillStyle = "#6688aa"; ctx.font = '20px PixelMplus10';
     ctx.fillText("しんかいたんさくダイビング", BASE_W / 2, BASE_H * 0.35 + 28);
     ctx.fillStyle = "#aaccdd"; ctx.font = '20px PixelMplus10';
-    if (Math.sin(frame * 0.05) > 0) ctx.fillText("Zキーでスタート", BASE_W / 2, BASE_H * 0.6);
+    if (Math.sin(frame * 0.05) > 0) ctx.fillText(controlPrompt("z", { mobile }) + "でスタート", BASE_W / 2, BASE_H * 0.6);
+    ctx.fillStyle = "#6688aa"; ctx.font = '16px PixelMplus10';
+    ctx.fillText(controlPrompt("x", { mobile }) + "であそびかた", BASE_W / 2, BASE_H * 0.6 + 34);
+  }
+
+  function drawHelp(ctx) {
+    ctx.fillStyle = "#061425";
+    ctx.fillRect(0, 0, BASE_W, BASE_H);
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#44ddff";
+    ctx.font = '24px PixelMplus10';
+    ctx.fillText("あそびかた", BASE_W / 2, 48);
+
+    const tabs = ["そうさ", "てき", "たからもの"];
+    ctx.font = '16px PixelMplus10';
+    for (let i = 0; i < tabs.length; i++) {
+      const x = BASE_W / 2 - 116 + i * 116;
+      ctx.fillStyle = i === g.helpPage ? "#ffdd44" : "#6688aa";
+      ctx.fillText((i === g.helpPage ? ">" : " ") + tabs[i] + (i === g.helpPage ? "<" : " "), x, 82);
+    }
+
+    ctx.textAlign = "left";
+    if (g.helpPage === 0) drawHelpControls(ctx);
+    else if (g.helpPage === 1) drawHelpEnemies(ctx);
+    else drawHelpTreasures(ctx);
+
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#6688aa";
+    ctx.font = '16px PixelMplus10';
+    ctx.fillText("← → ページ  " + controlPrompt("x", { mobile }) + "/" + controlPrompt("z", { mobile }) + " もどる", BASE_W / 2, BASE_H - 28);
+  }
+
+  function drawHelpControls(ctx) {
+    const rows = [
+      [controlPrompt("move", { mobile }), "左右にいどう"],
+      [controlPrompt("z", { mobile }), "上へおよぐ・けってい"],
+      [controlPrompt("x", { mobile }), "モリをうつ・もどる"],
+      ["水面", "上まで戻るともちかえり"],
+      ["酸素0", "一部をのこしてロスト"],
+    ];
+    drawHelpRows(ctx, rows, 122);
+  }
+
+  function drawHelpEnemies(ctx) {
+    drawHelpIconRow(ctx, "dive_jelly", "~", "クラゲ", "ふれると酸素ダメージ。モリで倒せる", 128, "#cc88ff");
+    drawHelpIconRow(ctx, "dive_urchin", "*", "ウニ", "岩の上にいる。ふれると酸素ダメージ", 184, "#aa6644");
+    drawHelpIconRow(ctx, null, ">>>", "海流", "横に流される。深い場所ほど出やすい", 240, "#88ddff");
+  }
+
+  function drawHelpTreasures(ctx) {
+    const rows = [
+      ["dive_kaigara", "◇", "かいがら", "15EN"],
+      ["dive_hitode", "☆", "ヒトデ", "25EN"],
+      ["dive_sango", "▽", "サンゴ", "50EN"],
+      ["dive_shinju", "○", "しんじゅ", "150EN"],
+      ["dive_coin", "●", "コイン", "280EN"],
+      ["dive_kohaku", "◆", "こはく", "450EN"],
+      ["dive_kuroshinju", "★", "くろしんじゅ", "900EN"],
+      ["dive_kodaizo", "▲", "こだいのぞう", "1600EN"],
+      ["dive_houseki", "◎", "しんかいほうせき", "3000EN"],
+      ["dive_ryunonamida", "♦", "りゅうのなみだ", "6000EN"],
+      ["dive_treasure", "W", "おうかん", "8000EN"],
+    ];
+    for (let i = 0; i < rows.length; i++) {
+      const [spr, fallback, name, value] = rows[i];
+      const y = 112 + i * 34;
+      if (!drawSpr(ctx, spr, 172, y - 5, spr === "dive_treasure" ? 28 : 18)) {
+        ctx.fillStyle = "#aaddff"; ctx.font = '16px PixelMplus10'; ctx.textAlign = "center"; ctx.fillText(fallback, 172, y);
+      }
+      ctx.textAlign = "left";
+      ctx.fillStyle = "#e8f6ff"; ctx.font = '16px PixelMplus10'; ctx.fillText(name, 200, y);
+      ctx.fillStyle = "#ffdd44"; ctx.font = '15px PixelMplus10'; ctx.fillText(value, 370, y);
+    }
+  }
+
+  function drawHelpRows(ctx, rows, startY) {
+    ctx.font = '18px PixelMplus10';
+    rows.forEach(([key, desc], i) => {
+      const y = startY + i * 42;
+      ctx.fillStyle = "#ffdd44";
+      ctx.fillText(key, 134, y);
+      ctx.fillStyle = "#e8f6ff";
+      ctx.fillText(desc, 232, y);
+    });
+  }
+
+  function drawHelpIconRow(ctx, spr, fallback, name, desc, y, color) {
+    if (!spr || !drawSpr(ctx, spr, 148, y - 8, 30)) {
+      ctx.fillStyle = color; ctx.font = '20px PixelMplus10'; ctx.textAlign = "center"; ctx.fillText(fallback, 148, y);
+    }
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#ffdd44"; ctx.font = '18px PixelMplus10'; ctx.fillText(name, 182, y - 8);
+    ctx.fillStyle = "#e8f6ff"; ctx.font = '16px PixelMplus10'; ctx.fillText(desc, 182, y + 16);
   }
 
   function drawShop(ctx) {
@@ -518,7 +619,7 @@ export function createDiving({ BASE_W: _origW, BASE_H: _origH, input, getLeaderI
     }
 
     ctx.fillStyle = "#556677"; ctx.font = '20px PixelMplus10'; ctx.textAlign = "center";
-    ctx.fillText("X:もどる", BASE_W / 2, BASE_H - 20);
+    ctx.fillText(controlPrompt("x", { mobile }) + ":もどる", BASE_W / 2, BASE_H - 20);
   }
 
   function drawSpr(ctx, key, x, y, size) {
@@ -803,7 +904,7 @@ export function createDiving({ BASE_W: _origW, BASE_H: _origH, input, getLeaderI
     ctx.fillText("所持金: " + g.money + " EN", BASE_W / 2, ey + 26);
     if (g.resTimer > 30 && Math.sin(frame * 0.05) > 0) {
       ctx.fillStyle = "#aaccdd";
-      ctx.fillText("Zキーでつづける", BASE_W / 2, BASE_H - 20);
+      ctx.fillText(controlPrompt("z", { mobile }) + "でつづける", BASE_W / 2, BASE_H - 20);
     }
   }
 

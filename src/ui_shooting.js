@@ -1,4 +1,5 @@
 import { playShootingShot, playShootingHit, playShootingKill, playShootingHurt, playCursor } from "./se.js";
+import { controlPrompt } from "./control_prompts.js";
 
 // ui_shooting.js – INFIERNO TRIP シューティング
 
@@ -155,7 +156,7 @@ export function drawShootingBackdrop(ctx, BASE_W, BASE_H, tt = 0) {
   ctx.restore();
 }
 
-export function createShooting({ BASE_W, BASE_H, input, sprites, getLeaderImg } = {}) {
+export function createShooting({ BASE_W, BASE_H, input, sprites, getLeaderImg, mobile = false } = {}) {
   const SIDE_W = 28;
   const PLAY_L = SIDE_W;
   const PLAY_R = BASE_W - SIDE_W;
@@ -311,7 +312,6 @@ export function createShooting({ BASE_W, BASE_H, input, sprites, getLeaderImg } 
 
   function isSlow() { return slowTimer > 0; }
   function dt() { return isSlow() ? 0.35 : 1; }
-  function isShielding() { return input.down("c"); }
   function comboMultiplier() {
     return Math.min(COMBO_MAX_MUL, 1 + Math.max(0, comboCount - 1) * COMBO_STEP_MUL);
   }
@@ -713,7 +713,7 @@ export function createShooting({ BASE_W, BASE_H, input, sprites, getLeaderImg } 
       }
 
       // 自機との衝突
-      if (player.invTimer <= 0 && !isShielding()) {
+      if (player.invTimer <= 0) {
         const dx = player.x - e.x, dy = player.y - e.y;
         if (dx*dx + dy*dy < 10*10) { playerHit(); }
       }
@@ -743,7 +743,7 @@ export function createShooting({ BASE_W, BASE_H, input, sprites, getLeaderImg } 
       }
 
       // ボス×自機衝突
-      if (player.invTimer <= 0 && !isShielding()) {
+      if (player.invTimer <= 0) {
         const dx = player.x - boss.x, dy = player.y - boss.y;
         if (dx*dx + dy*dy < 18*18) playerHit();
       }
@@ -787,7 +787,7 @@ export function createShooting({ BASE_W, BASE_H, input, sprites, getLeaderImg } 
     enemies      = enemies.filter(e => !e.dead);
 
     // ---- 敵弾×自機 ----
-    if (player.invTimer <= 0 && !isShielding()) {
+    if (player.invTimer <= 0) {
       for (const b of enemyBullets) {
         const dx = player.x - b.x, dy = player.y - b.y;
         if (dx*dx + dy*dy < 7*7) { b.dead = true; playerHit(); break; }
@@ -950,16 +950,6 @@ export function createShooting({ BASE_W, BASE_H, input, sprites, getLeaderImg } 
     if (player.invTimer > 0 && Math.floor(player.invTimer / 5) % 2) return;
     const img = typeof getLeaderImg === "function" ? getLeaderImg() : sprites?.p1;
     const sx = (player.x - SPR / 2 + player.sway) | 0, sy = (player.y - SPR / 2 + player.recoil) | 0;
-    if (isShielding()) {
-      ctx.save();
-      ctx.strokeStyle = "#8ef";
-      ctx.lineWidth = 2;
-      ctx.globalAlpha = 0.8;
-      ctx.beginPath();
-      ctx.arc(player.x, player.y, 11, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.restore();
-    }
     if (img && img.naturalWidth > 0) {
       const speed = Math.hypot(player.vx || 0, player.vy || 0);
       if (speed > 0.18 && playerTrail.length > 1) {
@@ -1158,15 +1148,6 @@ export function createShooting({ BASE_W, BASE_H, input, sprites, getLeaderImg } 
       ctx.textAlign = "left";
       ctx.restore();
     }
-    if (isShielding()) {
-      ctx.save();
-      ctx.fillStyle = "#8ef";
-      ctx.font = "normal 10px PixelMplus10";
-      ctx.textAlign = "center";
-      ctx.fillText("C SHIELD", BASE_W / 2, BASE_H - 14);
-      ctx.textAlign = "left";
-      ctx.restore();
-    }
   }
 
   function drawSidePanels(ctx) {
@@ -1311,7 +1292,7 @@ export function createShooting({ BASE_W, BASE_H, input, sprites, getLeaderImg } 
     }
     if (resultTimer > 18 + (lines.length - 1) * 20 + 24) {
       ctx.fillStyle = "#888";
-      drawCenterText("Z でもどる", 134);
+      drawCenterText(controlPrompt("z", { mobile }) + " でもどる", 134);
     }
     ctx.textAlign = "left";
     ctx.restore();

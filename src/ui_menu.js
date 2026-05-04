@@ -2,6 +2,7 @@
 import { playCursor, playConfirm, playItemJingle, playUseItemSe } from "./se.js";
 import { QUESTS } from "./data/quests.js";
 import { STATE } from "./state.js";
+import { controlPromptRows } from "./control_prompts.js";
 
 export function createMenu({
   BASE_W,
@@ -15,6 +16,7 @@ export function createMenu({
   setOverrideBgm,
   toast,
   onUseItem,   // (id) => bool  true なら標準BGM切り替えをスキップ
+  mobile = false,
 } = {}) {
 
   // =====================
@@ -356,14 +358,7 @@ export function createMenu({
       }
     } else {
       // そうさ
-      const rows = [
-        ["矢印/十字",  "いどう"],
-        ["Z/A",        "けってい・はなす"],
-        ["X/B",        "メニュー・キャンセル"],
-        ["S/L1",       "セーブ"],
-        ["L/R1",       "ロード"],
-        ["V/SELECT",   "おんがくていし"],
-      ];
+      const rows = controlPromptRows({ mobile });
       const descX = PAN_X + PAN_W - 10;
       ctx.textAlign = "right";
       rows.forEach(([key, desc], i) => {

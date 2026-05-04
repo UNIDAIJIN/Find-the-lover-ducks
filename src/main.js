@@ -25,6 +25,7 @@ import { createShooting, drawShootingBackdrop, SHOOTING_DIFFICULTIES } from "./u
 import { createDiving, DIVE_W, DIVE_H } from "./ui_diving.js";
 import { createPhoneBrawl, PHONE_BRAWL_W, PHONE_BRAWL_H } from "./ui_phone_brawl.js";
 import { createInteractionSession } from "./interaction_session.js";
+import { controlPrompt } from "./control_prompts.js";
 import { gateNpc } from "./data/npcs/gate.js";
 
 const DEBUG  = true;
@@ -94,13 +95,14 @@ const nowMs = (typeof performance !== "undefined" && performance.now)
 
 
 // UI / FX
-const shooting  = createShooting({ BASE_W: SHOOTING_W, BASE_H: SHOOTING_H, input, sprites: SPRITES, getLeaderImg: () => leader?.img });
-const diving    = createDiving({ BASE_W, BASE_H, input, getLeaderImg: () => leader?.img, getHeadwearImg: () => SPRITES.kingyobachi, sprites: SPRITES });
+const shooting  = createShooting({ BASE_W: SHOOTING_W, BASE_H: SHOOTING_H, input, sprites: SPRITES, getLeaderImg: () => leader?.img, mobile: MOBILE });
+const diving    = createDiving({ BASE_W, BASE_H, input, getLeaderImg: () => leader?.img, getHeadwearImg: () => SPRITES.kingyobachi, sprites: SPRITES, mobile: MOBILE });
 const phoneBrawl = createPhoneBrawl({
   input,
   inputTarget: window,
   gameOverAction: "close",
   endTiming: "confirm",
+  mobile: MOBILE,
   sprites: {
     playerBase: SPRITES.earth,
     enemyBaseParts: {
@@ -1178,6 +1180,24 @@ function startPhoneBrawl(onDone, options = {}) {
       interactionSession.trackSync(() => onDone(result));
     }
   }, options);
+}
+
+function startDivingMinigame(onDone) {
+  if (diving.isActive()) return;
+  pushBgmOverride("about:blank", { safe: false });
+  setGameResolution(DIVE_W, DIVE_H);
+  startDivingBgm();
+  interactionSession.end();
+  diving.start(() => {
+    stopDivingBgm();
+    popBgmOverride({ safe: false });
+    setGameResolution(BASE_W, BASE_H);
+    if (typeof onDone === "function") {
+      interactionSession.begin();
+      letterbox.snapAuto(true);
+      interactionSession.trackSync(() => onDone());
+    }
+  });
 }
 
 function startSpaceBossFirstBattle() {
@@ -3522,6 +3542,7 @@ const menu = createMenu({
     }
   },
   toast,
+  mobile: MOBILE,
   onUseItem: (id) => {
     return runFieldInteraction(() => {
     if (id === "pickaxe") {
@@ -3991,12 +4012,39 @@ function startBattleTransition(onDone) {
 }
 const ending     = createEnding({ BASE_W: CONFIG.BASE_W, BASE_H: CONFIG.BASE_H });
 const title      = createTitle({ BASE_W: CONFIG.BASE_W, BASE_H: CONFIG.BASE_H, input, pocketEdition: MOBILE });
-const charSelect = createCharSelect({ BASE_W: CONFIG.BASE_W, BASE_H: CONFIG.BASE_H, input, sprites: SPRITES });
+const charSelect = createCharSelect({ BASE_W: CONFIG.BASE_W, BASE_H: CONFIG.BASE_H, input, sprites: SPRITES, mobile: MOBILE });
 const loading    = createLoading({ BASE_W: CONFIG.BASE_W, BASE_H: CONFIG.BASE_H });
 
 // ---- Save / Load ----
 const SAVE_KEY = "rpg_save";
 let saveNotice = null; // { text, until }
+
+const PROLOGUE_PAGES = [
+  [
+    "202X年、モリタサキ・イン・ザ・プールは暇を持て余していた。",
+    "",
+    "来る日も来る日も、くっちゃねくっちゃねのぐーたら三昧。",
+    "",
+    "そんな時、誰かが口を開いた。",
+    "",
+    "「セカンドアルバムを作ろう！」",
+    "",
+    "そのひとことで、この腐ったコケのような生活に終止符が打たれた。",
+    "",
+    "そうと決まれば、所属事務所から制作費をせしめねばなるまい。",
+    "",
+    "一行はヴィニールジャンキーレコーディングスの社長、",
+    "ミナミの元へ向かうこととなったのであった。",
+  ].join("\n"),
+];
+
+let prologue = {
+  active: false,
+  page: 0,
+  startedAt: 0,
+  revealed: false,
+  typeSeCharCount: 0,
+};
 
 function hasSaveData() {
   try {
@@ -4013,22 +4061,204 @@ function startNewGameFlow() {
   inventory.resetItems(START_INVENTORY_NORMAL);
   bgmCtl.setOverride("assets/audio/bgm_select.mp3");
   bgmCtl.unlock();
-  charSelect.start((leaderIdx) => {
-    bgmCtl.setOverride(null);
-    setGameResolution(BASE_W, BASE_H);
-    setupParty(leaderIdx);
-    resetHeightState();
-    inventory.resetItems(START_INVENTORY_NORMAL);
-    fade.startCutFade(nowMs(), {
-      outMs:  1,
-      holdMs: 80,
-      inMs:   500,
-      onBlack: () => {
-        forceGroundHeightState();
-        loadMap("moritasaki_room", { resetHeight: true });
-      },
-    });
+  charSelect.start(
+    (leaderIdx) => {
+      bgmCtl.setOverride("about:blank");
+      setGameResolution(BASE_W, BASE_H);
+      setupParty(leaderIdx);
+      resetHeightState();
+      inventory.resetItems(START_INVENTORY_NORMAL);
+      startPrologue();
+    },
+    () => {
+      bgmCtl.setOverride("about:blank");
+      startTitle();
+    },
+  );
+}
+
+function startPrologue() {
+  bgmCtl.setOverride("about:blank");
+  setGameResolution(BASE_W * 2, BASE_H * 2);
+  prologue = {
+    active: true,
+    page: 0,
+    startedAt: nowMs(),
+    revealed: false,
+    typeSeCharCount: 0,
+    fadingOut: false,
+    fadeOutStartedAt: 0,
+    fadeOutMs: 800,
+  };
+  input.clear();
+}
+
+function finishPrologue() {
+  prologue.active = false;
+  setGameResolution(BASE_W, BASE_H);
+  bgmCtl.setOverride(null);
+  forceGroundHeightState();
+  loadMap("moritasaki_room", { resetHeight: true });
+  fade.startIrisFade(nowMs(), {
+    outMs:     1,
+    holdMs:    500,
+    inMs:      700,
+    pauseMs:   0,
+    skipClose: true,
+    inMode:    "iris",
   });
+}
+
+function prologueAdvancePressed() {
+  return (
+    input.consume("z") ||
+    input.consume("x") ||
+    input.consume("Enter") ||
+    input.consume(" ")
+  );
+}
+
+function updatePrologue() {
+  if (!prologue.active) return false;
+  if (prologue.fadingOut) {
+    if (nowMs() - prologue.fadeOutStartedAt >= prologue.fadeOutMs) {
+      finishPrologue();
+      return false;
+    }
+    return true;
+  }
+  updatePrologueTypingSe();
+  if (prologueAdvancePressed()) {
+    if (!isProloguePageComplete()) {
+      prologue.revealed = true;
+      prologue.typeSeCharCount = [...(PROLOGUE_PAGES[prologue.page] || "")].length;
+      input.clear();
+      return true;
+    }
+    if (prologue.page < PROLOGUE_PAGES.length - 1) {
+      prologue.page++;
+      prologue.startedAt = nowMs();
+      prologue.revealed = false;
+      prologue.typeSeCharCount = 0;
+      input.clear();
+    } else {
+      prologue.fadingOut = true;
+      prologue.fadeOutStartedAt = nowMs();
+      input.clear();
+    }
+  }
+  return true;
+}
+
+function updatePrologueTypingSe() {
+  if (prologue.revealed) return;
+  const text = PROLOGUE_PAGES[prologue.page] || "";
+  const count = Math.min([...text].length, prologueVisibleCharCount());
+  if (count <= prologue.typeSeCharCount) return;
+  const ch = [...text][count - 1] || "";
+  prologue.typeSeCharCount = count;
+  if (ch.trim()) playAlienTypingNoise(700 + count);
+}
+
+function drawPrologue(ctx) {
+  if (!prologue.active) return false;
+  const w = canvas.width;
+  const h = canvas.height;
+  const text = PROLOGUE_PAGES[prologue.page] || "";
+  const visibleCount = prologue.revealed ? [...text].length : prologueVisibleCharCount();
+  ctx.save();
+  ctx.fillStyle = "#000";
+  ctx.fillRect(0, 0, w, h);
+
+  if (prologue.fadingOut) {
+    const elapsed = nowMs() - prologue.fadeOutStartedAt;
+    ctx.globalAlpha = Math.max(0, 1 - elapsed / prologue.fadeOutMs);
+  }
+
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  ctx.fillStyle = "#f7f2e8";
+  ctx.font = "normal 10px PixelMplus10";
+
+  const lines = wrapTextLayout(ctx, text, w - 14);
+  const lineH = 13;
+  const startY = Math.max(8, ((h - lines.length * lineH) / 2) | 0);
+  let remaining = visibleCount;
+  for (let i = 0; i < lines.length; i++) {
+    const chars = [...lines[i].text];
+    const lineText = chars.slice(0, Math.max(0, remaining)).join("");
+    ctx.fillText(lineText, w / 2, startY + i * lineH);
+    remaining -= chars.length;
+    if (lines[i].consumeBreak) remaining -= 1;
+  }
+
+  ctx.restore();
+  return true;
+}
+
+function prologueVisibleCharCount() {
+  const elapsed = Math.max(0, nowMs() - prologue.startedAt);
+  return prologueCharCountAt(elapsed);
+}
+
+function isProloguePageComplete() {
+  const text = PROLOGUE_PAGES[prologue.page] || "";
+  return prologue.revealed || prologueVisibleCharCount() >= [...text].length;
+}
+
+function wrapTextLines(ctx, text, maxW) {
+  return wrapTextLayout(ctx, text, maxW).map(line => line.text);
+}
+
+function wrapTextLayout(ctx, text, maxW) {
+  const lines = [];
+  const rawLines = String(text).split("\n");
+  for (let i = 0; i < rawLines.length; i++) {
+    const rawLine = rawLines[i];
+    const consumeBreak = i < rawLines.length - 1;
+    if (rawLine === "") {
+      lines.push({ text: "", consumeBreak });
+      continue;
+    }
+    const wrapped = wrapSingleTextLine(ctx, rawLine, maxW);
+    for (let j = 0; j < wrapped.length; j++) {
+      lines.push({ text: wrapped[j], consumeBreak: consumeBreak && j === wrapped.length - 1 });
+    }
+  }
+  return lines.length ? lines : [{ text: "", consumeBreak: false }];
+}
+
+function wrapSingleTextLine(ctx, text, maxW) {
+  const chars = [...text];
+  const lines = [];
+  let line = "";
+  for (const ch of chars) {
+    const next = line + ch;
+    if (line && ctx.measureText(next).width > maxW) {
+      lines.push(line);
+      line = ch;
+    } else {
+      line = next;
+    }
+  }
+  if (line) lines.push(line);
+  return lines.length ? lines : [""];
+}
+
+function prologueCharCountAt(elapsedMs) {
+  const text = PROLOGUE_PAGES[prologue.page] || "";
+  const chars = [...text];
+  const startWaitMs = 1400;
+  const lineWaitMs = 520;
+  const charMs = 50;
+  let time = startWaitMs;
+  let count = 0;
+  for (const ch of chars) {
+    if (elapsedMs < time) return count;
+    count++;
+    time += ch === "\n" ? lineWaitMs : charMs;
+  }
+  return count;
 }
 
 const questQueue = [];
@@ -4296,7 +4526,7 @@ function drawShootingDifficultyUi(tt) {
 
   ctx.font = "normal 10px PixelMplus10";
   ctx.fillStyle = current.color;
-  drawCenterText("Z SELECT  X CLOSE", cx, 160);
+  drawCenterText(controlPrompt("z", { mobile: MOBILE }) + " SELECT  " + controlPrompt("x", { mobile: MOBILE }) + " CLOSE", cx, 160);
   ctx.restore();
   ctx._skipTextShadow = prevSkip;
 }
@@ -5955,6 +6185,8 @@ function draw() {
     return;
   }
 
+  if (drawPrologue(ctx)) return;
+
   {
     const tt = typeof performance !== "undefined" ? performance.now() : Date.now();
     if (continueRevealFx?.phase === "loading" && drawContinueRevealOverlay(ctx, tt)) return;
@@ -7436,20 +7668,7 @@ function tryInteract(t) {
           startWaterfall();
         },
         startDiving: (onDone) => {
-          pushBgmOverride("about:blank", { safe: false });
-          setGameResolution(DIVE_W, DIVE_H);
-          startDivingBgm();
-          interactionSession.end();
-          diving.start(() => {
-            stopDivingBgm();
-            popBgmOverride({ safe: false });
-            setGameResolution(BASE_W, BASE_H);
-            if (typeof onDone === "function") {
-              interactionSession.begin();
-              letterbox.snapAuto(true);
-              interactionSession.trackSync(() => onDone());
-            }
-          });
+          startDivingMinigame(onDone);
         },
         startShake: (ms = 500, intensity = 3) => {
           _shakeUntil = performance.now() + ms;
@@ -7743,6 +7962,8 @@ function update(t) {
     updateCam();
     return;
   }
+
+  if (updatePrologue()) return;
 
   // fade 最優先
   if (fade.isActive()) {
@@ -8074,6 +8295,10 @@ function update(t) {
   if (input.consume("s")) { saveGame(); return; }
   if (input.consume("l")) { loadGame(); return; }
   if (input.consume("v")) { setBgmOverrideSafe(null); setBgmMapSafe("assets/audio/bgm0.mp3"); return; }
+  if (DEBUG && input.consume("d")) {
+    startDivingMinigame();
+    return;
+  }
   if (DEBUG && input.consume("p")) {
     startPhoneBrawl();
     return;
@@ -8090,12 +8315,6 @@ function update(t) {
     const inv = inventory.getSnapshot();
     if (inv.includes("moon_stone")) inventory.removeItem("moon_stone");
     else inventory.addItem("moon_stone");
-    return;
-  }
-
-  // D でクエスト全達成（デバッグ）
-  if (DEBUG && input.consume("d")) {
-    for (const q of QUESTS) achieveQuest(q.id);
     return;
   }
 

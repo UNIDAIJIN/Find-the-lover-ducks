@@ -21,14 +21,17 @@ const GLYPH = {
   'R':["11110","10001","10001","11110","10100","10010","10001"],
   'H':["10001","10001","10001","11111","10001","10001","10001"],
   'A':["01110","10001","10001","11111","10001","10001","10001"],
+  'B':["11110","10001","10001","11110","10001","10001","11110"],
   'N':["10001","11001","10101","10011","10001","10001","10001"],
   'I':["01110","00100","00100","00100","00100","00100","01110"],
   'K':["10001","10010","10100","11000","10100","10010","10001"],
   'M':["10001","11011","10101","10001","10001","10001","10001"],
+  'X':["10001","10001","01010","00100","01010","10001","10001"],
   'Z':["11111","00001","00010","00100","01000","10000","11111"],
   'F':["11111","10000","10000","11110","10000","10000","10000"],
   '←':["00010","00100","01000","11111","01000","00100","00010"],
   '→':["01000","00100","00010","11111","00010","00100","01000"],
+  ',':["00000","00000","00000","00000","00100","00100","01000"],
   ' ':["00000","00000","00000","00000","00000","00000","00000"],
 };
 
@@ -95,10 +98,11 @@ function popEase(t) {
   return 1 - s * s * s * s + Math.sin(t * Math.PI) * 0.12;
 }
 
-export function createCharSelect({ BASE_W, BASE_H, input, sprites }) {
+export function createCharSelect({ BASE_W, BASE_H, input, sprites, mobile = false }) {
   let active      = false;
   let cursor      = 0;
   let onSelect    = null;
+  let onBack      = null;
 
   // トランジション
   let phase       = "idle";   // "idle" | "transition" | "active" | "confirm" | "iris"
@@ -156,10 +160,11 @@ export function createCharSelect({ BASE_W, BASE_H, input, sprites }) {
     drawPixelText(oc, TITLE_L1, ((BASE_W - textW(TITLE_L1)) / 2) | 0, 1, TSCALE, "#fff", "#ff44aa");
   })();
 
-  function start(cb) {
+  function start(cb, backCb = null) {
     active     = true;
     cursor     = 1; // NATSUMI
     onSelect   = cb;
+    onBack     = backCb;
     phase      = "transition";
     transStart = -1; // draw() の最初のフレームで rAF の t で初期化
     input.clear();
@@ -207,6 +212,11 @@ export function createCharSelect({ BASE_W, BASE_H, input, sprites }) {
       confirmCursor = 0;
       phase = "confirm";
       playCursor();
+    }
+    if (input.consume("x")) {
+      active = false;
+      playCursor();
+      if (typeof onBack === "function") onBack();
     }
   }
 
@@ -277,9 +287,23 @@ export function createCharSelect({ BASE_W, BASE_H, input, sprites }) {
 
     }
 
-    const hint  = "← → SELECT  Z CONFIRM";
-    const hintW = [...hint].reduce((a, ch) => a + ((ch === ' ' ? SPACE_W : (CHAR_W[ch] ?? GLYPH_W)) + GLYPH_GAP), -GLYPH_GAP);
-    drawPixelText(ctx, hint, ((BASE_W - hintW) / 2) | 0, BASE_H - 18, 1, "#fff", null);
+    const hintParts = mobile
+      ? [
+          ["← →", "#ffdf72"], [" SELECT, ", "#fff"],
+          ["A", "#ffdf72"], [" CONFIRM, ", "#fff"],
+          ["B", "#ffdf72"], [" BACK", "#fff"],
+        ]
+      : [
+          ["← →", "#ffdf72"], [" SELECT, ", "#fff"],
+          ["Z", "#ffdf72"], [" CONFIRM, ", "#fff"],
+          ["X", "#ffdf72"], [" BACK", "#fff"],
+        ];
+    const hintW = hintParts.reduce((sum, [text]) => sum + pixelTextWidth(text), 0);
+    let hintX = ((BASE_W - hintW) / 2) | 0;
+    for (const [text, color] of hintParts) {
+      drawPixelText(ctx, text, hintX, BASE_H - 18, 1, color, null);
+      hintX += pixelTextWidth(text);
+    }
 
     // 確認ダイアログ
     if (phase === "confirm") {

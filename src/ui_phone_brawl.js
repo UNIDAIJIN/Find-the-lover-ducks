@@ -1,4 +1,5 @@
 import { playGlassShatter, stopHeartbeat } from "./se.js";
+import { controlPrompt } from "./control_prompts.js";
 
 export const PHONE_BRAWL_W = 384;
 export const PHONE_BRAWL_H = 360;
@@ -12,6 +13,8 @@ const FIELD_H = 238;
 const HAND_Y = 280;
 const HAND_H = 74;
 const HAND_CARD_W = 70;
+const HAND_CENTER_X = PHONE_BRAWL_W / 2 + 8;
+const HAND_SPACING = 72;
 const ENERGY_Y = 266;
 const MID_X = 192;
 const BASE_Y = 143;
@@ -127,6 +130,7 @@ export function createPhoneBrawl({
   endTiming = "result",
   playerDeckIds = null,
   giveUpAction = "gameOver",
+  mobile = false,
 } = {}) {
   const state = {
     active: false,
@@ -151,6 +155,7 @@ export function createPhoneBrawl({
     nidhoggFlames: [],
     effectPops: [],
     baseBreaks: [],
+    handCyclePressTimer: 0,
     lightBoostVisuals: false,
     bossSpin: 0,
     speedFever: { team: null, timer: 0, duration: 0 },
@@ -287,6 +292,7 @@ export function createPhoneBrawl({
       updateCardFlights(dt);
       updatePepperThrows(dt);
       updateHandEntries(dt);
+      state.handCyclePressTimer = Math.max(0, state.handCyclePressTimer - dt);
       updatePendingEffects(dt);
       updateFever(dt);
       updateHazards(dt);
@@ -403,6 +409,7 @@ export function createPhoneBrawl({
     if (state.gameOver || state.victoryCelebration || state.defeatChoice || state.gameOverFall) return;
     ensureAudio();
     state.selectedHandIndex = (state.selectedHandIndex + 1) % state.playerHand.length;
+    state.handCyclePressTimer = 0.13;
     playSelectSound();
   }
 
@@ -459,7 +466,7 @@ export function createPhoneBrawl({
 
   function selectedHandCardCenter() {
     return {
-      x: PHONE_BRAWL_W / 2,
+      x: HAND_CENTER_X,
       y: HAND_Y - 4 + HAND_H / 2,
     };
   }
@@ -2133,7 +2140,8 @@ export function createPhoneBrawl({
         ctx.fillStyle = "#bdb5a8";
         ctx.font = "10px PixelMplus10";
         ctx.textAlign = "center";
-        drawFixedPixelText(ctx, gameOverAction === "close" ? "Z : BACK" : "Z : AGAIN", MID_X, 185, 5);
+        const ok = controlPrompt("z", { mobile });
+        drawFixedPixelText(ctx, gameOverAction === "close" ? ok + " : BACK" : ok + " : AGAIN", MID_X, 185, 5);
         ctx.restore();
       }
     }
@@ -2204,7 +2212,7 @@ export function createPhoneBrawl({
       if (blink) {
         ctx.font = "10px PixelMplus10";
         ctx.fillStyle = "#bdb5a8";
-        drawFixedPixelText(ctx, "Z : TITLE", MID_X, 206, 5);
+        drawFixedPixelText(ctx, controlPrompt("z", { mobile }) + " : TITLE", MID_X, 206, 5);
       }
     }
     ctx.restore();
@@ -2363,10 +2371,11 @@ export function createPhoneBrawl({
   function drawControls(ctx) {
     drawHudBand(ctx, 0, 262, PHONE_BRAWL_W, 98, "#28232d", "#17161d");
     drawPowPanel(ctx, 6, ENERGY_Y - 6, PHONE_BRAWL_W - 12, 22, state.energy);
+    drawHandCyclePrompt(ctx);
 
     const cardW = HAND_CARD_W;
-    const centerX = PHONE_BRAWL_W / 2;
-    const spacing = 68;
+    const centerX = HAND_CENTER_X;
+    const spacing = HAND_SPACING;
     for (const offset of [-2, 2, -1, 1, 0]) {
       const card = handCardAtOffset(offset);
       const depth = Math.abs(offset);
@@ -2375,6 +2384,61 @@ export function createPhoneBrawl({
       const p = entry ? clamp(entry.t / entry.duration, 0, 1) : 1;
       const eased = 1 - Math.pow(1 - p, 3);
       drawWheelCard(ctx, card, centerX + offset * spacing, y + (1 - eased) * 42, cardW, HAND_H, offset === 0, entry ? 0.25 + eased * 0.75 : 1);
+    }
+  }
+
+  function drawHandCyclePrompt(ctx) {
+    const x = 10;
+    const y = HAND_Y + 35;
+    const pulse = 0.5 + Math.sin(state.elapsed * 5.5) * 0.5;
+    const press = clamp(state.handCyclePressTimer / 0.13, 0, 1);
+    const pressX = press > 0 ? 2 : 0;
+    const pressY = press > 0 ? 1 : 0;
+    ctx.save();
+    drawPixelLeftTriangleButton(ctx, x - 5 + pressX, y + pressY, 0.78 + pulse * 0.12 - press * 0.2);
+    ctx.fillStyle = "#f7f2e8";
+    drawCrispControlGlyph(ctx, controlPrompt("x", { mobile }), (x + 3 + pressX) | 0, (y - 4 + pressY) | 0);
+    ctx.restore();
+  }
+
+  function drawPixelLeftTriangle(ctx, x, y) {
+    const rows = [1, 3, 5, 7, 9, 11, 11, 9, 7, 5, 3, 1];
+    const max = 11;
+    for (let i = 0; i < rows.length; i += 1) {
+      const w = rows[i];
+      ctx.fillRect(x + max - w, y - 6 + i, w, 1);
+    }
+  }
+
+  function drawPixelLeftTriangleButton(ctx, x, y, alpha) {
+    ctx.fillStyle = "rgba(0,0,0,0.42)";
+    drawPixelLeftTriangle(ctx, x + 2, y + 2);
+    ctx.fillStyle = "rgba(17,78,90,0.98)";
+    drawPixelLeftTriangle(ctx, x - 1, y);
+    drawPixelLeftTriangle(ctx, x + 1, y);
+    drawPixelLeftTriangle(ctx, x, y - 1);
+    drawPixelLeftTriangle(ctx, x, y + 1);
+    ctx.fillStyle = `rgba(78,203,226,${alpha})`;
+    drawPixelLeftTriangle(ctx, x, y);
+    ctx.fillStyle = "rgba(247,242,232,0.38)";
+    ctx.fillRect(x + 5, y - 4, 5, 1);
+    ctx.fillRect(x + 7, y - 2, 3, 1);
+  }
+
+  function drawCrispControlGlyph(ctx, text, cx, y) {
+    const glyphs = {
+      X: ["10001", "10001", "01010", "00100", "01010", "10001", "10001"],
+      B: ["11110", "10001", "10001", "11110", "10001", "10001", "11110"],
+    };
+    const glyph = glyphs[String(text).toUpperCase()];
+    if (!glyph) return;
+    const scale = 1;
+    const w = glyph[0].length * scale;
+    const x = (cx - w / 2) | 0;
+    for (let row = 0; row < glyph.length; row += 1) {
+      for (let col = 0; col < glyph[row].length; col += 1) {
+        if (glyph[row][col] === "1") ctx.fillRect(x + col * scale, y + row * scale, scale, scale);
+      }
     }
   }
 
@@ -2932,7 +2996,8 @@ export function createPhoneBrawl({
     ctx.fillText(state.resultText, MID_X, 178);
     ctx.fillStyle = "#bdb5a8";
     ctx.font = "10px PixelMplus10";
-    ctx.fillText(gameOverAction === "close" ? "Z : BACK" : "Z / ENTER : AGAIN", MID_X, 205);
+    const ok = controlPrompt("z", { mobile });
+    ctx.fillText(gameOverAction === "close" ? ok + " : BACK" : ok + " : AGAIN", MID_X, 205);
   }
 
   function drawParticles(ctx) {
