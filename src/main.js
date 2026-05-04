@@ -8959,7 +8959,7 @@ function drawFpsWarn(ctx) {
   ctx.save();
   ctx.fillStyle = "rgba(0,0,0,0.85)";
   ctx.fillRect(0, 0, w, h);
-  const pw = Math.min(w - 16, 200), ph = 100;
+  const pw = Math.min(w - 16, 220), ph = 110;
   const px = ((w - pw) / 2) | 0, py = ((h - ph) / 2) | 0;
   ctx.fillStyle = "#000";
   ctx.fillRect(px, py, pw, ph);
@@ -8972,18 +8972,18 @@ function drawFpsWarn(ctx) {
   ctx.font = "10px PixelMplus10";
   ctx.fillText("動作が重くなっています", px + pw / 2, py + 10);
   ctx.fillStyle = "#ccc";
-  ctx.font = "8px PixelMplus10";
   ctx.fillText("低電力モードをOFFにしてから", px + pw / 2, py + 30);
-  ctx.fillText("Safariのタブを閉じて", px + pw / 2, py + 42);
-  ctx.fillText("開き直してください", px + pw / 2, py + 54);
+  ctx.fillText("Safariのタブを閉じて", px + pw / 2, py + 44);
+  ctx.fillText("開き直してください", px + pw / 2, py + 58);
   const bw = 70, bh = 18;
   const bx = px + ((pw - bw) / 2 | 0);
   const by = py + ph - bh - 8;
   ctx.fillStyle = "#fff";
   ctx.fillRect(bx, by, bw, bh);
   ctx.fillStyle = "#000";
-  ctx.font = "10px PixelMplus10";
+  ctx._skipTextShadow = true;
   ctx.fillText("閉じる", bx + bw / 2, by + 4);
+  ctx._skipTextShadow = false;
   fpsWarn.buttonRect = { x: bx, y: by, w: bw, h: bh };
   ctx.restore();
 }
