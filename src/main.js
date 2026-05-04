@@ -8972,7 +8972,7 @@ function drawFpsWarn(ctx) {
   ctx.font = "10px PixelMplus10";
   ctx.fillText("動作が重くなっています", px + pw / 2, py + 10);
   ctx.fillStyle = "#ccc";
-  ctx.fillText("低電力モードをOFFにしてから", px + pw / 2, py + 30);
+  ctx.fillText("低電力モードをオフにしてから", px + pw / 2, py + 30);
   ctx.fillText("ブラウザのタブを閉じて", px + pw / 2, py + 44);
   ctx.fillText("開き直してください", px + pw / 2, py + 58);
   const bw = 70, bh = 18;
