@@ -4130,8 +4130,6 @@ function updatePrologue() {
   updatePrologueTypingSe();
   if (prologueAdvancePressed()) {
     if (!isProloguePageComplete()) {
-      prologue.revealed = true;
-      prologue.typeSeCharCount = [...(PROLOGUE_PAGES[prologue.page] || "")].length;
       input.clear();
       return true;
     }
@@ -8922,6 +8920,99 @@ function drawPerfHud() {
   ctx.restore();
 }
 
+// ---- FPS 低下検知 → リロード推奨ダイアログ（iOS Safari 低電力モード対策） ----
+const fpsWarn = {
+  initialized: false,
+  warmupUntilMs: 0,
+  measureUntilMs: 0,
+  startedMs: 0,
+  frameCount: 0,
+  shown: false,
+  buttonRect: null,
+};
+function updateFpsWarn(t) {
+  if (!IS_MOBILE_DEVICE) return;
+  if (fpsWarn.shown || fpsWarn.measureUntilMs === -1) return;
+  if (!fpsWarn.initialized) {
+    fpsWarn.initialized = true;
+    fpsWarn.warmupUntilMs = t + 1000;
+    return;
+  }
+  if (t < fpsWarn.warmupUntilMs) return;
+  if (fpsWarn.measureUntilMs === 0) {
+    fpsWarn.measureUntilMs = t + 2000;
+    fpsWarn.startedMs = t;
+    fpsWarn.frameCount = 0;
+    return;
+  }
+  fpsWarn.frameCount++;
+  if (t >= fpsWarn.measureUntilMs) {
+    const elapsed = t - fpsWarn.startedMs || 1;
+    const avg = (fpsWarn.frameCount * 1000) / elapsed;
+    if (avg < 35) fpsWarn.shown = true;
+    else fpsWarn.measureUntilMs = -1;
+  }
+}
+function drawFpsWarn(ctx) {
+  if (!fpsWarn.shown) return;
+  const w = canvas.width, h = canvas.height;
+  ctx.save();
+  ctx.fillStyle = "rgba(0,0,0,0.85)";
+  ctx.fillRect(0, 0, w, h);
+  const pw = Math.min(w - 16, 200), ph = 100;
+  const px = ((w - pw) / 2) | 0, py = ((h - ph) / 2) | 0;
+  ctx.fillStyle = "#000";
+  ctx.fillRect(px, py, pw, ph);
+  ctx.strokeStyle = "#fff";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(px + 0.5, py + 0.5, pw - 1, ph - 1);
+  ctx.fillStyle = "#fff";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  ctx.font = "10px PixelMplus10";
+  ctx.fillText("動作が重くなっています", px + pw / 2, py + 10);
+  ctx.fillStyle = "#ccc";
+  ctx.font = "8px PixelMplus10";
+  ctx.fillText("低電力モードをOFFにしてから", px + pw / 2, py + 30);
+  ctx.fillText("リロードしてください", px + pw / 2, py + 42);
+  const bw = 90, bh = 18;
+  const bx = px + ((pw - bw) / 2 | 0);
+  const by = py + ph - bh - 10;
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(bx, by, bw, bh);
+  ctx.fillStyle = "#000";
+  ctx.font = "10px PixelMplus10";
+  ctx.fillText("リロード", bx + bw / 2, by + 4);
+  fpsWarn.buttonRect = { x: bx, y: by, w: bw, h: bh };
+  ctx.restore();
+}
+function fpsWarnTap(ev) {
+  if (!fpsWarn.shown) return false;
+  const rect = canvas.getBoundingClientRect();
+  let cx, cy;
+  if (ev.touches && ev.touches[0]) { cx = ev.touches[0].clientX; cy = ev.touches[0].clientY; }
+  else { cx = ev.clientX; cy = ev.clientY; }
+  if (cx == null || cy == null) return false;
+  const x = ((cx - rect.left) / rect.width) * canvas.width;
+  const y = ((cy - rect.top) / rect.height) * canvas.height;
+  const r = fpsWarn.buttonRect;
+  if (r && x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) {
+    location.replace(location.pathname + "?_=" + Date.now());
+    return true;
+  }
+  fpsWarn.shown = false;
+  return true;
+}
+canvas.addEventListener("click", (e) => {
+  if (fpsWarnTap(e)) { e.preventDefault(); e.stopImmediatePropagation(); }
+}, { capture: true });
+canvas.addEventListener("touchstart", (e) => {
+  if (fpsWarnTap(e)) { e.preventDefault(); e.stopImmediatePropagation(); }
+}, { capture: true, passive: false });
+window.addEventListener("pageshow", (e) => {
+  if (e.persisted) location.reload();
+});
+
 if (!window.__rpgLoopStarted) {
   window.__rpgLoopStarted = true;
 
@@ -8930,6 +9021,8 @@ if (!window.__rpgLoopStarted) {
     update(t);
     const _b = performance.now();
     draw();
+    updateFpsWarn(t);
+    drawFpsWarn(ctx);
     const _c = performance.now();
     if (PERF_HUD) {
       _perfStats.frames += 1;
