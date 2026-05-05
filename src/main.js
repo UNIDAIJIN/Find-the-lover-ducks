@@ -14,7 +14,7 @@ import { createTitle  }     from "./title.js";
 import { createCharSelect } from "./char_select.js";
 import { createLoading }    from "./loading.js";
 import { setupMobileController } from "./mobile_controller.js";
-import { playSuzu, playFuro, playDoor, playZazza, playHoleFall, playHoleRoll, playConfirm, playClickOn, playCursor, playTimeMachineShine, playWave, startHeartbeat, stopHeartbeat, playQuestJingleB, playPunch, startShootingBgm, stopShootingBgm, startAfloClubBgm, stopAfloClubBgm, stopJaws, playBattleWinJingle, getAfloClubKickPulseMs, unlockSeAudio, startRainLoop, stopRainLoop, startSeasideBgm, stopSeasideBgm, startDivingBgm, stopDivingBgm, playDinoStep, playBirdCall, playWingFlap, startWaterfall, setWaterfallVol, stopWaterfall, startPhoneRing, stopPhoneRing, playPhonePick, playPhoneHang, playDadaan, startMetalBgm, stopMetalBgm, startChaosMetalBgm, stopChaosMetalBgm, playAlienTypingNoise, playGlassShatter, playItemJingle } from "./se.js";
+import { playSuzu, playFuro, playDoor, playZazza, playHoleFall, playHoleRoll, playConfirm, playClickOn, playCursor, playTimeMachineShine, playWave, startHeartbeat, stopHeartbeat, playQuestJingleB, playPunch, startShootingBgm, stopShootingBgm, startAfloClubBgm, stopAfloClubBgm, stopJaws, playBattleWinJingle, getAfloClubKickPulseMs, unlockSeAudio, startRainLoop, stopRainLoop, startSeasideBgm, stopSeasideBgm, startDivingBgm, stopDivingBgm, playDinoStep, playBirdCall, playWingFlap, startWaterfall, setWaterfallVol, stopWaterfall, startPhoneRing, stopPhoneRing, playPhonePick, playPhoneHang, playDadaan, startMetalBgm, stopMetalBgm, startChaosMetalBgm, stopChaosMetalBgm, playAlienTypingNoise, playTypingVoice, playGlassShatter, playItemJingle } from "./se.js";
 import { createMenu } from "./ui_menu.js";
 import { createTripEffect }     from "./trip_effect.js";
 import { createGoodTripEffect } from "./trip_effect_good.js";
@@ -4155,7 +4155,7 @@ function updatePrologueTypingSe() {
   if (count <= prologue.typeSeCharCount) return;
   const ch = [...text][count - 1] || "";
   prologue.typeSeCharCount = count;
-  if (ch.trim()) playAlienTypingNoise(700 + count);
+  if (ch.trim()) playTypingVoice("default");
 }
 
 function drawPrologue(ctx) {
@@ -5397,9 +5397,6 @@ function loadMap(id, opt = null) {
     else if (def.waterColor) buildWaterMask(bgImg, def.waterColor);
     else waterMaskCanvas = null;
 
-    spawnActorsForMap(current.id);
-    applyFlagsToActors(current.id);
-
     const _ufoM = current.id.match(/^umi_house(\d)$/);
     if (_ufoM && !STATE.flags.ufoComplete) {
       const _ufoSeq = [2, 3, 1, 1, 3, 1, 2, 3];
@@ -5411,6 +5408,9 @@ function loadMap(id, opt = null) {
         STATE.flags.ufoStep = 0;
       }
     }
+
+    spawnActorsForMap(current.id);
+    applyFlagsToActors(current.id);
 
     if (opt?.isEnding || opt?.skipBgm) {
       // BGM は呼び出し元が管理
@@ -8928,6 +8928,8 @@ const fpsWarn = {
   startedMs: 0,
   frameCount: 0,
   shown: false,
+  shownAt: 0,
+  minVisibleMs: 2000,
   buttonRect: null,
 };
 function updateFpsWarn(t) {
@@ -8949,8 +8951,10 @@ function updateFpsWarn(t) {
   if (t >= fpsWarn.measureUntilMs) {
     const elapsed = t - fpsWarn.startedMs || 1;
     const avg = (fpsWarn.frameCount * 1000) / elapsed;
-    if (avg < 35) fpsWarn.shown = true;
-    else fpsWarn.measureUntilMs = -1;
+    if (avg < 35) {
+      fpsWarn.shown = true;
+      fpsWarn.shownAt = t;
+    } else fpsWarn.measureUntilMs = -1;
   }
 }
 function drawFpsWarn(ctx) {
@@ -8989,6 +8993,7 @@ function drawFpsWarn(ctx) {
 }
 function fpsWarnTap(ev) {
   if (!fpsWarn.shown) return false;
+  if (performance.now() - fpsWarn.shownAt < fpsWarn.minVisibleMs) return true;
   fpsWarn.shown = false;
   return true;
 }
@@ -8998,6 +9003,16 @@ canvas.addEventListener("click", (e) => {
 canvas.addEventListener("touchstart", (e) => {
   if (fpsWarnTap(e)) { e.preventDefault(); e.stopImmediatePropagation(); }
 }, { capture: true, passive: false });
+window.addEventListener("keydown", (e) => {
+  if (!fpsWarn.shown) return;
+  if (e.key === "z" || e.key === "Z" || e.key === "Enter" || e.key === " ") {
+    if (performance.now() - fpsWarn.shownAt >= fpsWarn.minVisibleMs) {
+      fpsWarn.shown = false;
+    }
+    e.preventDefault();
+    e.stopImmediatePropagation();
+  }
+}, { capture: true });
 window.addEventListener("pageshow", (e) => {
   if (e.persisted) location.reload();
 });

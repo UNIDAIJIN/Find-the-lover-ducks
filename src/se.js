@@ -23,8 +23,8 @@ const SAMPLE_SE_SCALE = {
   "se_furo.mp3": 1.0,
 };
 const GENERATED_SE_MASTER = 0.72;
-const GENERATED_BGM_MASTER = 0.72;
-const AMBIENT_BGM_MASTER = 0.78;
+const GENERATED_BGM_MASTER = 0.43; // ファイル系BGM(-28.4 LUFS)に揃えて -4.5 dB
+const AMBIENT_BGM_MASTER = 0.46;   // 同上
 
 function sampleSeLevel(name, vol) {
   return Math.min(2.2, vol * SAMPLE_SE_MASTER * (SAMPLE_SE_SCALE[name] ?? 1));
@@ -1090,7 +1090,7 @@ export function playJaws() {
   stopJaws();
   _jawsAudio = new Audio("assets/audio/bgm_jaws.mp3");
   _jawsAudio.loop = true;
-  _jawsAudio.volume = 0.9;
+  _jawsAudio.volume = 0.82; // -28.4 LUFS（他の BGM と揃える）
   _jawsAudio.play().catch(() => {});
 }
 
