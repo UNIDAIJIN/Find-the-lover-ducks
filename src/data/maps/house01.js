@@ -1,9 +1,10 @@
 // data/maps/house01.js
 export const house01Map = {
-  bgSrc:  "assets/maps/house01.png",
-  colSrc: "assets/maps/house01_col.png",
-  bgmSrc: "assets/audio/bgm0.mp3",
-  spawn:  { x: 128, y: 160 },
+  bgSrc:    "assets/maps/house01.png",
+  bgTopSrc: "assets/maps/house01_top.png",
+  colSrc:   "assets/maps/house01_col.png",
+  bgmSrc:   "assets/audio/bgm0.mp3",
+  spawn:    { x: 128, y: 160 },
   doors: [
     {
       id:        18,

@@ -1,0 +1,186 @@
+==========================================
+2026-05-06 引き継ぎメモ
+==========================================
+
+このセッションで触った主な領域：
+  ① オープニングナレーション（プロローグ）
+  ② FPS低下検知ダイアログ（iOS LPM対策）
+  ③ BGM音量バランス（LUFS統一）
+  ④ iOS Safari モバイル audio アンロック修正
+  ⑤ モバイルパッドDボタン削除
+  ⑥ バージョン v0.8.0 → v0.9.0
+
+
+------------------------------------------
+① プロローグ（src/main.js）
+------------------------------------------
+構造: テキスト表示 → フェードアウト → 黒ホールド →
+      解像度切替 → 少しウェイト → アイリスインで本編へ
+
+主な仕様:
+  - フォント: 12px PixelMplus12（新規インストール、style.css に @font-face 追加）
+  - 行高: 16px
+  - 描画解像度: BASE_W*2 × BASE_H*2 (384×360) でテキスト密度確保
+  - スタートウェイト: 1400ms
+  - 1文字ごと: 50ms、改行間: 520ms
+  - 文字フェードアウト: 800ms
+  - 黒ホールド: 500ms
+  - アイリスイン: 700ms（fx_fade.js の skipClose + inMode:"iris" 使用）
+  - タイピング音: playTypingVoice("default") （yahhy と同じ）
+  - Z/X 連打スキップ無効（押しても何も起きない、テキストは全文流す）
+  - 画面下部の z/x プロンプト表示なし
+
+実装関数:
+  - PROLOGUE_PAGES, prologue オブジェクト, startPrologue, finishPrologue,
+    updatePrologue, drawPrologue（src/main.js:4022-4248 付近）
+  - fx_fade.js の startIrisFade に skipClose, inMode オプション追加
+
+
+------------------------------------------
+② FPS低下検知ダイアログ（src/main.js 末尾）
+------------------------------------------
+iOS Safari の低電力モード起動時に rAF が30fpsスロットルされる
+問題に対するUI警告。
+
+挙動:
+  - IS_MOBILE_DEVICE 端末のみ動作
+  - 起動後 1秒ウォームアップ → 2秒fps計測
+  - 平均 < 35 fps で警告ダイアログ表示
+  - 計測完了後は二度と計測しない（オーバーヘッドゼロ）
+  - 表示後 2 秒間は閉じれない（連打スキップ防止）
+  - Z / Enter / Space / 任意のタップで閉じる（fpsWarn.minVisibleMs 経過後）
+  - 文言: 「動作が重くなっています / 低電力モードをオフにしてから /
+          ブラウザのタブを閉じて開き直してください」+ 「閉じる」ボタン
+  - ボタンの紺シャドーは _skipTextShadow=true で消去
+  - 文言は全角統一（「OFF」→「オフ」）でセンター位置のサブピクセル滲みを回避
+
+bfcache 対策:
+  - window.addEventListener("pageshow", e => if (e.persisted) location.reload())
+
+注意点:
+  - リロードしても iOS の rAF スロットルは解除されない（プロセス単位で固定）
+  - 「閉じる」は dismiss だけで、ユーザはタブ閉じ→再オープンで完全復旧する必要あり
+
+
+------------------------------------------
+③ BGM音量バランス（LUFS統一）
+------------------------------------------
+
+ファイル系BGM (audio_bgm.js sourceVolumeScale):
+  - 全16トラック → -28.4 LUFS で揃え済み（bgm_movie のみ元ファイル -51.3 で限界、
+    scale=1.72 で上限到達）
+  - duckA はLRA 10.8LUと広いため scale=0.55 + DynamicsCompressorNode で
+    動的圧縮を有効化（threshold=-24, ratio=4, knee=8, attack=5ms, release=120ms,
+    makeup=1.0）
+  - 他のトラックは ratio=1 のバイパス設定
+
+WebAudio グラフ (audio_bgm.js ensureAudioGraph):
+  source → filter → compressor → makeupGain → destination
+  delay(goodTrip 用): _delayWet → compressor
+
+合成系BGM (src/se.js):
+  - GENERATED_BGM_MASTER: 0.72 → 0.43 (-4.5dB)
+  - AMBIENT_BGM_MASTER:   0.78 → 0.46 (-4.5dB)
+  - bgm_jaws.mp3 (ファイル系だが独立 Audio 要素): volume 0.9 → 0.82
+  - GENERATED_SE_MASTER は 0.72 のまま（SE は別系統で揃え対象外）
+
+合成系の正確なLUFSは実機再生して測定しないと不明。要りそうなら
+debug HTML で MediaRecorder 録音 → ffmpeg ebur128 のフローで個別調整。
+
+
+------------------------------------------
+④ iOS Safari audio アンロック修正
+------------------------------------------
+コンプレッサ追加で <audio> 要素経由から WebAudio 経由に切り替わった結果、
+AudioContext が suspended のままになって全BGMが無音になる問題が発生。
+
+audio_bgm.js unlock() に追加:
+  1. ensureAudioGraph() でグラフ構築
+  2. audioCtx.state === "suspended" なら audioCtx.resume()
+  3. desiredSrc が "about:blank" の場合 bgm0 を muted で primer 再生
+     （iOS の <audio> 側もアンロックさせる）
+
+apply() に追加: bgm.muted = false で primer の muted を確実にリセット。
+
+
+------------------------------------------
+⑤ モバイルパッドDボタン削除
+------------------------------------------
+src/mobile_controller.js から `data-key-tap="d"` の <button> を削除。
+
+
+------------------------------------------
+⑥ バージョン
+------------------------------------------
+src/config.js: VERSION 0.8.0 → 0.9.0
+中間で 0.8.2 / 0.8.3 / 0.8.4 / 0.8.5 / 0.8.6 をリリース済み。
+
+
+------------------------------------------
+未対応 / 今後の課題
+------------------------------------------
+[A] outdoor_top.png 再カット
+  - 今回 runtime auto-trim 実装したが reverted
+  - オフセット方式（事前カット PNG + bgTopOffset）に統一したまま
+  - 現状の outdoor_top.png は 3386×2730 (フルマップサイズ) で書き出されている
+  - ユーザー側で透明領域を画像エディタで切り抜き → bgTopOffset 値を更新する必要あり
+  - bbox の左上座標がそのまま bgTopOffset の値になる
+  - 旧設定: bgTopOffset: { x: 484, y: 561 } （前の小さい PNG 用、要再計算）
+
+[B] 合成系BGMの精密LUFS測定
+  - 現状 -4.5dB 一律削減のラフ調整
+  - 各シーン (shooting / diving / metal / chaos / aflo / heartbeat 等) を
+    実プレイで耳テスト → 個別の generatedBgmLevel(0.x) や ambientBgmLevel(0.x)
+    の値を調整するのが現実的
+
+[C] スマホLPM起動時のBGM不再生
+  - 修正済みだが要実機確認（特にキャラセレクト bgm_select.mp3 が鳴るか）
+
+[D] プロローグの文言調整
+  - 現在のテキスト最終行は「ミナミの元へ向かうこととなったのであった。」
+
+
+------------------------------------------
+ファイル変更マップ
+------------------------------------------
+src/main.js
+  - プロローグ全般 (PROLOGUE_PAGES, prologue 関連関数)
+  - FPS warn 一式（loop 末尾）
+  - playTypingVoice import 追加
+
+src/audio_bgm.js
+  - sourceVolumeScale 全更新
+  - DynamicsCompressorNode + makeupGain 追加 (compressor / compressorGain)
+  - compressorPresets で duckA だけ動的圧縮
+  - applyCompressorForSrc 関数追加
+  - unlock() に primer + audioCtx.resume() 追加
+
+src/fx_fade.js
+  - startIrisFade に skipClose, inMode オプション追加
+  - irisInMode 状態変数追加
+  - phase2 の iris-in 描画追加
+
+src/se.js
+  - GENERATED_BGM_MASTER, AMBIENT_BGM_MASTER 値変更
+  - _jawsAudio.volume 変更
+
+src/mobile_controller.js
+  - D ボタン削除
+
+src/data/maps/outdoor.js
+  - bgTopOffset 値はそのまま (要更新)
+
+src/config.js
+  - VERSION 0.9.0
+
+style.css
+  - PixelMplus12 @font-face 追加
+
+fonts/PixelMplus12-Regular.ttf
+  - 新規追加
+
+assets/maps/
+  - outdoor.png, outdoor_shore.png 更新（v0.8.4 で push 済み）
+  - outdoor_top.png 更新（フルサイズ書き出し、まだ未 push）
+
+==========================================

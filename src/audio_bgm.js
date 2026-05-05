@@ -91,6 +91,7 @@ export function createBgm({
 
     try {
       bgm.pause();
+      bgm.muted = false; // unlock primer 由来の muted=true を念のため解除
       bgm.src = src;
       bgm.load();
       bgm.currentTime = 0;
@@ -101,7 +102,26 @@ export function createBgm({
   function unlock() {
     if (unlocked) return;
     unlocked = true;
-    apply(desiredSrc()); // この時点で初めてダウンロード開始
+    // ジェスチャー内に呼ばれる前提で、WebAudio グラフを構築 + AudioContext を resume。
+    // (compressor 経由で再生する関係で AudioContext が suspended だと無音になる)
+    ensureAudioGraph();
+    if (audioCtx && audioCtx.state === "suspended") {
+      audioCtx.resume().catch(() => {});
+    }
+    // iOS Safari は about:blank の play() では <audio> 要素もアンロックされない。
+    // ジェスチャー内に有効な src で 1 度ミュート再生して確実にアンロックする。
+    const ds = desiredSrc();
+    if (!ds || ds === "about:blank") {
+      try {
+        const wasMuted = bgm.muted;
+        bgm.muted = true;
+        bgm.src = defaultSrc;
+        bgm.load();
+        bgm.play().then(() => { bgm.pause(); bgm.muted = wasMuted; }).catch(() => { bgm.muted = wasMuted; });
+        currentSrc = null;
+      } catch (_e) {}
+    }
+    apply(ds);
   }
 
   // 最初のユーザー操作でアンロック

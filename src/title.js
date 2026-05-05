@@ -1,6 +1,6 @@
 // title.js
 import { playCursor, playConfirm } from "./se.js";
-import { VERSION } from "./config.js";
+import { VERSION } from "./config.js?v=0.9.1";
 
 export function createTitle({ BASE_W, BASE_H, input, pocketEdition = false }) {
   let active     = false;

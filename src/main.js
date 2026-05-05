@@ -1,5 +1,5 @@
 // main.js
-import { CONFIG } from "./config.js";
+import { CONFIG } from "./config.js?v=0.9.1";
 import { SPRITES } from "./sprites.js";
 import { MAPS } from "./maps.js";
 import { makeColStore } from "./col.js";
@@ -3711,6 +3711,20 @@ const menu = createMenu({
       }, 700);
       return true;
     }
+    if (id === "whiskey") {
+      inventory.removeItem("whiskey");
+      lockItemUseWait();
+      setTimeout(() => {
+        STATE.flags.eatCount = (STATE.flags.eatCount || 0) + 1;
+        if (STATE.flags.eatCount >= 10) achieveQuest("26");
+        input.unlock();
+        dialog.open([
+          ["ナツミはウイスキーをのんでみた！"],
+          ["しみる！"],
+        ], null, "sign");
+      }, 700);
+      return true;
+    }
     if (id === "ice_cream") {
       inventory.removeItem("ice_cream");
       lockItemUseWait();
@@ -3765,6 +3779,20 @@ const menu = createMenu({
         dialog.open([
           ["ナツミはビールをのんでみた！"],
           ["カーッ！"],
+        ], null, "sign");
+      }, 700);
+      return true;
+    }
+    if (id === "hanataba") {
+      inventory.removeItem("hanataba");
+      lockItemUseWait();
+      setTimeout(() => {
+        STATE.flags.eatCount = (STATE.flags.eatCount || 0) + 1;
+        if (STATE.flags.eatCount >= 10) achieveQuest("26");
+        input.unlock();
+        dialog.open([
+          ["ナツミははなたばをたべてみた！"],
+          ["フローラル！"],
         ], null, "sign");
       }, 700);
       return true;
@@ -4118,6 +4146,10 @@ function prologueAdvancePressed() {
   );
 }
 
+function prologueSkipTypingPressed() {
+  return input.consume("c");
+}
+
 function updatePrologue() {
   if (!prologue.active) return false;
   if (prologue.fadingOut) {
@@ -4128,6 +4160,15 @@ function updatePrologue() {
     return true;
   }
   updatePrologueTypingSe();
+  if (prologueSkipTypingPressed()) {
+    if (!isProloguePageComplete()) {
+      const text = PROLOGUE_PAGES[prologue.page] || "";
+      prologue.revealed = true;
+      prologue.typeSeCharCount = [...text].length;
+      input.clear();
+      return true;
+    }
+  }
   if (prologueAdvancePressed()) {
     if (!isProloguePageComplete()) {
       input.clear();
@@ -4314,6 +4355,13 @@ function debugJumpToShootingLobby() {
   shootingKnockback = null;
   loadMap("shooting_lobby");
   saveNotice = { text: "SHOOTING", until: nowMs() + 1200 };
+}
+
+function debugWarpToPub() {
+  setGameResolution(BASE_W, BASE_H);
+  loadMap("pub");
+  saveNotice = { text: "PUB", until: nowMs() + 1200 };
+  input.clear();
 }
 
 const SHOOTING_DIFFICULTY_ORDER = ["hard", "normal", "easy"];
@@ -5795,6 +5843,61 @@ function drawMapImg(img, alpha, offset) {
   }
 }
 
+function drawHouse01PurpleSmoke(tt) {
+  if (current.id !== "house01") return;
+  const centerX = current.bgW ? current.bgW / 2 : 128;
+  const smokePoints = [
+    { x: 159, y: 130, phase: 0 },
+    { x: centerX - (159 - centerX), y: 130, phase: 0.43 },
+  ];
+  for (const p of smokePoints) drawPurpleSmokePlume(p.x, p.y, tt, p.phase);
+}
+
+function drawPurpleSmokePlume(worldX, worldY, tt, phase = 0) {
+  const sx = worldX - cam.x;
+  const sy = worldY - cam.y;
+  if (sx < -24 || sx > canvas.width + 24 || sy < -56 || sy > canvas.height + 16) return;
+
+  ctx.save();
+  ctx.globalCompositeOperation = "source-over";
+  const colors = ["#221229", "#3a1a4a", "#5c2c75", "#7a4790", "#a77bbe"];
+  for (let i = 0; i < 9; i++) {
+    const t = (tt / 2600 + phase + i * 0.125) % 1;
+    const ease = 1 - Math.pow(1 - t, 2);
+    const rise = ease * 46;
+    const width = 2.5 + ease * 8.5;
+    const height = 3.8 + ease * 6.8;
+    const drift = Math.sin(tt / 560 + phase * 9 + i * 1.31) * (1.2 + ease * 5.2);
+    const curl = Math.sin(tt / 310 + phase * 5 + i * 2.07) * (0.7 + ease * 2.4);
+    const x = sx + drift + curl;
+    const y = sy - rise + Math.sin(tt / 780 + i) * 0.8;
+    const alpha = Math.sin(t * Math.PI) * (0.16 + (1 - ease) * 0.22);
+    const angle = Math.sin(tt / 900 + i * 1.8) * 0.85;
+
+    ctx.globalAlpha = Math.max(0, alpha);
+    ctx.fillStyle = colors[i % colors.length];
+    ctx.beginPath();
+    ctx.ellipse(x, y, width, height, angle, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.globalAlpha = Math.max(0, alpha * 0.55);
+    ctx.fillStyle = colors[(i + 2) % colors.length];
+    ctx.beginPath();
+    ctx.ellipse(x - width * 0.28, y - height * 0.12, width * 0.58, height * 0.5, -angle * 0.7, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  for (let i = 0; i < 3; i++) {
+    const flicker = (Math.sin(tt / 120 + phase * 10 + i * 2.2) + 1) * 0.5;
+    ctx.globalAlpha = 0.18 + flicker * 0.12;
+    ctx.fillStyle = i === 1 ? "#caa2e0" : "#6d3692";
+    ctx.beginPath();
+    ctx.ellipse(sx + (i - 1) * 2, sy - 2 - i, 2.1 + flicker * 0.8, 3.4 + flicker * 1.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
 function drawSprite(img, f, x, y, spr = SPR, sprH = spr) {
   if (!img) {
     if (DEBUG) {
@@ -6585,6 +6688,8 @@ function draw() {
     if (current.hasBgTop) drawMapImg(bgTopImg, undefined, current.bgTopOffset);
     if (shrineFade > 0 && current.hasBgShrineTop) drawMapImg(bgShrineTopImg, shrineFade, current.bgShrineTopOffset);
   }
+
+  drawHouse01PurpleSmoke(tt);
 
   for (let i = 0; i < aboveTopList.length; i++) drawEntry(aboveTopList[i]);
 
@@ -8294,7 +8399,7 @@ function update(t) {
   if (input.consume("l")) { loadGame(); return; }
   if (input.consume("v")) { setBgmOverrideSafe(null); setBgmMapSafe("assets/audio/bgm0.mp3"); return; }
   if (DEBUG && input.consume("d")) {
-    startDivingMinigame();
+    debugWarpToPub();
     return;
   }
   if (DEBUG && input.consume("p")) {

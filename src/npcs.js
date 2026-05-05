@@ -1,5 +1,5 @@
 // npcs.js
-import { CONFIG } from "./config.js";
+import { CONFIG } from "./config.js?v=0.9.1";
 import { SPRITES } from "./sprites.js";
 import { STATE }   from "./state.js";
 
@@ -7,6 +7,7 @@ import { boardNpc }         from "./data/npcs/board.js";
 import { pizzashopNpc }     from "./data/npcs/pizzashop.js";
 import { cdshopNpc }        from "./data/npcs/cdshop.js";
 import { fanNpc }           from "./data/npcs/fan.js";
+import { flowersNpc }       from "./data/npcs/flowers.js";
 import { ac1Npc }           from "./data/npcs/ac_1.js";
 import { koriNpc }          from "./data/npcs/kori.js";
 import { seatsNpc }         from "./data/npcs/seats.js";
@@ -48,6 +49,7 @@ import { keeperNpc }     from "./data/npcs/keeper.js";
 import { pbdNpc }        from "./data/npcs/pbd.js";
 import { shamanNpc }     from "./data/npcs/shaman.js";
 import { ponydeadyouthNpc } from "./data/npcs/ponydeadyouth.js";
+import { pubNpc } from "./data/npcs/pub.js";
 import { kingyobachiSanNpc } from "./data/npcs/kingyobachi_san.js";
 import { moritasakiGiftNpc } from "./data/npcs/moritasaki_gift.js";
 import { ufogirlNpc }        from "./data/npcs/ufogirl.js";
@@ -183,6 +185,18 @@ export const NPCS_BY_MAP = {
     resolve(iceNpc),
     resolve({
       kind: "npc",
+      name: "onesan",
+      spriteKey: "onesan",
+      x: 1711,
+      y: 920,
+      animMs: Infinity,
+      noWalk: true,
+      talkHit: { x: 0, y: 0, w: 16, h: 16 },
+      talkPages: [["ぷはー！やっぱ酒は昼に飲むに限るで！"]],
+      solid: true,
+    }),
+    resolve({
+      kind: "npc",
       name: "lee",
       spriteKey: "lee",
       x: 1583,
@@ -227,6 +241,10 @@ export const NPCS_BY_MAP = {
 
   cdshop: [
     resolve(cdshopNpc),
+  ],
+
+  flowers: [
+    resolve(flowersNpc),
   ],
 
   moritasaki_room: [
@@ -411,6 +429,10 @@ export const NPCS_BY_MAP = {
       event: { type: "double_door" },
       noRender: true,
     }),
+  ],
+
+  pub: [
+    resolve(pubNpc),
   ],
 };
 
