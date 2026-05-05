@@ -20,6 +20,14 @@ html, body {
   font-style: normal;
 }
 
+/* PixelMplus12 */
+@font-face {
+  font-family: "PixelMplus12";
+  src: url("fonts/PixelMplus12-Regular.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+}
+
 canvas {
   display: block;
   margin: 0;

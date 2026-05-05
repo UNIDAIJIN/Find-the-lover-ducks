@@ -241,7 +241,6 @@ export function setupMobileController(input, {
     <div class="row-bottom">
       <button class="btn-small" data-key-tap="s">SAVE</button>
       <button class="btn-small" data-key-tap="l">LOAD</button>
-      <button class="btn-debug" data-key-tap="d">D</button>
       <button class="btn-icon" data-audio-toggle="1" aria-label="audio">
         <span class="play"></span><span class="pause"></span>
       </button>

@@ -4029,7 +4029,7 @@ const PROLOGUE_PAGES = [
     "",
     "「セカンドアルバムを作ろう！」",
     "",
-    "そのひとことで、この腐ったコケのような生活に終止符が打たれた。",
+    "その一言で、この腐ったコケのような生活に終止符が打たれた。",
     "",
     "そうと決まれば、所属事務所から制作費をせしめねばなるまい。",
     "",
@@ -4176,10 +4176,10 @@ function drawPrologue(ctx) {
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
   ctx.fillStyle = "#f7f2e8";
-  ctx.font = "normal 10px PixelMplus10";
+  ctx.font = "normal 12px PixelMplus12";
 
   const lines = wrapTextLayout(ctx, text, w - 14);
-  const lineH = 13;
+  const lineH = 16;
   const startY = Math.max(8, ((h - lines.length * lineH) / 2) | 0);
   let remaining = visibleCount;
   for (let i = 0; i < lines.length; i++) {
@@ -9036,7 +9036,10 @@ if (!window.__rpgLoopStarted) {
   }
 
   // フォント読み込み完了後にループ開始（初回テキスト化け防止）
-  document.fonts.load("10px PixelMplus10").then(() => {
+  Promise.all([
+    document.fonts.load("10px PixelMplus10"),
+    document.fonts.load("12px PixelMplus12"),
+  ]).then(() => {
     _perfStats.lastWindowStart = performance.now();
     requestAnimationFrame(loop);
   });
