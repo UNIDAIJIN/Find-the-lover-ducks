@@ -2289,9 +2289,8 @@ function startSpaceBossWinEvent() {
       ["本当にすごいよきみたち！"],
       ["ついにやったんだ！"],
       ["はぁ、、、。"],
-      ["感動でなんにも言えないや。"],
       ["ありがとう。"],
-      ["きみたちのおかげで、たくさんの世界が救われた。"],
+      ["おかげでたくさんの世界が救われた。"],
     ], () => {
       dialog.open([
         ["・・・・・・。"],
@@ -2302,8 +2301,7 @@ function startSpaceBossWinEvent() {
           setTimeout(() => {
             input.unlock();
             dialog.open([
-              ["さ。"],
-              ["かえろっか。"],
+              ["さ、かえろっか。"],
             ], () => {
               startSpaceBossAfterHeartReturnSequence();
             }, "talk");
@@ -2338,8 +2336,8 @@ function startSpaceBossHeartReturnSequence(onDone = startSpaceBossAfterHeartRetu
       setTimeout(() => {
         input.unlock();
         dialog.open([
-          ["また別の時空のきみたちが見つけられるように、"],
-          ["ほろびた世界に隠しておかなきゃいけないからさ。"],
+          ["また別のきみたちが見つけられるように、"],
+          ["ほろびた世界に隠しておかなきゃね。"],
         ], () => {
           onDone?.();
         }, "talk");
@@ -2358,13 +2356,13 @@ function startSpaceBossAfterHeartReturnSequence() {
       input.unlock();
       dialog.open([
         ["タイムマシン？帰る時は必要ないよ。"],
-        ["あれはこのパターンの世界で作ったものじゃないから、もう使えないのさ。"],
+        ["あれはこうなった世界で作ったものじゃないからもう使えないのさ。"],
         ["それに、宇宙から未来に帰るのって、実はけっこう簡単なんだよ。"],
       ], () => {
         input.lock();
         setTimeout(() => {
           input.unlock();
-          dialog.open([["さってっと、"]], () => {
+          dialog.open([["よしっと、"]], () => {
             dialog.open([
               ["いくよ、"],
               ["そりゃーーーー！"],
@@ -5481,7 +5479,7 @@ function loadMap(id, opt = null) {
       stopShootingBgm();
       stopMetalBgm();
       startAfloClubBgm();
-    } else if (current.id === "vj_factry") {
+    } else if (current.id === "vj_factry" || current.id === "house04") {
       bgmCtl.setOverride("about:blank");
       stopShootingBgm();
       stopAfloClubBgm();

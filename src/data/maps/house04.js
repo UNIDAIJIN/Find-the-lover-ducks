@@ -2,7 +2,7 @@
 export const house04Map = {
   bgSrc:  "assets/maps/house04.png",
   colSrc: "assets/maps/house04_col.png",
-  bgmSrc: "assets/audio/bgm0.mp3",
+  bgmSrc: null,
   spawn:  { x: 128, y: 160 },
   doors: [
     {
