@@ -77,9 +77,12 @@ export function createBgm({
     // ユーザー操作前はダウンロードしない（遅延ロード）
     if (!unlocked) return;
 
-    // WebAudio グラフが組まれていれば src 別のコンプレッサ設定を反映
-    ensureAudioGraph();
-    applyCompressorForSrc(src);
+    // WebAudio グラフは「コンプレッサ必須トラック」or「既に作成済み」の時だけ
+    // 設定反映する（モバイルで MediaElementSource 起因の無音を避けるため遅延作成）
+    if (compressorPresets[src] || audioCtx) {
+      ensureAudioGraph();
+      applyCompressorForSrc(src);
+    }
 
     // 「無音」要求は src を変えずに pause だけにする（about:blank に変えると
     //  iOS で <audio> 要素のアンロック状態が解除される場合があるため）
@@ -111,26 +114,8 @@ export function createBgm({
   function unlock() {
     if (unlocked) return;
     unlocked = true;
-    // ジェスチャー内に呼ばれる前提。WebAudio グラフ構築 + AudioContext を確実に resume。
-    ensureAudioGraph();
-    if (audioCtx && audioCtx.state === "suspended") {
-      audioCtx.resume().catch(() => {});
-    }
-    // ① WebAudio 側のアンロック: 無音オシレータをジェスチャー内に短時間再生
-    if (audioCtx) {
-      try {
-        const osc = audioCtx.createOscillator();
-        const g   = audioCtx.createGain();
-        g.gain.value = 0; // 完全無音
-        osc.connect(g);
-        g.connect(audioCtx.destination);
-        const t = audioCtx.currentTime;
-        osc.start(t);
-        osc.stop(t + 0.02);
-      } catch (_e) {}
-    }
-    // ② <audio> 要素側のアンロック: about:blank だと iOS が認めないので
-    //    desiredSrc が無効なら一旦 defaultSrc をミュート再生してアンロック
+    // <audio> 要素のアンロック: about:blank だと iOS が認めないので
+    // desiredSrc が無効なら一旦 defaultSrc をミュート再生してアンロック
     const ds = desiredSrc();
     if (!ds || ds === "about:blank") {
       try {
