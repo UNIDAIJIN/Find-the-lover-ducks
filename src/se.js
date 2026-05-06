@@ -1840,7 +1840,7 @@ export function startMetalBgm() {
   if (ctx.state === "suspended") ctx.resume().catch(() => {});
 
   const master = ctx.createGain();
-  master.gain.value = generatedBgmLevel(0.3);
+  master.gain.value = generatedBgmLevel(0.6);
   master.connect(ctx.destination);
 
   // low drone hum (electrical)
