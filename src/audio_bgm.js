@@ -81,6 +81,15 @@ export function createBgm({
     ensureAudioGraph();
     applyCompressorForSrc(src);
 
+    // 「無音」要求は src を変えずに pause だけにする（about:blank に変えると
+    //  iOS で <audio> 要素のアンロック状態が解除される場合があるため）
+    if (src === "about:blank") {
+      try {
+        if (!bgm.paused) bgm.pause();
+      } catch (_e) {}
+      return;
+    }
+
     // 同じsrcなら、止まってる時だけ再生を試す
     if (currentSrc === src) {
       if (bgm.paused) bgm.play().catch(() => {});
@@ -102,22 +111,33 @@ export function createBgm({
   function unlock() {
     if (unlocked) return;
     unlocked = true;
-    // ジェスチャー内に呼ばれる前提で、WebAudio グラフを構築 + AudioContext を resume。
-    // (compressor 経由で再生する関係で AudioContext が suspended だと無音になる)
+    // ジェスチャー内に呼ばれる前提。WebAudio グラフ構築 + AudioContext を確実に resume。
     ensureAudioGraph();
     if (audioCtx && audioCtx.state === "suspended") {
       audioCtx.resume().catch(() => {});
     }
-    // iOS Safari は about:blank の play() では <audio> 要素もアンロックされない。
-    // ジェスチャー内に有効な src で 1 度ミュート再生して確実にアンロックする。
+    // ① WebAudio 側のアンロック: 無音オシレータをジェスチャー内に短時間再生
+    if (audioCtx) {
+      try {
+        const osc = audioCtx.createOscillator();
+        const g   = audioCtx.createGain();
+        g.gain.value = 0; // 完全無音
+        osc.connect(g);
+        g.connect(audioCtx.destination);
+        const t = audioCtx.currentTime;
+        osc.start(t);
+        osc.stop(t + 0.02);
+      } catch (_e) {}
+    }
+    // ② <audio> 要素側のアンロック: about:blank だと iOS が認めないので
+    //    desiredSrc が無効なら一旦 defaultSrc をミュート再生してアンロック
     const ds = desiredSrc();
     if (!ds || ds === "about:blank") {
       try {
-        const wasMuted = bgm.muted;
         bgm.muted = true;
         bgm.src = defaultSrc;
         bgm.load();
-        bgm.play().then(() => { bgm.pause(); bgm.muted = wasMuted; }).catch(() => { bgm.muted = wasMuted; });
+        bgm.play().then(() => { bgm.pause(); bgm.muted = false; }).catch(() => { bgm.muted = false; });
         currentSrc = null;
       } catch (_e) {}
     }
