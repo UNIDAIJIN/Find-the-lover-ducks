@@ -5181,6 +5181,13 @@ function isStairAtChar(cx, cy) {
 function isStairCrossedByChar(name, cx, cy) {
   const from = stairPosPrev[name] || stairFootCenter(cx, cy);
   const to = stairFootCenter(cx, cy);
+  // テレポートやマップ非連続移動による暴発防止：
+  // 1フレーム移動量が通常範囲（数 px）を大きく超える場合は補間判定しない
+  const STAIR_TELEPORT_THRESHOLD = 8;
+  if (Math.abs(to.x - from.x) > STAIR_TELEPORT_THRESHOLD ||
+      Math.abs(to.y - from.y) > STAIR_TELEPORT_THRESHOLD) {
+    return col.getZone(to.x, to.y) === "stair";
+  }
   const steps = Math.max(Math.abs(to.x - from.x), Math.abs(to.y - from.y), 1) | 0;
   for (let i = 0; i <= steps; i += 1) {
     const k = i / steps;
@@ -5434,7 +5441,24 @@ function loadMap(id, opt = null) {
     leader.y = sy;
     leader.frame = 0;
     leader.last = 0;
-    if (opt?.resetHeight) forceGroundHeightState();
+    // 安全策：outdoor へ入る時だけ height をリセット（暴発時の復旧手段）
+    // 特定マップから出てくる時は ground、それ以外は upper をデフォルトに
+    if (id === "outdoor") {
+      const FROM_GROUND_MAPS = new Set([
+        "moritasaki_room",
+        "umi_house1", "umi_house2", "umi_house3",
+        "inn", "space", "seahole", "pool", "hisaro", "d_hole", "charch",
+        "shooting_lobby", "dark_throne",
+        "hole",
+      ]);
+      const defaultHeight = FROM_GROUND_MAPS.has(prevMapId) ? "ground" : "upper";
+      charHeight.leader = defaultHeight;
+      charHeight.p2 = defaultHeight;
+      charHeight.p3 = defaultHeight;
+      charHeight.p4 = defaultHeight;
+      heightLevel = defaultHeight;
+      resetStairTracking();
+    }
 
     const entryDoor = (def.doors || []).find(d => d.id === opt?.doorId);
     autoWalk = entryDoor?.entryWalk ? { ...entryDoor.entryWalk } : null;
