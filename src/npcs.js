@@ -197,6 +197,18 @@ export const NPCS_BY_MAP = {
     }),
     resolve({
       kind: "npc",
+      name: "g",
+      spriteKey: "g",
+      x: 2387,
+      y: 928,
+      animMs: Infinity,
+      noWalk: true,
+      talkHit: { x: 0, y: 0, w: 16, h: 16 },
+      talkPages: [["ワン！"]],
+      solid: true,
+    }),
+    resolve({
+      kind: "npc",
       name: "lee",
       spriteKey: "lee",
       x: 1583,

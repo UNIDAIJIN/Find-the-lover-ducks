@@ -55,6 +55,7 @@ export const SPRITES = {
   riku_play: loadSprite("assets/sprites/riku_play.png"),
   maki_play: loadSprite("assets/sprites/maki_play.png"),
   nino_play: loadSprite("assets/sprites/nino_play.png"),
+  g: loadSprite("assets/sprites/g.png"),
   ricky: loadSprite("assets/sprites/ricky.png"),
   ohara: loadSprite("assets/sprites/ohara.png"),
   onesan: loadSprite("assets/sprites/onesan.png"),
