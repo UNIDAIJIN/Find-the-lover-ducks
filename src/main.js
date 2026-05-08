@@ -1,5 +1,5 @@
 // main.js
-import { CONFIG } from "./config.js?v=0.9.1";
+import { CONFIG } from "./config.js?v=0.9.6";
 import { SPRITES } from "./sprites.js";
 import { MAPS } from "./maps.js";
 import { makeColStore } from "./col.js";
@@ -4081,6 +4081,7 @@ function hasSaveData() {
 }
 
 function startNewGameFlow() {
+  setGameResolution(CONFIG.BASE_W, CONFIG.BASE_H);
   current.id = "";
   mapReady = false;
   resetProgress();
@@ -4684,7 +4685,7 @@ function saveGame() {
     leaderX:        leader.x,
     leaderY:        leader.y,
     leaderIdx:      STATE.leaderIdx | 0,
-    charHeight:     { ...charHeight },
+    leaderHeight:   charHeight.leader,
     collectedItems: [...collectedItems],
     inventoryItems: inventory.getSnapshot(),
     flags:          { ...STATE.flags },
@@ -4775,13 +4776,12 @@ function loadGame(opt = {}) {
     STATE.headwear = data.headwear ?? null;
     STATE.achievedQuests.clear();
     for (const q of (data.achievedQuests || [])) STATE.achievedQuests.add(q);
-    Object.assign(charHeight, data.charHeight || {
-      leader: "ground",
-      p2: "ground",
-      p3: "ground",
-      p4: "ground",
-    });
-    heightLevel = charHeight.leader;
+    const loadedHeight = data.leaderHeight || data.charHeight?.leader || "ground";
+    charHeight.leader = loadedHeight;
+    charHeight.p2 = loadedHeight;
+    charHeight.p3 = loadedHeight;
+    charHeight.p4 = loadedHeight;
+    heightLevel = loadedHeight;
     inventory.resetItems(data.inventoryItems || []);
     setupParty(data.leaderIdx | 0);
     applySkinLevel(STATE.flags.skinLevel | 0);
@@ -4789,6 +4789,7 @@ function loadGame(opt = {}) {
     bgmCtl.setMap(MAPS[targetMapId]?.bgmSrc || "assets/audio/bgm0.mp3");
     loadMap(targetMapId, {
       spawnAt: { x: data.leaderX, y: data.leaderY },
+      preserveHeight: true,
       onReady: opt.fromTitle ? startContinueReveal : null,
     });
     if (!opt.fromTitle) saveNotice = { text: "LOADED", until: nowMs() + 1200 };
@@ -5443,7 +5444,7 @@ function loadMap(id, opt = null) {
     leader.last = 0;
     // 安全策：outdoor へ入る時だけ height をリセット（暴発時の復旧手段）
     // 特定マップから出てくる時は ground、それ以外は upper をデフォルトに
-    if (id === "outdoor") {
+    if (id === "outdoor" && !opt?.preserveHeight) {
       const FROM_GROUND_MAPS = new Set([
         "moritasaki_room",
         "umi_house1", "umi_house2", "umi_house3",
@@ -5457,6 +5458,9 @@ function loadMap(id, opt = null) {
       charHeight.p3 = defaultHeight;
       charHeight.p4 = defaultHeight;
       heightLevel = defaultHeight;
+      resetStairTracking();
+    } else if (id === "outdoor") {
+      heightLevel = charHeight.leader;
       resetStairTracking();
     }
 
@@ -7050,13 +7054,20 @@ function draw() {
   // デバッグ：座標表示
   if (DEBUG && !MOBILE && input.down("b")) {
     const coord = `${leader.x | 0},${leader.y | 0}`;
+    const heightHud = [
+      `L:${charHeight.leader === "upper" ? "U" : "G"}`,
+      `P2:${charHeight.p2 === "upper" ? "U" : "G"}`,
+      `P3:${charHeight.p3 === "upper" ? "U" : "G"}`,
+      `P4:${charHeight.p4 === "upper" ? "U" : "G"}`,
+    ].join(" ");
     ctx.save();
     ctx.font = "normal 10px PixelMplus10";
     ctx.textBaseline = "bottom";
-    const cw = ctx.measureText(coord).width;
+    const cw = Math.max(ctx.measureText(coord).width, ctx.measureText(heightHud).width);
     ctx.fillStyle = "rgba(0,0,0,0.6)";
-    ctx.fillRect(BASE_W - cw - 6, BASE_H - 14, cw + 4, 12);
+    ctx.fillRect(BASE_W - cw - 6, BASE_H - 26, cw + 4, 24);
     ctx.fillStyle = "#fff";
+    ctx.fillText(heightHud, BASE_W - cw - 4, BASE_H - 15);
     ctx.fillText(coord, BASE_W - cw - 4, BASE_H - 3);
     ctx.restore();
   }
@@ -8147,7 +8158,14 @@ function update(t) {
       setGameResolution(CONFIG.BASE_W, CONFIG.BASE_H);
       title.start({
         onNewGame()  { startNewGameFlow(); },
-        onContinue() { setGameResolution(BASE_W, BASE_H); if (hasSaveData()) loadGame(); else startNewGameFlow(); },
+        onContinue() {
+          if (hasSaveData()) {
+            setGameResolution(BASE_W, BASE_H);
+            loadGame();
+          } else {
+            startNewGameFlow();
+          }
+        },
       });
       return;
     }
@@ -8998,12 +9016,16 @@ function update(t) {
 loadMap("moritasaki_room", { skipBgm: true });
 
 function startTitle() {
+  setGameResolution(CONFIG.BASE_W, CONFIG.BASE_H);
   title.start({
     onNewGame() { startNewGameFlow(); },
     onContinue() {
-      setGameResolution(BASE_W, BASE_H);
-      if (hasSaveData()) loadGame({ fromTitle: true });
-      else startNewGameFlow();
+      if (hasSaveData()) {
+        setGameResolution(BASE_W, BASE_H);
+        loadGame({ fromTitle: true });
+      } else {
+        startNewGameFlow();
+      }
     },
   });
 }
