@@ -15,7 +15,7 @@ export function createBgm({
     "assets/audio/bgm_end.mp3":      0.71,
     "assets/audio/bgm_select.mp3":   0.77,
     "assets/audio/bgm_movie.mp3":    1.72, // 元ファイル -51.3 LUFS なのでこれでも追いつかない
-    "assets/audio/duckA.mp3":        0.55, // コンプレッサで実質ラウドネス上昇するため抑え気味
+    "assets/audio/duckA.mp3":        1.0,  // 元音源のまま音量だけ調整
     "assets/audio/duckB.mp3":        0.70,
     "assets/audio/duckC.mp3":        0.77,
     "assets/audio/duckD.mp3":        0.73,
@@ -62,6 +62,7 @@ export function createBgm({
 
   // 実際にAudio要素にロード済みのsrc
   let currentSrc = null;
+  let resumeTimer = null;
 
   function isMainBgm(src) { return MAIN_BGMS.has(src); }
 
@@ -77,11 +78,10 @@ export function createBgm({
     // ユーザー操作前はダウンロードしない（遅延ロード）
     if (!unlocked) return;
 
-    // WebAudio グラフは「コンプレッサ必須トラック」or「既に作成済み」の時だけ
-    // 設定反映する（モバイルで MediaElementSource 起因の無音を避けるため遅延作成）
-    if (compressorPresets[src] || audioCtx) {
+    // WebAudio グラフは水中/リバーブ等で既に作成済みの時だけ設定反映する。
+    // 通常BGMは <audio> の直再生にして、モバイルでの無音リスクを避ける。
+    if (audioCtx) {
       ensureAudioGraph();
-      applyCompressorForSrc(src);
     }
 
     // 「無音」要求は src を変えずに pause だけにする（about:blank に変えると
@@ -111,6 +111,42 @@ export function createBgm({
     } catch (_e) {}
   }
 
+  function normalizeAfterResume() {
+    try {
+      bgm.playbackRate = 1;
+      bgm.muted = false;
+      applyVolumeForSrc(desiredSrc());
+    } catch (_e) {}
+  }
+
+  function suspendForPageHide() {
+    if (resumeTimer) {
+      clearTimeout(resumeTimer);
+      resumeTimer = null;
+    }
+  }
+
+  function resumeAfterPageShow() {
+    if (!unlocked) return;
+    const src = desiredSrc();
+    if (!src || src === "about:blank") return;
+
+    try {
+      if (audioCtx && audioCtx.state === "suspended") audioCtx.resume().catch(() => {});
+    } catch (_e) {}
+    normalizeAfterResume();
+    apply(src);
+
+    if (resumeTimer) clearTimeout(resumeTimer);
+    resumeTimer = setTimeout(() => {
+      resumeTimer = null;
+      normalizeAfterResume();
+      if (desiredSrc() && desiredSrc() !== "about:blank" && bgm.paused) {
+        bgm.play().catch(() => {});
+      }
+    }, 250);
+  }
+
   function unlock() {
     if (unlocked) return;
     unlocked = true;
@@ -134,18 +170,12 @@ export function createBgm({
     window.addEventListener(ev, unlock, { once: true });
   });
 
-  // ---- Web Audio underwater filter & per-track compressor ----
+  // ---- Web Audio underwater filter & effects graph ----
   let audioCtx        = null;
   let filter          = null;
   let compressor      = null;
   let compressorGain  = null;
 
-  // ダイナミックレンジが広いトラックだけ動的圧縮を効かせる
-  const compressorPresets = {
-    "assets/audio/duckA.mp3": {
-      threshold: -24, knee: 8, ratio: 4, attack: 0.005, release: 0.12, makeup: 1.0,
-    },
-  };
   const COMP_BYPASS = { threshold: 0, knee: 0, ratio: 1, attack: 0.003, release: 0.25, makeup: 1.0 };
 
   function ensureAudioGraph() {
@@ -172,18 +202,6 @@ export function createBgm({
       compressorGain.connect(audioCtx.destination);
       return true;
     } catch (_e) { return false; }
-  }
-
-  function applyCompressorForSrc(src) {
-    if (!compressor || !compressorGain || !audioCtx) return;
-    const preset = compressorPresets[src] || COMP_BYPASS;
-    const t = audioCtx.currentTime;
-    compressor.threshold.setTargetAtTime(preset.threshold, t, 0.01);
-    compressor.knee.setTargetAtTime(preset.knee,           t, 0.01);
-    compressor.ratio.setTargetAtTime(preset.ratio,         t, 0.01);
-    compressor.attack.setTargetAtTime(preset.attack,       t, 0.01);
-    compressor.release.setTargetAtTime(preset.release,     t, 0.01);
-    compressorGain.gain.setTargetAtTime(preset.makeup,     t, 0.05);
   }
 
   function setUnderwater(enabled) {
@@ -404,6 +422,8 @@ export function createBgm({
       const src = currentSrc || desiredSrc();
       if (src) applyVolumeForSrc(src);
     },
+    suspendForPageHide,
+    resumeAfterPageShow,
     setUnderwater,
     setReverb,
     startTripPitch,

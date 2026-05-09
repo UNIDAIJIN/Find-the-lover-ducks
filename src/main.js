@@ -1,5 +1,5 @@
 // main.js
-import { CONFIG } from "./config.js?v=0.9.6";
+import { CONFIG } from "./config.js?v=0.9.7";
 import { SPRITES } from "./sprites.js";
 import { MAPS } from "./maps.js";
 import { makeColStore } from "./col.js";
@@ -1126,6 +1126,8 @@ let heightLevel = "ground"; // "ground" | "upper"
 let exclamations = []; // { sx, sy, startMs, duration, char?, color? }
 let dashDust = []; // { x, y, vx, vy, born, life, size }
 let dashDustLastMs = 0;
+let dashDustDirX = 0;
+let dashDustDirY = 1;
 let chinanagoActivated = false;
 let cactusActivated    = false;
 const SHRINE_WHITE_SPEED = 1 / 8; // ~8フレームでフェードイン/アウト
@@ -2679,9 +2681,10 @@ function spawnDashDustForChar(t, ch, dx, dy, phase = 0) {
   const len = Math.hypot(dx, dy) || 1;
   const bx = ch.x + 8 - (dx / len) * (4 + phase);
   const by = ch.y + 15;
+  const y = by - Math.random() * 3;
   dashDust.push({
     x: bx + (Math.random() * 8 - 4),
-    y: by + (Math.random() * 3 - 1),
+    y,
     vx: -(dx / len) * (0.18 + Math.random() * 0.18) + (Math.random() - 0.5) * 0.12,
     vy: -0.12 - Math.random() * 0.12,
     born: t,
@@ -2709,7 +2712,7 @@ function drawDashDust(t) {
     if (age >= p.life) return false;
     const k = age / p.life;
     const x = p.x + p.vx * age * 0.08;
-    const y = p.y + p.vy * age * 0.08 - k * 2;
+    const y = Math.min(p.y, p.y + p.vy * age * 0.08 - k * 2);
     ctx.globalAlpha = (1 - k) * 0.55;
     ctx.fillStyle = k < 0.45 ? "#c7b08a" : "#8d806b";
     const s = p.size + (k > 0.5 ? 1 : 0);
@@ -4697,6 +4700,22 @@ function saveGame() {
   saveNotice = { text: "SAVED", until: nowMs() + 1200 };
 }
 
+function resetTransientEffectsForLoad() {
+  delete STATE.flags.furoHotUntil;
+  delete STATE.flags.uraYahhyCooking;
+
+  trip.stop();
+  goodTrip.stop();
+  bgmCtl.stopTripPitch();
+  bgmCtl.stopGoodTripPitch();
+
+  rainScene.active = false;
+  rainScene.untilMs = 0;
+  rainScene.questAtMs = 0;
+  rainScene.questDone = false;
+  stopRainLoop();
+}
+
 function beginContinueReveal() {
   input.lock();
   const w = canvas.width || BASE_W;
@@ -4772,6 +4791,7 @@ function loadGame(opt = {}) {
     for (const id of (data.collectedItems || [])) collectedItems.add(id);
     clearFlags();
     Object.assign(STATE.flags, data.flags || {});
+    resetTransientEffectsForLoad();
     STATE.money    = data.money    | 0;
     STATE.headwear = data.headwear ?? null;
     STATE.achievedQuests.clear();
@@ -4843,12 +4863,14 @@ const battle = createBattleSystem({
       onBlack: () => {
         done(); // st=null: バトル描画終了
         stopHeartbeat();
-        popBgmOverride({ safe: false });
+        stopShootingBgm();
+        stopAfloClubBgm();
+        stopMetalBgm();
         setGameResolution(BASE_W, BASE_H);
         pendingBattlePages = null;
         charHeight.leader = charHeight.p2 = charHeight.p3 = charHeight.p4 = "ground";
         heightLevel = "ground";
-        loadMap("moritasaki_room", { spawnAt: { x: 128, y: 160 } });
+        loadMap("moritasaki_room", { spawnAt: { x: 128, y: 160 }, skipBgm: true });
         [0, 1, 2].forEach((type, i) => {
           setTimeout(() => {
             playPunch(type);
@@ -4864,6 +4886,7 @@ const battle = createBattleSystem({
         });
       },
       onEnd: () => {
+        popBgmOverride({ safe: false });
         achieveQuest("02");
         setTimeout(() => {
           input.unlock();
@@ -6475,10 +6498,14 @@ function draw() {
   const isDashHeld = input.down("c") && !isSpaceMap;
   const spaceDanger = current.id === "space" && spaceO2 / SPACE_O2_MAX <= 0.2;
   const moonRot = isSpaceMap && spaceMoonAttach ? spaceMoonAngle + Math.PI / 2 : 0;
-  const panicFx = spaceDanger || isDashHeld;
   const panicT = tt;
-  const panicOx = (phase = 0) => panicFx ? (((Math.sin(panicT / 45 + phase) * 1.8) | 0)) : 0;
-  const panicOy = (phase = 0) => panicFx ? (((Math.sin(panicT / 28 + phase) > 0 ? 1 : -1))) : 0;
+  const panicOx = (phase = 0) => spaceDanger ? (((Math.sin(panicT / 45 + phase) * 1.8) | 0)) : 0;
+  const panicOy = (phase = 0) => spaceDanger ? (((Math.sin(panicT / 28 + phase) > 0 ? 1 : -1))) : 0;
+  const dashShakeT = tt;
+  const dashShakeOx = (phase = 0) => isDashHeld ? (((Math.sin(dashShakeT / 45 + phase) * 1.8) | 0)) : 0;
+  const dashShakeOy = (phase = 0) => isDashHeld ? (((Math.sin(dashShakeT / 28 + phase) > 0 ? 0 : -1))) : 0;
+  const charShakeOx = (phase = 0) => panicOx(phase) + dashShakeOx(phase);
+  const charShakeOy = (phase = 0) => panicOy(phase) + dashShakeOy(phase);
   const hidePartyForSpaceWarp = spaceWarpFx.active && (nowMs() - spaceWarpFx.start) >= WARP_SHAKE_MS;
   const furoHot = isFuroHotActive();
   if (partyVisible && !hidePartyForSpaceWarp) {
@@ -6528,8 +6555,8 @@ function draw() {
         const img = getPartyDrawImgForSlot(slot.name, slot.actor.img);
         const item = _poolItem();
         item.img = img;
-        item.x = (fx ?? slot.actor.x) + cOff + panicOx(slot.phase);
-        item.y = fy ?? slot.actor.y + panicOy(slot.phase);
+        item.x = (fx ?? slot.actor.x) + cOff + charShakeOx(slot.phase);
+        item.y = fy ?? slot.actor.y + charShakeOy(slot.phase);
         item.frame = emerging ? 0 : slot.actor.frame;
         item.alpha = followerAlpha;
         item.scale = fs;
@@ -6546,7 +6573,7 @@ function draw() {
       }
     }
     const leaderImg = getPartyDrawImgForSlot("leader", leader.img);
-    const il = _poolItem(); il.img = leaderImg; il.x = (playerHoleDrawX !== null ? playerHoleDrawX : leader.x) + cOff + panicOx(0.5); il.y = (playerHoleDrawY !== null ? playerHoleDrawY : leader.y) + rideBob + panicOy(0.5); il.frame = holeTransition ? 0 : leader.frame; il.alpha = undefined; il.scale = playerHoleScale; il.rotation = moonRot; il.metImg = _hwImg(leaderImg); il.spr = undefined; il.sprH = undefined; il.shadowImg = undefined; il.sweat = spaceDanger; il.sweatPhase = 0.5; il.hotSteam = furoHot; il.hotPhase = 0.5;
+    const il = _poolItem(); il.img = leaderImg; il.x = (playerHoleDrawX !== null ? playerHoleDrawX : leader.x) + cOff + charShakeOx(0.5); il.y = (playerHoleDrawY !== null ? playerHoleDrawY : leader.y) + rideBob + charShakeOy(0.5); il.frame = holeTransition ? 0 : leader.frame; il.alpha = undefined; il.scale = playerHoleScale; il.rotation = moonRot; il.metImg = _hwImg(leaderImg); il.spr = undefined; il.sprH = undefined; il.shadowImg = undefined; il.sweat = spaceDanger; il.sweatPhase = 0.5; il.hotSteam = furoHot; il.hotPhase = 0.5;
     if (gateWarpFx) {
       const gp = Math.min(1, (nowMs() - gateWarpFx.startMs) / gateWarpFx.duration);
       il.alpha = Math.max(0, 1 - gp * 0.7);
@@ -8813,6 +8840,8 @@ function update(t) {
   if (dx && dy) { const n = spd / Math.SQRT2; dx = dx > 0 ? n : -n; dy = dy > 0 ? n : -n; }
 
   if (dx || dy) {
+    dashDustDirX = dx;
+    dashDustDirY = dy;
     const nx = leader.x + dx;
     const ny = leader.y + dy;
 
@@ -8839,6 +8868,18 @@ function update(t) {
         leader.frame ^= 1;
         leader.last = t;
       }
+    } else if (input.down("c")) {
+      spawnDashDust(t, dashDustDirX, dashDustDirY);
+      if (t - leader.last > FRAME_MS) {
+        leader.frame ^= 1;
+        leader.last = t;
+      }
+    }
+  } else if (input.down("c")) {
+    spawnDashDust(t, dashDustDirX, dashDustDirY);
+    if (t - leader.last > FRAME_MS) {
+      leader.frame ^= 1;
+      leader.last = t;
     }
   } else {
     leader.frame = 0;
@@ -9162,8 +9203,28 @@ window.addEventListener("keydown", (e) => {
     e.stopImmediatePropagation();
   }
 }, { capture: true });
+
+let audioResumeTimer = null;
+function resumeAudioAfterPageShow() {
+  if (audioResumeTimer) clearTimeout(audioResumeTimer);
+  audioResumeTimer = setTimeout(() => {
+    audioResumeTimer = null;
+    bgmCtl.resumeAfterPageShow();
+    unlockSeAudio();
+  }, 120);
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) bgmCtl.suspendForPageHide();
+  else resumeAudioAfterPageShow();
+});
+window.addEventListener("pagehide", () => {
+  bgmCtl.suspendForPageHide();
+});
+window.addEventListener("focus", resumeAudioAfterPageShow);
 window.addEventListener("pageshow", (e) => {
   if (e.persisted) location.reload();
+  else resumeAudioAfterPageShow();
 });
 
 if (!window.__rpgLoopStarted) {

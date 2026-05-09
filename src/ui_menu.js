@@ -96,6 +96,7 @@ export function createMenu({
     if (phase === "closed") {
       phase  = "tabs";
       tabIdx = 0;
+      playCursor();
       input.clear();
     } else {
       phase = "closed";

@@ -23,8 +23,8 @@ const SAMPLE_SE_SCALE = {
   "se_furo.mp3": 1.0,
 };
 const GENERATED_SE_MASTER = 0.72;
-const GENERATED_BGM_MASTER = 0.43; // ファイル系BGM(-28.4 LUFS)に揃えて -4.5 dB
-const AMBIENT_BGM_MASTER = 0.46;   // 同上
+const GENERATED_BGM_MASTER = 0.645; // API生成BGM: 0.43 * 1.5
+const AMBIENT_BGM_MASTER = 0.69;    // API環境BGM: 0.46 * 1.5
 
 function sampleSeLevel(name, vol) {
   return Math.min(2.2, vol * SAMPLE_SE_MASTER * (SAMPLE_SE_SCALE[name] ?? 1));
@@ -1705,7 +1705,7 @@ export function playBirdCall() {
 
 let waterfallNode = null;
 let waterfallGain = null;
-export function startWaterfall(vol = 0.12) {
+export function startWaterfall(vol = 0.18) {
   const ctx = getCtx();
   if (ctx.state === "suspended") ctx.resume().catch(() => {});
   if (waterfallNode) return;
