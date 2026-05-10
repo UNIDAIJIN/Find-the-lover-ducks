@@ -30,6 +30,7 @@ export function createEnding({ BASE_W, BASE_H }) {
     "RIKU ISHIHARA",
     "",
     "Debug",
+    "YasasiMiMikaki",
     "NATSUMI HEIKE",
     "TAIGA NINOMIYA",
     "MAKI SHIBATA",

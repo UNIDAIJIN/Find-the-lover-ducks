@@ -1,8 +1,9 @@
 // ui_jumprope.js
+import { controlPrompt } from "./control_prompts.js";
 import { playConfirm } from "./se.js";
 import { STATE } from "./state.js";
 
-export function createJumprope({ BASE_W, BASE_H, input, getParty, yahhyImg } = {}) {
+export function createJumprope({ BASE_W, BASE_H, input, getParty, yahhyImg, mobile = false } = {}) {
   let active          = false;
   let angle           = 0;
   let speed           = 0.055;
@@ -263,7 +264,7 @@ export function createJumprope({ BASE_W, BASE_H, input, getParty, yahhyImg } = {
       ctx.fillStyle    = "#fff";
       drawTextCenter("NAWATOBI", CX, ((BASE_H / 2) | 0) - 12);
       ctx.fillStyle    = "#ffe";
-      drawTextCenter("Z でジャンプ", CX, ((BASE_H / 2) | 0) + 8);
+      drawTextCenter(`${controlPrompt("z", { mobile })} でジャンプ`, CX, ((BASE_H / 2) | 0) + 8);
       ctx.textAlign    = "left";
       ctx.textBaseline = "top";
     }

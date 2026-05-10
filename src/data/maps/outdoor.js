@@ -66,7 +66,7 @@ export const outdoorMap = {
       id:        43,
       to:        "laundry",
       trigger:   { x: 1683, y: 821, w: 16, h: 8 },
-      entryAt:   { x: 1683, y: 813 },
+      entryAt:   { x: 1683, y: 815 },
       entryWalk: { dx: 0, dy: 1, frames: 20 },
     },
     {

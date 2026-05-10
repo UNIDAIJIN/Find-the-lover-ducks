@@ -241,5 +241,5 @@ export function createChoice({ BASE_W, BASE_H, input, dialog } = {}) {
     }
   }
 
-  return { isActive, setAnchorRect, setAnchor, open, update, draw };
+  return { isActive, setAnchorRect, setAnchor, open, close, update, draw };
 }

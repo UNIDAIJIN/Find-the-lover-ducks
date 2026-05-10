@@ -8,15 +8,12 @@ export const hawaiiNpc = {
   solid:     true,
   event: {
     type: "yes_no_dialog",
-    introPages: [["わたしのラブソングがどっかにいっちゃったの！"]],
+    introPages: [["わたしのラブソング！"]],
     question: "ラブソングを見てない？",
     options: ["はい", "いいえ"],
     onYes: [["本当？つれてもどってきて！"]],
-    onNo: [["どこかにいたらつれてもどってきて！"]],
-    commonPages: [
-      ["これはラブソングのお気に入りのおやつ！"],
-      ["わたしておくね！"],
-    ],
+    onNo: [],
+    commonPages: [["みつけたらこれをあげて！"]],
     giveItem: "love_song_snack",
     giveItemName: "ラブソングのおやつ",
     giveOnceFlag: "hawaiiGaveLoveSongSnack",

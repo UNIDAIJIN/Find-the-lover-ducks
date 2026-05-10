@@ -3,6 +3,7 @@ import { playCursor, playConfirm, playItemJingle, playUseItemSe } from "./se.js"
 import { QUESTS } from "./data/quests.js";
 import { STATE } from "./state.js";
 import { controlPromptRows } from "./control_prompts.js";
+import { createInputRepeat } from "./input_repeat.js";
 
 export function createMenu({
   BASE_W,
@@ -36,6 +37,7 @@ export function createMenu({
   let questCursor      = 0;
   let questCondScrollX = 0;   // cond 列の横スクロールオフセット
   let questCondScrollT = 0;   // カーソルがこの行に来た時刻
+  const navRepeat = createInputRepeat(input);
 
   // =====================
   // Constants / Layout
@@ -97,15 +99,18 @@ export function createMenu({
       phase  = "tabs";
       tabIdx = 0;
       playCursor();
+      navRepeat.reset();
       input.clear();
     } else {
       phase = "closed";
+      navRepeat.reset();
       input.clear();
     }
   }
 
   function close() {
     phase = "closed";
+    navRepeat.reset();
     input.clear();
   }
 
@@ -116,13 +121,14 @@ export function createMenu({
     if (phase === "closed") return;
 
     if (phase === "tabs") {
-      if (input.consume("x")) { phase = "closed"; input.clear(); return; }
+      if (input.consume("x")) { phase = "closed"; navRepeat.reset(); input.clear(); return; }
       if (input.consume("ArrowLeft"))  { tabIdx = (tabIdx - 1 + TABS.length) % TABS.length; playCursor(); }
       if (input.consume("ArrowRight")) { tabIdx = (tabIdx + 1) % TABS.length; playCursor(); }
       if (input.consume("z")) {
         phase     = "open";
         animStart = now();
         playConfirm();
+        navRepeat.reset();
         if (tabIdx === 0) {
           const unique = [...new Map(getItems().map(id => [id, id])).keys()];
           itemCursor = Math.max(0, Math.min(itemCursor, unique.length - 1));
@@ -139,15 +145,15 @@ export function createMenu({
       const elapsed = now() - animStart;
       if (elapsed < ANIM_MS) return; // アニメ中は入力ブロック
 
-      if (input.consume("x")) { phase = "closing"; closeStart = now(); input.clear(); return; }
+      if (input.consume("x")) { phase = "closing"; closeStart = now(); navRepeat.reset(); input.clear(); return; }
 
       if (tabIdx === 0) {
         const items = getItems();
         const unique = [...new Map(items.map(id => [id, id])).keys()];
         const n = unique.length;
         if (n > 0) {
-          if (input.consume("ArrowUp"))   { moveCursor(unique, itemCursor - 1); playCursor(); }
-          if (input.consume("ArrowDown")) { moveCursor(unique, itemCursor + 1); playCursor(); }
+          if (navRepeat.consume("ArrowUp"))   { moveCursor(unique, itemCursor - 1); playCursor(); }
+          if (navRepeat.consume("ArrowDown")) { moveCursor(unique, itemCursor + 1); playCursor(); }
           if (input.consume("z")) {
             const id   = unique[itemCursor];
             const name = itemName(id);
@@ -166,8 +172,8 @@ export function createMenu({
         }
       } else if (tabIdx === 1) {
         const prev = questCursor;
-        if (input.consume("ArrowUp"))   { questCursor = Math.max(0, questCursor - 1); playCursor(); }
-        if (input.consume("ArrowDown")) { questCursor = Math.min(QUESTS.length - 1, questCursor + 1); playCursor(); }
+        if (navRepeat.consume("ArrowUp"))   { questCursor = Math.max(0, questCursor - 1); playCursor(); }
+        if (navRepeat.consume("ArrowDown")) { questCursor = Math.min(QUESTS.length - 1, questCursor + 1); playCursor(); }
         if (questCursor !== prev) {
           questCondScrollX = 0;
           questCondScrollT = now();

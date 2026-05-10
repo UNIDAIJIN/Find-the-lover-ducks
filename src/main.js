@@ -1,5 +1,5 @@
 // main.js
-import { CONFIG } from "./config.js?v=0.9.7";
+import { CONFIG } from "./config.js?v=0.9.8";
 import { SPRITES } from "./sprites.js";
 import { MAPS } from "./maps.js";
 import { makeColStore } from "./col.js";
@@ -127,7 +127,7 @@ const phoneBrawl = createPhoneBrawl({
       bruiser: SPRITES.phoneBrawl3,
       blaster: SPRITES.angler,
       sniper: SPRITES.ryousan,
-      medic: SPRITES.lee,
+      medic: SPRITES.pizza2,
       swarm: SPRITES.phoneBrawl7,
       frost: [SPRITES.cactus, SPRITES.cactus, SPRITES.cactus_hat],
       spark: [SPRITES.ac_1, SPRITES.ac_2, SPRITES.ac_3, SPRITES.ac_4, SPRITES.ac_5, SPRITES.afloboy2],
@@ -138,7 +138,7 @@ const phoneBrawl = createPhoneBrawl({
 const dialog = createDialog({ BASE_W, BASE_H, input });
 const choice = createChoice({ BASE_W, BASE_H, input, dialog });
 const shop      = createShop({ BASE_W, BASE_H, input });
-const jumprope  = createJumprope({ BASE_W, BASE_H, input, getParty: () => ({ leader, p2, p3, p4 }), yahhyImg: SPRITES.yahhy });
+const jumprope  = createJumprope({ BASE_W, BASE_H, input, getParty: () => ({ leader, p2, p3, p4 }), yahhyImg: SPRITES.yahhy, mobile: MOBILE });
 const fade = createFade({ BASE_W, BASE_H, canvas, input, mapOutMs: MAP_FADE_OUT_MS, mapInMs: MAP_FADE_IN_MS });
 
 const interactionSession = createInteractionSession({
@@ -571,6 +571,7 @@ function updateSpaceBossOutdoorEpilogue(tt) {
     letterbox.reset();
     input.clear();
     input.unlock();
+    bgmCtl.setOverride("about:blank");
     ending.startCredits(tt);
   }
 }
@@ -1171,10 +1172,11 @@ function startPhoneBrawl(onDone, options = {}) {
   if (phoneBrawl.isActive()) return;
   interactionSession.end();
   stopChaosMetalBgm();
-  pushBgmOverride("about:blank", { safe: false });
+  const preserveBgm = options.preserveBgm === true;
+  if (!preserveBgm) pushBgmOverride("about:blank", { safe: false });
   setGameResolution(PHONE_BRAWL_W, PHONE_BRAWL_H);
   phoneBrawl.start((result) => {
-    popBgmOverride({ safe: false });
+    if (!preserveBgm) popBgmOverride({ safe: false });
     setGameResolution(BASE_W, BASE_H);
     input.clear();
     if (typeof onDone === "function") {
@@ -1213,7 +1215,7 @@ function startSpaceBossFirstBattle() {
     if (current.id !== "space_boss") return;
     stopHeartbeat();
     startSpaceBossReunionEvent();
-  }, { playerDeckIds: "n2_msitp", giveUpAction: "interventionReturn", internalBgm: false });
+  }, { playerDeckIds: "n2_msitp", giveUpAction: "interventionReturn", internalBgm: false, seVolumeScale: 2 });
 }
 
 function startSpaceBossFirstBattleGameOverDebug() {
@@ -1297,7 +1299,7 @@ function updateSpaceBossBossSpeech(t) {
     if (t - fx.lastCharAt >= SPACE_BOSS_TYPE_BACKSPACE_MS) {
       fx.charIndex = Math.max(0, fx.charIndex - 1);
       fx.lastCharAt = t;
-      playAlienTypingNoise(900 + fx.charIndex);
+      playAlienTypingNoise(900 + fx.charIndex, SPACE_BOSS_TYPE_VOLUME_SCALE);
       if (fx.charIndex <= 0) {
         fx.phase = "final";
         fx.lineDoneAt = 0;
@@ -1313,7 +1315,7 @@ function updateSpaceBossBossSpeech(t) {
       fx.charIndex += 1;
       fx.lastCharAt = t;
       if (ch !== " " && ch !== "　") {
-        playAlienTypingNoise(fx.charIndex + fx.lineIndex * 17);
+        playAlienTypingNoise(fx.charIndex + fx.lineIndex * 17, SPACE_BOSS_TYPE_VOLUME_SCALE);
       }
     }
     return;
@@ -1480,7 +1482,7 @@ function updateSpaceBossBossSpeech(t) {
 function startSpaceBossReunionEvent() {
   if (current.id !== "space_boss") return;
   interactionSession.begin();
-  bgmCtl.setOverride("assets/audio/duckC.mp3");
+  bgmCtl.setOverrideWithIntro("assets/audio/ikaros2026_intro.mp3", "assets/audio/ikaros2026.mp3");
   restoreSpaceBossPreBattleLayout();
   input.lock();
   interactionSession.trackSync(() => startSpaceBossCactusIntro(() => {
@@ -2123,7 +2125,7 @@ function startSpaceBossAlliesIntro(onDone) {
     { key: "yahhy", img: SPRITES.yahhy, ox: 42, oy: -12 },
     { key: "spacesisters1", img: SPRITES.spacesisters1, ox: 18, oy: -36 },
     { key: "kingyobachi_san", img: SPRITES.kingyobachi_san, ox: -62, oy: 28, spr: 16, sprH: 32 },
-    { key: "lee", img: SPRITES.lee, ox: 58, oy: 34 },
+    { key: "lee", img: SPRITES.pizza2, ox: 58, oy: 34 },
   ];
   const allies = defs.map((def, i) => {
     const name = `sb_ally_${def.key}`;
@@ -2273,15 +2275,25 @@ function startSpaceBossFinalBattle() {
       return;
     }
     returnToTitleAfterLastBattleGameOver();
-  }, { playerDeckIds: "lastbattle2", internalBgm: false });
+  }, {
+    playerDeckIds: "lastbattle2",
+    internalBgm: false,
+    preserveBgm: true,
+    seVolumeScale: 2,
+    onVictory: () => fadeOutBgmToSilence(1800),
+  });
 }
 
 function startSpaceBossWinEvent() {
   if (current.id !== "space_boss") return;
   interactionSession.end();
   STATE.flags.galaxyBossDefeated = true;
-  bgmCtl.setOverride("assets/audio/duckE.mp3");
-  spaceBossWhiteReunion = { startMs: nowMs() };
+  spaceBossWhiteReunion = { startMs: nowMs(), duckEStarted: false };
+  setTimeout(() => {
+    if (!spaceBossWhiteReunion || spaceBossWhiteReunion.duckEStarted) return;
+    spaceBossWhiteReunion.duckEStarted = true;
+    bgmCtl.setOverride("assets/audio/duckE.mp3");
+  }, 1100);
   partyVisible = false;
   input.lock();
   setTimeout(() => {
@@ -2358,7 +2370,7 @@ function startSpaceBossAfterHeartReturnSequence() {
       input.unlock();
       dialog.open([
         ["タイムマシン？帰る時は必要ないよ。"],
-        ["あれはこうなった世界で作ったものじゃないからもう使えないのさ。"],
+        ["あれはこの未来で作ったものじゃないからもう使えないのさ。"],
         ["それに、宇宙から未来に帰るのって、実はけっこう簡単なんだよ。"],
       ], () => {
         input.lock();
@@ -2515,6 +2527,10 @@ function getPartySprite(charNo) {
   const lv = STATE.flags.skinLevel | 0;
   const suffix = lv === 1 ? "_t1" : lv === 2 ? "_t2" : "";
   return SPRITES[`p${n}${suffix}`];
+}
+
+function getDefaultPartySprite(charNo) {
+  return SPRITES[`p${charNo | 0}`];
 }
 
 function getPartyFuroSprite(charNo) {
@@ -2953,6 +2969,7 @@ const SPACE_BOSS_TYPE_LINE_HOLD_MS = 620;
 const SPACE_BOSS_TYPE_RETYPE_PAUSE_MS = 450;
 const SPACE_BOSS_TYPE_RANT_HOLD_MS = 760;
 const SPACE_BOSS_TYPE_TRANSITION_HOLD_MS = 650;
+const SPACE_BOSS_TYPE_VOLUME_SCALE = 2;
 const SPACE_BOSS_BOSS_RETYPE_DRAFT = "おどろいたでしょう";
 const SPACE_BOSS_BOSS_RETYPE_FINAL = "驚いたでしょう。私があなた方地球人類と同じ姿をしているものだから。";
 const SPACE_BOSS_BOSS_AFTER_LINE = "本来、私は物質としての姿を持ちません。";
@@ -3067,6 +3084,12 @@ function popBgmOverride({ safe = true } = {}) {
 }
 function restoreItemBgm() {
   popBgmOverride();
+}
+function isActiveBgmSrc(src) {
+  if (!src) return false;
+  return bgmCtl.getOverrideSrc() === src ||
+    (!bgmCtl.getOverrideSrc() && bgmCtl.getMapSrc() === src) ||
+    bgmCtl.getCurrentSrc() === src;
 }
 function lockItemUseWait({ restoreBgm = false } = {}) {
   input.lock();
@@ -3825,11 +3848,9 @@ const menu = createMenu({
           ["ナツミはピザをたべてしまった！"],
           ["激うま！"],
           ["商品をたべてしまった。"],
-          ["あやまりにいこう。"],
         ], () => {
-          if (ateDeliveryPizza) {
-            setTimeout(() => achieveQuest("16"), 1000);
-          }
+          if (ateDeliveryPizza) achieveQuest("16");
+          dialog.open([["あやまりにいこう。"]], null, "sign");
         }, "sign");
       }, 700);
       return true;
@@ -4363,6 +4384,23 @@ function debugWarpToPub() {
   setGameResolution(BASE_W, BASE_H);
   loadMap("pub");
   saveNotice = { text: "PUB", until: nowMs() + 1200 };
+  input.clear();
+}
+
+function debugJumpToSpaceBossEndingScene() {
+  input.unlock();
+  setGameResolution(BASE_W, BASE_H);
+  fade.reset();
+  ending.stop();
+  dialog.close();
+  choice.close();
+  phoneBrawl.close();
+  spaceBossWhiteReunion = null;
+  spaceBossMoonScene = null;
+  spaceBossOutdoorEpilogue = null;
+  pendingEndingFadeIn = false;
+  loadMap("space_boss", { spaceBossStartAt: "firstBattle", skipBgm: true });
+  saveNotice = { text: "BOSS 1", until: nowMs() + 1200 };
   input.clear();
 }
 
@@ -4990,7 +5028,7 @@ function hitNpc(nx, ny) {
   for (const act of actors) {
     if (act.hidden) continue;
     if (!act.solid) continue;
-    if (act.showWhenBgm && bgmCtl.getOverrideSrc() !== act.showWhenBgm) continue;
+    if (act.showWhenBgm && !isActiveBgmSrc(act.showWhenBgm)) continue;
     if (hitRect(a, npcFootBox(act))) return true;
   }
   return false;
@@ -5587,6 +5625,7 @@ function loadMap(id, opt = null) {
         actors.push({
           kind: "npc", name: `sb_party_${i}`,
           img: getPartySprite(order[i]),
+          partyNo: order[i],
           x: cx - 30 + i * 20, y: cy,
           spr: SPR, sprH: SPR,
           frame: 0, last: 0,
@@ -5599,6 +5638,20 @@ function loadMap(id, opt = null) {
       for (const act of actors) {
         if (act.name === "sb_ss1") act.glow = true;
       }
+      if (opt?.spaceBossStartAt === "winEnding" || opt?.spaceBossStartAt === "beforeSecondBattle") {
+        sbBlackHole = null;
+        sbSuck = null;
+        sbBoss = null;
+        sbWhiteFlash = null;
+        sbBossType = null;
+        sbLastBattleStarted = true;
+        input.lock();
+        setTimeout(() => {
+          if (current.id !== "space_boss") return;
+          if (opt?.spaceBossStartAt === "beforeSecondBattle") startSpaceBossFinalBattle();
+          else startSpaceBossWinEvent();
+        }, 250);
+      } else {
       input.lock();
       let sbIdx = opt?.spaceBossStartAt === "blackHole" || opt?.spaceBossStartAt === "gameOver" || opt?.spaceBossStartAt === "firstBattle"
         ? SPACE_BOSS_TALK.findIndex(step => step.action === "suck")
@@ -5614,7 +5667,7 @@ function loadMap(id, opt = null) {
         sbBlackHole = { y: -20, r: 50 };
         const party = actors.filter(a => a.name?.startsWith("sb_party_"));
         for (let i = 0; i < party.length; i++) {
-          party[i].img = SPRITES[`p${i + 1}`];
+          party[i].img = getDefaultPartySprite(party[i].partyNo || i + 1);
         }
         const ss = actors.find(a => a.name === "sb_ss1");
         if (ss) ss.ironHeartMark = true;
@@ -5710,7 +5763,7 @@ function loadMap(id, opt = null) {
           setTimeout(() => {
             const party = actors.filter(a => a.name?.startsWith("sb_party_"));
             for (let i = 0; i < party.length; i++) {
-              party[i].img = SPRITES[`p${i + 1}`];
+              party[i].img = getDefaultPartySprite(party[i].partyNo || i + 1);
             }
           }, SPACE_BOSS_TIMING.whiteFlashChange);
           setTimeout(() => {
@@ -5763,6 +5816,7 @@ function loadMap(id, opt = null) {
         }, delay);
       }
       sbNext();
+      }
     }
     updateCam();
     if (current.id === "theater") {
@@ -6601,7 +6655,7 @@ function draw() {
     if (act.noRender) continue;
     let bgmFadeAlpha = 1;
     if (act.showWhenBgm) {
-      const match = bgmCtl.getOverrideSrc() === act.showWhenBgm;
+      const match = isActiveBgmSrc(act.showWhenBgm);
       if (act._bgmMatch === undefined) {
         act._bgmMatch = match;
         act._bgmAlpha = match ? 1 : 0;
@@ -7554,7 +7608,7 @@ function checkGateWarpTriggers() {
   const fb = footBox(leader.x, leader.y);
   for (const act of actors) {
     if (!act.shootingTrigger) continue;
-    if (act.showWhenBgm && bgmCtl.getOverrideSrc() !== act.showWhenBgm) continue;
+    if (act.showWhenBgm && !isActiveBgmSrc(act.showWhenBgm)) continue;
     const tb = talkRectActor(act);
     if (hitRect(fb, tb)) {
       startGateWarp(act);
@@ -7638,7 +7692,7 @@ function findInteractTarget() {
       ? npcFootBox(act)
       : talkRectActor(act);
     if (!hitRect(a, b)) continue;
-    if (act.kind === "npc" && act.showWhenBgm && bgmCtl.getOverrideSrc() !== act.showWhenBgm) continue;
+    if (act.kind === "npc" && act.showWhenBgm && !isActiveBgmSrc(act.showWhenBgm)) continue;
     return act;
   }
   return null;
@@ -7687,7 +7741,7 @@ function tryInteract(t) {
         dialog.open([["ピザを配達した！"]], null, "sign");
         return;
       }
-      if (act.showWhenBgm && bgmCtl.getOverrideSrc() !== act.showWhenBgm) continue;
+      if (act.showWhenBgm && !isActiveBgmSrc(act.showWhenBgm)) continue;
       interactionSession.begin();
       dialog.setVoice(act.voice || "default");
       const handled = interactionSession.trackSync(() => runNpcEvent(act, {
@@ -7994,6 +8048,11 @@ function tryInteract(t) {
 }
 
 function update(t) {
+  if (DEBUG && input.consume("d")) {
+    debugJumpToSpaceBossEndingScene();
+    return;
+  }
+
   // ロード画面
   if (loading.isActive()) {
     loading.update();
@@ -8465,10 +8524,6 @@ function update(t) {
   if (input.consume("s")) { saveGame(); return; }
   if (input.consume("l")) { loadGame(); return; }
   if (input.consume("v")) { setBgmOverrideSafe(null); setBgmMapSafe("assets/audio/bgm0.mp3"); return; }
-  if (DEBUG && input.consume("d")) {
-    debugWarpToPub();
-    return;
-  }
   if (DEBUG && input.consume("p")) {
     startPhoneBrawl();
     return;
@@ -9098,7 +9153,7 @@ const _perfStats = {
 };
 
 function drawPerfHud() {
-  if (!PERF_HUD) return;
+  if (!PERF_HUD || !DEBUG || !input.down("b")) return;
   ctx.save();
   ctx.fillStyle = "rgba(0,0,0,0.6)";
   ctx.fillRect(0, 0, 72, 28);

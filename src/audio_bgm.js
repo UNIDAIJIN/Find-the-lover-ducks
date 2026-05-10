@@ -12,7 +12,7 @@ export function createBgm({
   const sourceVolumeScale = {
     "assets/audio/bgm0.mp3":         0.74,
     "assets/audio/bgm_battle.mp3":   0.74,
-    "assets/audio/bgm_end.mp3":      0.71,
+    "assets/audio/bgm_end.mp3":      0.90,
     "assets/audio/bgm_select.mp3":   0.77,
     "assets/audio/bgm_movie.mp3":    1.72, // 元ファイル -51.3 LUFS なのでこれでも追いつかない
     "assets/audio/duckA.mp3":        1.0,  // 元音源のまま音量だけ調整
@@ -26,6 +26,8 @@ export function createBgm({
     "assets/audio/duckH.mp3":        0.71,
     "assets/audio/duckI.mp3":        0.71,
     "assets/audio/duckJ.mp3":        0.73,
+    "assets/audio/ikaros2026_intro.mp3": 0.82,
+    "assets/audio/ikaros2026.mp3":       0.82,
   };
 
   function volumeForSrc(src) {
@@ -63,11 +65,33 @@ export function createBgm({
   // 実際にAudio要素にロード済みのsrc
   let currentSrc = null;
   let resumeTimer = null;
+  let introLoop = null;
 
   function isMainBgm(src) { return MAIN_BGMS.has(src); }
 
   function desiredSrc() {
+    if (introLoop?.active) return introLoop.introSrc;
     return overrideSrc || mapSrc;
+  }
+
+  function clearIntroLoop() {
+    if (introLoop?.onEnded) {
+      try { bgm.removeEventListener("ended", introLoop.onEnded); } catch (_e) {}
+    }
+    introLoop = null;
+    bgm.loop = true;
+  }
+
+  function isSilenceSrc(src) {
+    return src === "about:blank";
+  }
+
+  function silenceAudioElement() {
+    try {
+      bgm.pause();
+      bgm.muted = true;
+      bgm.volume = 0;
+    } catch (_e) {}
   }
 
   function apply(src) {
@@ -86,15 +110,16 @@ export function createBgm({
 
     // 「無音」要求は src を変えずに pause だけにする（about:blank に変えると
     //  iOS で <audio> 要素のアンロック状態が解除される場合があるため）
-    if (src === "about:blank") {
-      try {
-        if (!bgm.paused) bgm.pause();
-      } catch (_e) {}
+    if (isSilenceSrc(src)) {
+      // Bluetooth等のメディア再生ボタンが直前のsrcを再生しても鳴らないようにする。
+      silenceAudioElement();
       return;
     }
 
     // 同じsrcなら、止まってる時だけ再生を試す
     if (currentSrc === src) {
+      bgm.muted = false;
+      applyVolumeForSrc(src);
       if (bgm.paused) bgm.play().catch(() => {});
       return;
     }
@@ -113,6 +138,10 @@ export function createBgm({
 
   function normalizeAfterResume() {
     try {
+      if (isSilenceSrc(desiredSrc())) {
+        silenceAudioElement();
+        return;
+      }
       bgm.playbackRate = 1;
       bgm.muted = false;
       applyVolumeForSrc(desiredSrc());
@@ -163,6 +192,23 @@ export function createBgm({
       } catch (_e) {}
     }
     apply(ds);
+  }
+
+  if (typeof navigator !== "undefined" && navigator.mediaSession) {
+    try {
+      navigator.mediaSession.setActionHandler("play", () => {
+        const src = desiredSrc();
+        if (!src || isSilenceSrc(src)) {
+          silenceAudioElement();
+          return;
+        }
+        normalizeAfterResume();
+        apply(src);
+      });
+      navigator.mediaSession.setActionHandler("pause", () => {
+        try { bgm.pause(); } catch (_e) {}
+      });
+    } catch (_e) {}
   }
 
   // 最初のユーザー操作でアンロック
@@ -390,6 +436,7 @@ export function createBgm({
   }
 
   function setMap(src) {
+    clearIntroLoop();
     mapSrc = src || mapSrc;
     overrideSrc = null;
     if (isMainBgm(mapSrc)) lastMainSrc = mapSrc;
@@ -397,6 +444,7 @@ export function createBgm({
   }
 
   function setOverride(src) {
+    clearIntroLoop();
     if (src) {
       if (isMainBgm(src)) lastMainSrc = src;
       overrideSrc = src;
@@ -407,12 +455,33 @@ export function createBgm({
     apply(desiredSrc());
   }
 
+  function setOverrideWithIntro(introSrc, loopSrc) {
+    clearIntroLoop();
+    if (!introSrc || !loopSrc) {
+      setOverride(loopSrc || introSrc);
+      return;
+    }
+    if (isMainBgm(loopSrc)) lastMainSrc = loopSrc;
+    overrideSrc = loopSrc;
+    const onEnded = () => {
+      if (!introLoop || introLoop.onEnded !== onEnded) return;
+      introLoop.active = false;
+      clearIntroLoop();
+      apply(loopSrc);
+    };
+    introLoop = { introSrc, loopSrc, onEnded, active: true };
+    bgm.loop = false;
+    try { bgm.addEventListener("ended", onEnded); } catch (_e) {}
+    apply(introSrc);
+  }
+
   return {
     audio: bgm, // DEBUG用途
     isUnlocked: () => unlocked,
     unlock,
     setMap,
     setOverride,
+    setOverrideWithIntro,
     getMapSrc: () => mapSrc,
     getOverrideSrc: () => overrideSrc,
     getCurrentSrc: () => currentSrc,

@@ -1,6 +1,7 @@
 // ui_shop.js
 import { playConfirm } from "./se.js";
 import { STATE } from "./state.js";
+import { createInputRepeat } from "./input_repeat.js";
 
 export function createShop({ BASE_W, BASE_H, input } = {}) {
   let active     = false;
@@ -10,6 +11,8 @@ export function createShop({ BASE_W, BASE_H, input } = {}) {
   let cursor     = 0;
   let scrollRow  = 0;
   let onSelect   = null;
+  let inputLockedUntil = 0;
+  const navRepeat = createInputRepeat(input);
 
   const WIN_W   = 160;
   const PAD     = 10;
@@ -20,6 +23,11 @@ export function createShop({ BASE_W, BASE_H, input } = {}) {
   // 所持金小窓
   const MONEY_W = 70;
   const MONEY_H = 20;
+  const PURCHASE_INPUT_LOCK_MS = 350;
+
+  function now() {
+    return typeof performance !== "undefined" ? performance.now() : Date.now();
+  }
 
   function totalRows() {
     return items.length + 1;
@@ -70,6 +78,7 @@ export function createShop({ BASE_W, BASE_H, input } = {}) {
     scrollRow  = 0;
     followCursor();
     onSelect   = typeof cb === "function" ? cb : null;
+    navRepeat.reset();
     input.clear();
   }
 
@@ -81,6 +90,7 @@ export function createShop({ BASE_W, BASE_H, input } = {}) {
     cursor    = 0;
     scrollRow = 0;
     onSelect  = null;
+    navRepeat.reset();
   }
 
   function allRows() {
@@ -90,9 +100,18 @@ export function createShop({ BASE_W, BASE_H, input } = {}) {
   function update() {
     if (!active) return;
 
+    if (now() < inputLockedUntil) {
+      input.consume("ArrowUp");
+      input.consume("ArrowDown");
+      input.consume("z");
+      input.consume("x");
+      navRepeat.reset();
+      return;
+    }
+
     const rows = allRows();
-    if (input.consume("ArrowUp"))   { cursor = (cursor - 1 + rows.length) % rows.length; followCursor(); }
-    if (input.consume("ArrowDown")) { cursor = (cursor + 1) % rows.length;               followCursor(); }
+    if (navRepeat.consume("ArrowUp"))   { cursor = (cursor - 1 + rows.length) % rows.length; followCursor(); }
+    if (navRepeat.consume("ArrowDown")) { cursor = (cursor + 1) % rows.length;               followCursor(); }
 
     if (input.consume("z")) {
       const row = rows[cursor];
@@ -108,6 +127,7 @@ export function createShop({ BASE_W, BASE_H, input } = {}) {
       const cb = onSelect;
       const id = row.id;
       const savedCursor = cursor;
+      inputLockedUntil = now() + PURCHASE_INPUT_LOCK_MS;
       close();
       if (cb) cb(id, savedCursor);
       return;

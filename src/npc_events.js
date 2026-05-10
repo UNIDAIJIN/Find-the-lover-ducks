@@ -337,7 +337,10 @@ export function runNpcEvent(act, ctx) {
     if (STATE.flags.nidhoggGave) {
       // 2回目以降
       if (typeof getBgmSrc === "function" && getBgmSrc() === "assets/audio/duckH.mp3") {
-        if (typeof achieveQuest === "function") achieveQuest("10");
+        dialog.open([["あぁ！このメロディ！この空気！なつかしいなぁ！"]], () => {
+          if (typeof achieveQuest === "function") achieveQuest("10");
+        });
+        return true;
       }
       dialog.open(ev.dialogAlready || [["……"]]);
     } else {
@@ -534,7 +537,7 @@ export function runNpcEvent(act, ctx) {
         ]);
       } else if (STATE.flags.pizzaAte) {
         if (typeof cancelPizzaJob === "function") cancelPizzaJob();
-        dialog.open([["もー、なにしてんのー、だめだよー、たべちゃ。"]]);
+        dialog.open([["もー、なにしてんのよー、だめだよー、たべちゃ。"]]);
       } else {
         if (typeof inventory?.getSnapshot === "function" && !inventory.getSnapshot().includes("pizza")) {
           inventory.addItem("pizza");

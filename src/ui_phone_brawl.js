@@ -63,9 +63,9 @@ const NIDHOGG_FLAME_OFFSET_X = 11;
 const NIDHOGG_FLAME_OFFSET_Y = 8;
 const BOSS_LOW_SPIN_RATE = -2.2;
 const BOSS_MID_SPIN_RATE = 2.8;
-const BOOST_LIGHT_UNIT_THRESHOLD = 28;
-const BOOST_TEXT_UNIT_LIMIT = 14;
-const PEPPER_VISUAL_LIMIT = 18;
+const BOOST_LIGHT_UNIT_THRESHOLD = 14;
+const BOOST_TEXT_UNIT_LIMIT = 8;
+const PEPPER_VISUAL_LIMIT = 5;
 const SPACE_STARS = makeSpaceStars();
 
 const CARDS = [
@@ -74,7 +74,7 @@ const CARDS = [
   { id: "bruiser", behavior: "bruiser", name: "LUCHADOR", spriteNo: 3, cost: 4, hp: 220, damage: 32, speed: 24, range: 18, cooldown: 0.78, radius: 9, color: "#ef3e45", label: "ATK UP", attackFx: "melee", summonText: "ジッゴクゥー！", summonTextColor: "#ef3e45", summonBuff: { type: "attack", factor: 1.32, duration: 4.4 } },
   { id: "blaster", behavior: "tower", name: "ANGLER", spriteNo: 2, cost: 4, hp: 255, damage: 30, speed: 0, range: 82, cooldown: 0.46, radius: 9, color: "#ff9a3d", label: "TOWER", summonText: "イェーイ！楽しんでるぅ？", summonTextColor: "#ff9a3d", spriteFlip: true },
   { id: "sniper", behavior: "ranged", name: "GENERIC N2", spriteNo: 5, cost: 4, hp: 125, damage: 24, speed: 17, range: 70, cooldown: 1.18, radius: 8, color: "#5e8cff", label: "BEAM", deathExplosion: { damage: 18, radius: 24, knockback: 26 }, allowDuplicate: true, summonText: "ピピピ、ホッケ発見。", summonTextColor: "#5e8cff" },
-  { id: "medic", behavior: "medic", name: "LEE", spriteNo: 8, cost: 3, hp: 125, damage: -26, speed: 24, range: 56, cooldown: 1.02, radius: 8, color: "#f1c84b", rangeColor: "#4fd18b", label: "GYOZA HEAL", summonText: "イーガーコーテル！", summonTextColor: "#f1c84b" },
+  { id: "medic", behavior: "medic", name: "WAITRESS", spriteNo: 8, cost: 3, hp: 125, damage: -26, speed: 24, range: 56, cooldown: 1.02, radius: 8, color: "#f1c84b", rangeColor: "#4fd18b", label: "PIZZA", summonText: "いらっしゃいませ！", summonTextColor: "#f1c84b" },
   { id: "swarm", behavior: "swarm", name: "CHINANAGO", spriteNo: 7, cost: 3, hp: 72, damage: 13, speed: 39, range: 15, cooldown: 0.55, radius: 6, color: "#9be7ff", label: "×3", count: 3, spriteFlip: true, attackFx: "melee", summonText: "ニョロニョロですね。" },
   { id: "frost", behavior: "cactusCrew", name: "CACTUS CREW", spriteNo: 6, cost: 4, hp: 150, damage: 19, speed: 20, range: 18, cooldown: 0.92, radius: 8, color: "#55c768", label: "×4", count: 4, formation: "crew", summonText: "いくぜ！アミーゴ！", summonTextColor: "#55c768" },
   { id: "spark", behavior: "spark", name: "AFLO CLUB", spriteNo: 9, cost: 5, hp: 46, damage: 24, speed: 43, range: 16, cooldown: 0.12, radius: 6, color: "#4ecbe2", explosionColor: "#1f2329", label: "×6 BOM", count: 6, suicide: true, splash: 36, splashKnockback: 42, spriteFlip: true, formation: "cluster", summonText: "アフロクラブ、サイコー！" },
@@ -155,6 +155,7 @@ export function createPhoneBrawl({
     nidhoggFlames: [],
     effectPops: [],
     baseBreaks: [],
+    baseHitFxAt: { player: -999, enemy: -999 },
     handCyclePressTimer: 0,
     lightBoostVisuals: false,
     bossSpin: 0,
@@ -182,6 +183,8 @@ export function createPhoneBrawl({
   let activeGiveUpAction = giveUpAction;
   let activeInternalBgm = true;
   let activeEnemyInvincible = false;
+  let activeOnVictory = null;
+  let activeSeVolumeScale = 1;
 
   function start(cb = onEnd, options = {}) {
     onEnd = cb || onEnd;
@@ -189,6 +192,8 @@ export function createPhoneBrawl({
     activeGiveUpAction = options.giveUpAction || giveUpAction;
     activeInternalBgm = options.internalBgm !== false;
     activeEnemyInvincible = !!options.enemyInvincible;
+    activeOnVictory = typeof options.onVictory === "function" ? options.onVictory : null;
+    activeSeVolumeScale = Math.max(0, Number(options.seVolumeScale) || 1);
     endedOnce = false;
     state.active = true;
     reset();
@@ -230,6 +235,7 @@ export function createPhoneBrawl({
     state.nidhoggFlames = [];
     state.effectPops = [];
     state.baseBreaks = [];
+    state.baseHitFxAt = { player: -999, enemy: -999 };
     state.bossSpin = 0;
     state.speedFever = { team: null, timer: 0, duration: 0 };
     state.msitpSoloFeverReady = true;
@@ -1341,11 +1347,13 @@ export function createPhoneBrawl({
     if (target.kind === "base") {
       const side = unit.team === "player" ? "enemy" : "player";
       const base = side === "enemy" ? { x: ENEMY_BASE_X, y: BASE_Y } : { x: PLAYER_BASE_X, y: BASE_Y };
-      applyBaseDamage(side, Math.ceil(damage), unit);
-      if (unit.team === "enemy") beam(unit.x, unit.y, base.x, base.y, card.color, false);
-      else if (isNidhoggUnit(unit)) nidhoggFlameFx(nidhoggMouthX(unit), nidhoggMouthY(unit), base.x, base.y - 4, undefined, card.color);
-      else if (isMeleeUnit(unit)) meleeHitFx(base.x, base.y - 3, card.color, 1.45);
-      else beam(unit.x, unit.y, base.x, base.y, card.color, false);
+      const showBaseImpact = applyBaseDamage(side, Math.ceil(damage), unit);
+      if (showBaseImpact) {
+        if (unit.team === "enemy") beam(unit.x, unit.y, base.x, base.y, card.color, false);
+        else if (isNidhoggUnit(unit)) nidhoggFlameFx(nidhoggMouthX(unit), nidhoggMouthY(unit), base.x, base.y - 4, undefined, card.color);
+        else if (isMeleeUnit(unit)) meleeHitFx(base.x, base.y - 3, card.color, 1.45);
+        else beam(unit.x, unit.y, base.x, base.y, card.color, false);
+      }
       if (card.suicide && card.splash) {
         for (const other of state.units) {
           if (other.team === unit.team || other.id === unit.id || other.hp <= 0) continue;
@@ -1519,7 +1527,7 @@ export function createPhoneBrawl({
   }
 
   function applyBaseDamage(side, amount, attacker = null) {
-    if (activeEnemyInvincible && side === "enemy") return;
+    if (activeEnemyInvincible && side === "enemy") return false;
     const beforeHp = side === "enemy" ? state.enemyHp : state.playerHp;
     const beforeSegments = baseSegmentsRemaining(beforeHp);
     if (side === "enemy") state.enemyHp -= amount;
@@ -1528,15 +1536,21 @@ export function createPhoneBrawl({
     const afterSegments = baseSegmentsRemaining(afterHp);
     state.shake = Math.min(7, state.shake + 3);
     const base = side === "enemy" ? { x: ENEMY_BASE_X, y: BASE_Y } : { x: PLAYER_BASE_X, y: BASE_Y };
-    floatText(base.x, base.y - 28, `-${amount}`, "#fff");
-    playBaseHitSound();
     const startsFinisher = side === "enemy" && beforeHp > 0 && afterHp <= 0 && attacker?.team === "player";
+    const fxInterval = side === "enemy" ? 0.075 : 0.05;
+    const showImpactFx = startsFinisher || state.elapsed - (state.baseHitFxAt[side] ?? -999) >= fxInterval;
+    if (showImpactFx) {
+      state.baseHitFxAt[side] = state.elapsed;
+      floatText(base.x, base.y - 28, `-${amount}`, "#fff");
+      playBaseHitSound();
+    }
     if (startsFinisher) {
       startFinisher(attacker);
     }
     if (!startsFinisher) {
       for (let i = afterSegments; i < beforeSegments; i += 1) triggerBaseSegmentBreak(side);
     }
+    return showImpactFx;
   }
 
   function startFinisher(unit) {
@@ -1616,6 +1630,11 @@ export function createPhoneBrawl({
     state.result = "victory";
     state.resultText = "";
     playResultSound("victory");
+    if (activeOnVictory) {
+      const fn = activeOnVictory;
+      activeOnVictory = null;
+      fn();
+    }
   }
 
   function updateVictoryCelebration(dt) {
@@ -2868,7 +2887,7 @@ export function createPhoneBrawl({
     ctx.ellipse(unit.x + panicX + setupJitterX, unit.y + r + 2, shadowW, shadowH, 0, 0, Math.PI * 2);
     ctx.fill();
     const feverGlow = state.speedFever.timer > 0 && unit.team === state.speedFever.team;
-    const attackGlow = unit.attackBoostTimer > 0;
+    const attackBoosted = unit.attackBoostTimer > 0;
     if (metrics) {
       const frame = walking ? ((unit.bob / Math.PI) | 0) % 2 : 0;
       const flip = unit.team === "enemy"
@@ -2881,39 +2900,24 @@ export function createPhoneBrawl({
         ctx.translate(drawX + metrics.w / 2, drawY + metrics.h - 2);
         ctx.rotate(setupTilt);
         if (feverGlow) drawUnitBoostGlow(ctx, img, frame, -metrics.w / 2, -metrics.h + 2, metrics.w, metrics.h, flip, state.elapsed + unit.variant * 0.19, "fever");
-        if (attackGlow) drawUnitBoostGlow(ctx, img, frame, -metrics.w / 2, -metrics.h + 2, metrics.w, metrics.h, flip, state.elapsed + unit.variant * 0.23, "attack");
         drawCurrySetupSpark(ctx, 0, -metrics.h + 6, state.elapsed + unit.variant);
         if (curryPanic) drawCurryPanicGlow(ctx, img, frame, -metrics.w / 2, -metrics.h + 2, metrics.w, metrics.h, flip, state.elapsed + panicPhase);
         drawSpriteFrame(ctx, img, frame, -metrics.w / 2, -metrics.h + 2, metrics.w, metrics.h, flip);
+        if (attackBoosted) drawAttackBoostMarker(ctx, -metrics.w / 2, -metrics.h + 2, metrics.w, metrics.h, state.elapsed + unit.variant);
         if (curryPanic) drawCurryPanicSweat(ctx, -metrics.w / 2, -metrics.h + 2, metrics.w, metrics.h, state.elapsed + panicPhase);
         ctx.restore();
       } else {
         if (feverGlow) drawUnitBoostGlow(ctx, img, frame, drawX, drawY, metrics.w, metrics.h, flip, state.elapsed + unit.variant * 0.19, "fever");
-        if (attackGlow) drawUnitBoostGlow(ctx, img, frame, drawX, drawY, metrics.w, metrics.h, flip, state.elapsed + unit.variant * 0.23, "attack");
         if (curryPanic) drawCurryPanicGlow(ctx, img, frame, drawX, drawY, metrics.w, metrics.h, flip, state.elapsed + panicPhase);
         drawSpriteFrame(ctx, img, frame, drawX, drawY, metrics.w, metrics.h, flip);
+        if (attackBoosted) drawAttackBoostMarker(ctx, drawX, drawY, metrics.w, metrics.h, state.elapsed + unit.variant);
         if (curryPanic) drawCurryPanicSweat(ctx, drawX, drawY, metrics.w, metrics.h, state.elapsed + panicPhase);
       }
       if (unit.hitFlash > 0) {
         drawSpriteFrameTint(ctx, img, frame, drawX, drawY, metrics.w, metrics.h, flip, "#fff", unit.hitFlash * 0.62);
       }
     } else {
-      if (attackGlow) {
-        const pulse = 0.68 + 0.28 * Math.sin(state.elapsed * 18 + unit.variant);
-        ctx.save();
-        ctx.globalCompositeOperation = "lighter";
-        ctx.globalAlpha = pulse;
-        ctx.fillStyle = "#ef3e45";
-        ctx.beginPath();
-        ctx.arc(unit.x + sway + panicX + setupJitterX, y + panicY + setupJitterY, r + 5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.globalAlpha = pulse * 0.72;
-        ctx.fillStyle = "#ff7a35";
-        ctx.beginPath();
-        ctx.arc(unit.x + sway + panicX + setupJitterX, y + panicY + setupJitterY, r + 2, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-      }
+      if (attackBoosted) drawAttackBoostMarker(ctx, unit.x + sway + panicX + setupJitterX - r, y + panicY + setupJitterY - r, r * 2, r * 2, state.elapsed + unit.variant);
       if (feverGlow) {
         const hue = (state.elapsed * 420 + unit.variant * 65 + unit.x * 1.7) % 360;
         const pulse = 0.5 + 0.3 * Math.sin(state.elapsed * 18 + unit.variant);
@@ -3262,7 +3266,7 @@ export function createPhoneBrawl({
     const a = feverVisualAlpha();
     if (a <= 0) return;
     const t = state.elapsed * 100;
-    const light = state.lightBoostVisuals;
+    const light = false;
     ctx.save();
 
     ctx.globalAlpha = 0.98 * a;
@@ -3303,7 +3307,7 @@ export function createPhoneBrawl({
     ctx.globalCompositeOperation = "source-over";
     ctx.globalAlpha = 0.95 * a;
     const feverColors = ["#ff1744", "#ffff00", "#00e676", "#00b0ff", "#ff00e6", "#ff7a00"];
-    const starCount = light ? 32 : 92;
+    const starCount = light ? 16 : 46;
     for (let i = 0; i < starCount; i += 1) {
       const x = (i * 31 + t * (1.45 + (i % 5) * 0.18)) % (PHONE_BRAWL_W + 44) - 22;
       const y = FIELD_Y + ((i * 19 + Math.sin(state.elapsed * 5.5 + i) * 20) % FIELD_H);
@@ -3774,7 +3778,7 @@ function drawFloating(ctx) {
       if (pepper.visualOnly) continue;
       const target = state.units.find((unit) => unit.id === pepper.targetId && unit.team === pepper.team && unit.hp > 0);
       if (!target) continue;
-      applyAttackBuffToUnit(pepper.card, target);
+      applyAttackBuffToUnit(pepper.card, target, { particles: false, sound: false });
     }
     state.pepperThrows = state.pepperThrows.filter((pepper) => pepper.t < (pepper.delay || 0) + pepper.duration + 0.08);
   }
@@ -3967,8 +3971,9 @@ function drawFloating(ctx) {
 
   function env(when, gain, dur) {
     const g = audio.ctx.createGain();
+    const scaledGain = gain * activeSeVolumeScale;
     g.gain.setValueAtTime(0.0001, when);
-    g.gain.exponentialRampToValueAtTime(Math.max(0.0001, gain), when + 0.01);
+    g.gain.exponentialRampToValueAtTime(Math.max(0.0001, scaledGain), when + 0.01);
     g.gain.exponentialRampToValueAtTime(0.0001, when + dur);
     g.connect(audio.master);
     return g;
@@ -4447,16 +4452,7 @@ function drawSpriteFrameTint(ctx, img, frame, x, y, w, h, flip = false, color = 
 }
 
 function drawUnitBoostGlow(ctx, img, frame, x, y, w, h, flip, phase, type) {
-  if (stateLightBoostVisuals(ctx)) {
-    drawSimpleUnitBoostGlow(ctx, x, y, w, h, phase, type);
-    return;
-  }
-  if (type === "attack") drawAttackUnitGlow(ctx, img, frame, x, y, w, h, flip, phase);
-  else drawFeverUnitGlow(ctx, img, frame, x, y, w, h, flip, phase);
-}
-
-function stateLightBoostVisuals(ctx) {
-  return !!ctx?._phoneBrawlLightBoostVisuals;
+  drawSimpleUnitBoostGlow(ctx, x, y, w, h, phase, type);
 }
 
 function drawSimpleUnitBoostGlow(ctx, x, y, w, h, phase, type) {
@@ -4477,35 +4473,16 @@ function drawSimpleUnitBoostGlow(ctx, x, y, w, h, phase, type) {
   ctx.restore();
 }
 
-function drawFeverUnitGlow(ctx, img, frame, x, y, w, h, flip, phase) {
-  const hue = (phase * 420 + x * 1.7) % 360;
-  const colorA = `hsl(${hue},100%,62%)`;
-  const colorB = `hsl(${(hue + 92) % 360},100%,64%)`;
-  const colorC = `hsl(${(hue + 184) % 360},100%,66%)`;
-  const pulse = 0.5 + 0.28 * Math.sin(phase * 18);
+function drawAttackBoostMarker(ctx, x, y, w, h, phase) {
+  const pulse = 0.28 + 0.12 * Math.sin(phase * 12);
   ctx.save();
-  ctx.globalCompositeOperation = "lighter";
-  drawSpriteFrameTint(ctx, img, frame, x - 1, y, w, h, flip, colorA, pulse * 0.36);
-  drawSpriteFrameTint(ctx, img, frame, x + 1, y, w, h, flip, colorB, pulse * 0.36);
-  drawSpriteFrameTint(ctx, img, frame, x, y - 1, w, h, flip, colorC, pulse * 0.28);
-  drawSpriteFrameTint(ctx, img, frame, x, y + 1, w, h, flip, colorA, pulse * 0.24);
-  drawSpriteFrameTint(ctx, img, frame, x, y, w, h, flip, colorB, pulse * 0.22);
-  ctx.restore();
-}
-
-function drawAttackUnitGlow(ctx, img, frame, x, y, w, h, flip, phase) {
-  const pulse = 0.68 + 0.28 * Math.sin(phase * 18);
-  ctx.save();
-  ctx.globalCompositeOperation = "lighter";
-  drawSpriteFrameTint(ctx, img, frame, x - 2, y, w, h, flip, "#ef3e45", pulse * 0.28);
-  drawSpriteFrameTint(ctx, img, frame, x + 2, y, w, h, flip, "#ff2d20", pulse * 0.28);
-  drawSpriteFrameTint(ctx, img, frame, x, y - 2, w, h, flip, "#ff7a35", pulse * 0.22);
-  drawSpriteFrameTint(ctx, img, frame, x, y + 2, w, h, flip, "#ef3e45", pulse * 0.22);
-  drawSpriteFrameTint(ctx, img, frame, x - 1, y, w, h, flip, "#ef3e45", pulse * 0.48);
-  drawSpriteFrameTint(ctx, img, frame, x + 1, y, w, h, flip, "#ff2d20", pulse * 0.48);
-  drawSpriteFrameTint(ctx, img, frame, x, y - 1, w, h, flip, "#ff7a35", pulse * 0.34);
-  drawSpriteFrameTint(ctx, img, frame, x, y + 1, w, h, flip, "#ef3e45", pulse * 0.34);
-  drawSpriteFrameTint(ctx, img, frame, x, y, w, h, flip, "#ef3e45", pulse * 0.48);
+  ctx.globalCompositeOperation = "source-over";
+  ctx.globalAlpha = pulse;
+  ctx.fillStyle = "#ef3e45";
+  ctx.fillRect((x + w * 0.16) | 0, (y + h * 0.18) | 0, Math.max(2, (w * 0.68) | 0), Math.max(4, (h * 0.62) | 0));
+  ctx.globalAlpha = pulse * 0.85;
+  ctx.fillStyle = "#ff7a35";
+  ctx.fillRect((x + w * 0.28) | 0, (y + h * 0.26) | 0, Math.max(1, (w * 0.44) | 0), Math.max(2, (h * 0.42) | 0));
   ctx.restore();
 }
 

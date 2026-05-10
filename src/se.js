@@ -182,7 +182,7 @@ export function startSeasideBgm(fadeMs = 3200) {
   wind.start();
   waveLfo.start();
   windLfo.start();
-  const target = ambientBgmLevel(0.50);
+  const target = ambientBgmLevel(0.58);
   master.gain.setTargetAtTime(target, ctx.currentTime, Math.max(0.05, fadeMs / 3000));
   _seasideGain = master;
   _seasideNodes = [waves, wind, waveLfo, windLfo, master];
@@ -276,7 +276,7 @@ export function playCursor() {
   osc.start(t); osc.stop(t + 0.02);
 }
 
-export function playAlienTypingNoise(seed = 0) {
+export function playAlienTypingNoise(seed = 0, volumeScale = 1) {
   const ctx = getCtx();
   if (ctx.state === "suspended") ctx.resume().catch(() => {});
   const t = ctx.currentTime;
@@ -308,7 +308,7 @@ export function playAlienTypingNoise(seed = 0) {
   crush.oversample = "none";
 
   const ng = ctx.createGain();
-  ng.gain.setValueAtTime(generatedSeLevel(0.06), t);
+  ng.gain.setValueAtTime(generatedSeLevel(0.06) * volumeScale, t);
   ng.gain.exponentialRampToValueAtTime(0.001, t + dur);
 
   const osc = ctx.createOscillator();
@@ -316,7 +316,7 @@ export function playAlienTypingNoise(seed = 0) {
   osc.type = "sawtooth";
   osc.frequency.setValueAtTime(54 + (seed % 4) * 7, t);
   osc.frequency.exponentialRampToValueAtTime(31 + (seed % 3) * 5, t + dur);
-  og.gain.setValueAtTime(generatedSeLevel(0.018), t);
+  og.gain.setValueAtTime(generatedSeLevel(0.018) * volumeScale, t);
   og.gain.exponentialRampToValueAtTime(0.001, t + dur);
 
   noise.connect(bp); bp.connect(crush); crush.connect(ng); ng.connect(ctx.destination);

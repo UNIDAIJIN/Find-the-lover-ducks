@@ -1,5 +1,6 @@
 // ui_inventory.js
 import { playCursor, playConfirm, playItemJingle } from "./se.js";
+import { createInputRepeat } from "./input_repeat.js";
 
 export function createInventory({
   BASE_W,
@@ -18,6 +19,7 @@ export function createInventory({
 
   const INV_VISIBLE_ROWS = visibleRows | 0;
   const INV_VISIBLE = INV_VISIBLE_ROWS * 2;
+  const navRepeat = createInputRepeat(input);
 
   const inv = {
     items: [...(startItems || [])],
@@ -54,6 +56,7 @@ export function createInventory({
 
   function openInv() {
     open = true;
+    navRepeat.reset();
     input.clear();
 
     const n = inv.items.length | 0;
@@ -71,6 +74,7 @@ export function createInventory({
 
   function closeInv() {
     open = false;
+    navRepeat.reset();
     input.clear();
   }
 
@@ -112,8 +116,8 @@ export function createInventory({
     }
     if (n <= 0) return;
 
-    if (input.consume("ArrowUp"))    { moveCursorTo(inv.cursor - 2); playCursor(); }
-    if (input.consume("ArrowDown"))  { moveCursorTo(inv.cursor + 2); playCursor(); }
+    if (navRepeat.consume("ArrowUp"))    { moveCursorTo(inv.cursor - 2); playCursor(); }
+    if (navRepeat.consume("ArrowDown"))  { moveCursorTo(inv.cursor + 2); playCursor(); }
 
     if (input.consume("ArrowLeft")) {
       if ((inv.cursor & 1) === 1) { moveCursorTo(inv.cursor - 1); playCursor(); }

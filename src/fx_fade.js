@@ -323,5 +323,5 @@ export function createFade({
     ctx.restore();
   }
 
-  return { isActive, startMapFade, startCutFade, startIrisFade, update, draw };
+  return { isActive, reset, startMapFade, startCutFade, startIrisFade, update, draw };
 }

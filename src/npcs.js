@@ -1,5 +1,5 @@
 // npcs.js
-import { CONFIG } from "./config.js?v=0.9.7";
+import { CONFIG } from "./config.js?v=0.9.8";
 import { SPRITES } from "./sprites.js";
 import { STATE }   from "./state.js";
 
@@ -142,6 +142,30 @@ export const NPCS_BY_MAP = {
     resolve(timemachineSlotNpc),
     resolve(seatsNpc),
     resolve(cat1Npc),
+    resolve({
+      kind: "npc",
+      name: "cat_red",
+      spriteKey: "cat_red",
+      x: 2568,
+      y: 104,
+      talkHit: { x: 0, y: 0, w: 16, h: 16 },
+      talkPages: [
+        ["タイムマシンー♩"],
+        ["みーんなが調べていくんだけどにゃー♩"],
+        ["誰も動かしかたがわかんないのにゃ♩"],
+      ],
+      solid: true,
+    }),
+    resolve({
+      kind: "npc",
+      name: "tsunagi",
+      spriteKey: "tsunagi",
+      x: 1878,
+      y: 1457,
+      talkHit: { x: 0, y: 0, w: 16, h: 16 },
+      talkPages: [["いい天気の日はかげもくっきり！"]],
+      solid: true,
+    }),
     resolve(fanFlowerNpc),
     resolve({ ...fanFlowerNpc, name: "fan_flower_2", x: 2560, y: 1320 }),
     resolve(carefulNpc),
