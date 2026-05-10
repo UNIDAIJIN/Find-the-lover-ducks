@@ -7760,7 +7760,7 @@ function tryInteract(t) {
         startTrip: () => {
           interactionSession.end();
           STATE.flags.tripCount = (STATE.flags.tripCount | 0) + 1;
-          if (STATE.flags.tripCount >= 10) achieveQuest("09");
+          if (STATE.flags.tripCount >= 3) achieveQuest("09");
           trip.start(() => {
             STATE.flags.uraYahhyCooking = false;
             actors = actors.filter(a => a.id !== "trip_duck");
@@ -7774,7 +7774,7 @@ function tryInteract(t) {
         startGoodTrip: () => {
           interactionSession.end();
           STATE.flags.tripCount = (STATE.flags.tripCount | 0) + 1;
-          if (STATE.flags.tripCount >= 10) achieveQuest("09");
+          if (STATE.flags.tripCount >= 3) achieveQuest("09");
           goodTrip.start(() => {
             STATE.flags.uraYahhyCooking = false;
             actors = actors.filter(a => a.id !== "trip_duck");
