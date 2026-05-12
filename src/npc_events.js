@@ -955,14 +955,6 @@ export function runNpcEvent(act, ctx) {
     return true;
   }
 
-  if (ev.type === "ricky_lastbattle2") {
-    const { dialog, startLastBattle2 } = ctx;
-    dialog.open([["……お、きたな。"], ["いくぞ。"]], () => {
-      if (typeof startLastBattle2 === "function") startLastBattle2();
-    });
-    return true;
-  }
-
   if (ev.type === "factry_minami") {
     const { dialog, choice, lockInput, unlockInput, startShake } = ctx;
     const hl = [{ text: "超銀河魔王", color: "#f44" }];

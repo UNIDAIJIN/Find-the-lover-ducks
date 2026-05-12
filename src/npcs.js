@@ -285,7 +285,6 @@ export const NPCS_BY_MAP = {
 
   moritasaki_room: [
     resolve(moritasakiGiftNpc),
-    resolve(rickyNpc),
   ],
 
   musium: [
