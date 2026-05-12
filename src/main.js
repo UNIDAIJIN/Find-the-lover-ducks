@@ -7889,6 +7889,15 @@ function tryInteract(t) {
         startDiving: (onDone) => {
           startDivingMinigame(onDone);
         },
+        startLastBattle2: () => {
+          input.lock();
+          fade.startCutFade(nowMs(), {
+            outMs: 300,
+            holdMs: 120,
+            inMs: 300,
+            onBlack: () => loadMap("space_boss", { spaceBossStartAt: "beforeSecondBattle", skipBgm: true }),
+          });
+        },
         startShake: (ms = 500, intensity = 3) => {
           _shakeUntil = performance.now() + ms;
           _shakeIntensity = intensity;

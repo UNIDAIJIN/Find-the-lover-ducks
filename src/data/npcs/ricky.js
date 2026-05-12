@@ -6,5 +6,6 @@ export const rickyNpc = {
   y:         150,
   talkHit:   { x: 0, y: 0, w: 16, h: 14 },
   talkPages: [["……お、きたな。"]],
+  event:     { type: "ricky_lastbattle2" },
   solid:     true,
 };
