@@ -285,6 +285,15 @@ export const NPCS_BY_MAP = {
 
   moritasaki_room: [
     resolve(moritasakiGiftNpc),
+    resolve({
+      ...rickyNpc,
+      name: "ricky_quest_debug",
+      x: 145,
+      y: 132,
+      noWalk: true,
+      animMs: Infinity,
+      event: { type: "complete_all_quests" },
+    }),
   ],
 
   musium: [

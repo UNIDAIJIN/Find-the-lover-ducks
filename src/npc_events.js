@@ -706,7 +706,7 @@ export function runNpcEvent(act, ctx) {
   }
 
   if (ev.type === "yahhy_jumprope") {
-    const { dialog, jumprope, achieveQuest, choice, beginInteraction, endInteraction, letterbox } = ctx;
+    const { dialog, jumprope, achieveQuest, choice, beginInteraction, endInteraction, letterbox, forceGroundHeight } = ctx;
     const startJumprope = () => {
       choice.open(["はい", "いいえ"], (sel) => {
         if (sel !== 0) {
@@ -715,6 +715,7 @@ export function runNpcEvent(act, ctx) {
         }
         if (typeof endInteraction === "function") endInteraction();
         jumprope.start((count) => {
+          if (typeof forceGroundHeight === "function") forceGroundHeight();
           if (count >= 100 && typeof achieveQuest === "function") achieveQuest("17");
           let reward = 0;
           if      (count >= 50) reward = 2000;
@@ -951,6 +952,13 @@ export function runNpcEvent(act, ctx) {
         ["でもいまはまだそのときじゃねぇんだな。"],
       ]);
     }
+    return true;
+  }
+
+  if (ev.type === "complete_all_quests") {
+    const { dialog, completeAllQuests } = ctx;
+    if (typeof completeAllQuests === "function") completeAllQuests();
+    dialog.open([["ぜんぶやっといた。"]]);
     return true;
   }
 

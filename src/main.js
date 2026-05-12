@@ -1196,6 +1196,7 @@ function startDivingMinigame(onDone) {
     stopDivingBgm();
     popBgmOverride({ safe: false });
     setGameResolution(BASE_W, BASE_H);
+    forceGroundHeightState();
     if (typeof onDone === "function") {
       interactionSession.begin();
       letterbox.snapAuto(true);
@@ -5510,7 +5511,7 @@ function loadMap(id, opt = null) {
         "moritasaki_room",
         "umi_house1", "umi_house2", "umi_house3",
         "inn", "space", "seahole", "pool", "hisaro", "d_hole", "charch",
-        "shooting_lobby", "dark_throne",
+        "shooting_lobby", "dark_throne", "orca_ride",
         "hole",
       ]);
       const defaultHeight = FROM_GROUND_MAPS.has(prevMapId) ? "ground" : "upper";
@@ -7838,8 +7839,10 @@ function tryInteract(t) {
         },
         letterbox,
         jumprope,
+        forceGroundHeight: forceGroundHeightState,
         toast,
         achieveQuest,
+        completeAllQuests: debugCompleteAllQuests,
         checkQuest01,
         getBgmSrc: () => bgmCtl.getOverrideSrc(),
         hasItem: (id) => inventory.getSnapshot().includes(id),
@@ -8636,6 +8639,7 @@ function update(t) {
         holdMs: 2000,
         inMs: 500,
         onBlack: () => {
+          forceGroundHeightState();
           loadMap("moritasaki_room");
         },
         onEnd: () => {
