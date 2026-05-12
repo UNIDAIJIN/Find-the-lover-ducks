@@ -285,6 +285,7 @@ export const NPCS_BY_MAP = {
 
   moritasaki_room: [
     resolve(moritasakiGiftNpc),
+    resolve(rickyNpc),
   ],
 
   musium: [
@@ -349,7 +350,6 @@ export const NPCS_BY_MAP = {
   ],
 
   indoor_01: [
-    resolve(rickyNpc),
     resolve(oharaNpc),
     resolve(indoorMinamiNpc),
   ],
