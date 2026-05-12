@@ -955,13 +955,6 @@ export function runNpcEvent(act, ctx) {
     return true;
   }
 
-  if (ev.type === "complete_all_quests") {
-    const { dialog, completeAllQuests } = ctx;
-    if (typeof completeAllQuests === "function") completeAllQuests();
-    dialog.open([["ぜんぶやっといた。"]]);
-    return true;
-  }
-
   if (ev.type === "factry_minami") {
     const { dialog, choice, lockInput, unlockInput, startShake } = ctx;
     const hl = [{ text: "超銀河魔王", color: "#f44" }];

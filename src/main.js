@@ -7842,7 +7842,6 @@ function tryInteract(t) {
         forceGroundHeight: forceGroundHeightState,
         toast,
         achieveQuest,
-        completeAllQuests: debugCompleteAllQuests,
         checkQuest01,
         getBgmSrc: () => bgmCtl.getOverrideSrc(),
         hasItem: (id) => inventory.getSnapshot().includes(id),
