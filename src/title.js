@@ -1,6 +1,5 @@
 // title.js
 import { playCursor, playConfirm } from "./se.js";
-import { VERSION } from "./config.js?v=0.9.8";
 
 export function createTitle({ BASE_W, BASE_H, input, pocketEdition = false }) {
   let active     = false;
@@ -160,7 +159,7 @@ export function createTitle({ BASE_W, BASE_H, input, pocketEdition = false }) {
 
     // バージョン（右上）
     ctx.fillStyle = "#555";
-    const ver = "v" + VERSION;
+    const ver = "beta";
     ctx.fillText(ver, BASE_W - ctx.measureText(ver).width - 4, 4);
 
     if (mode === "config") {
