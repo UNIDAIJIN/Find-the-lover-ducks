@@ -14,7 +14,7 @@ import { createTitle  }     from "./title.js";
 import { createCharSelect } from "./char_select.js";
 import { createLoading }    from "./loading.js";
 import { setupMobileController } from "./mobile_controller.js";
-import { playSuzu, playFuro, playDoor, playZazza, playHoleFall, playHoleRoll, playConfirm, playClickOn, playCursor, playTimeMachineShine, playWave, startHeartbeat, stopHeartbeat, playQuestJingleB, playPunch, startShootingBgm, stopShootingBgm, startAfloClubBgm, stopAfloClubBgm, stopJaws, playBattleWinJingle, getAfloClubKickPulseMs, unlockSeAudio, startRainLoop, stopRainLoop, startSeasideBgm, stopSeasideBgm, startDivingBgm, stopDivingBgm, playDinoStep, playBirdCall, playWingFlap, startWaterfall, setWaterfallVol, stopWaterfall, startPhoneRing, stopPhoneRing, playPhonePick, playPhoneHang, playDadaan, startMetalBgm, stopMetalBgm, startChaosMetalBgm, stopChaosMetalBgm, playAlienTypingNoise, playTypingVoice, playGlassShatter, playItemJingle } from "./se.js";
+import { playSuzu, playFuro, playDoor, playZazza, playHoleFall, playHoleRoll, playConfirm, playClickOn, playCursor, playTimeMachineShine, playWave, startHeartbeat, stopHeartbeat, playQuestJingleB, playPunch, startShootingBgm, stopShootingBgm, startAfloClubBgm, stopAfloClubBgm, stopJaws, playBattleWinJingle, getAfloClubKickPulseMs, unlockSeAudio, startRainLoop, stopRainLoop, startSeasideBgm, stopSeasideBgm, startDivingBgm, stopDivingBgm, playDinoStep, playBirdCall, playWingFlap, startWaterfall, setWaterfallVol, stopWaterfall, startPhoneRing, stopPhoneRing, playPhonePick, playPhoneHang, playDadaan, startMetalBgm, stopMetalBgm, startChaosMetalBgm, stopChaosMetalBgm, playAlienTypingNoise, playTypingVoice, playGlassShatter, playItemJingle, setGeneratedBgmRuntimeScale, setAmbientBgmRuntimeScale } from "./se.js";
 import { createMenu } from "./ui_menu.js";
 import { createTripEffect }     from "./trip_effect.js";
 import { createGoodTripEffect } from "./trip_effect_good.js";
@@ -30,6 +30,10 @@ import { gateNpc } from "./data/npcs/gate.js";
 
 const DEBUG  = true;
 const MOBILE = new URLSearchParams(location.search).has('m');
+if (MOBILE) {
+  setGeneratedBgmRuntimeScale(1.35);
+  setAmbientBgmRuntimeScale(1.15);
+}
 
 const canvas = document.getElementById("c");
 const ctx = canvas.getContext("2d");

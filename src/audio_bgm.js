@@ -15,7 +15,7 @@ export function createBgm({
     "assets/audio/bgm_end.mp3":      0.90,
     "assets/audio/bgm_select.mp3":   0.77,
     "assets/audio/bgm_movie.mp3":    1.72, // 元ファイル -51.3 LUFS なのでこれでも追いつかない
-    "assets/audio/duckA.mp3":        1.0,  // 元音源のまま音量だけ調整
+    "assets/audio/duckA.mp3":        1.25, // 元音源のまま音量だけ調整
     "assets/audio/duckB.mp3":        0.70,
     "assets/audio/duckC.mp3":        0.77,
     "assets/audio/duckD.mp3":        0.73,

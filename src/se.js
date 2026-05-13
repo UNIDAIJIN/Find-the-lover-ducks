@@ -25,6 +25,8 @@ const SAMPLE_SE_SCALE = {
 const GENERATED_SE_MASTER = 0.72;
 const GENERATED_BGM_MASTER = 0.645; // API生成BGM: 0.43 * 1.5
 const AMBIENT_BGM_MASTER = 0.69;    // API環境BGM: 0.46 * 1.5
+let _generatedBgmRuntimeScale = 1;
+let _ambientBgmRuntimeScale = 1;
 
 function sampleSeLevel(name, vol) {
   return Math.min(2.2, vol * SAMPLE_SE_MASTER * (SAMPLE_SE_SCALE[name] ?? 1));
@@ -35,11 +37,21 @@ function generatedSeLevel(vol) {
 }
 
 function generatedBgmLevel(vol) {
-  return vol * GENERATED_BGM_MASTER;
+  return vol * GENERATED_BGM_MASTER * _generatedBgmRuntimeScale;
 }
 
 function ambientBgmLevel(vol) {
-  return vol * AMBIENT_BGM_MASTER;
+  return vol * AMBIENT_BGM_MASTER * _ambientBgmRuntimeScale;
+}
+
+export function setGeneratedBgmRuntimeScale(scale = 1) {
+  const s = Number(scale);
+  _generatedBgmRuntimeScale = Number.isFinite(s) && s >= 0 ? s : 1;
+}
+
+export function setAmbientBgmRuntimeScale(scale = 1) {
+  const s = Number(scale);
+  _ambientBgmRuntimeScale = Number.isFinite(s) && s >= 0 ? s : 1;
 }
 
 function getCtx() {
