@@ -285,6 +285,15 @@ export const NPCS_BY_MAP = {
 
   moritasaki_room: [
     resolve(moritasakiGiftNpc),
+    resolve({
+      kind: "npc",
+      name: "senpu",
+      spriteKey: "senpu",
+      x: 104,
+      y: 128,
+      talkHit: { x: 0, y: 0, w: 16, h: 16 },
+      solid: true,
+    }),
   ],
 
   musium: [
@@ -403,6 +412,23 @@ export const NPCS_BY_MAP = {
 
   house01: [
     resolve(shamanNpc),
+  ],
+
+  house06: [
+    resolve({
+      kind: "npc",
+      name: "bigcat",
+      spriteKey: "bigcat",
+      x: 0,
+      y: 176,
+      spr: 64,
+      sprH: 64,
+      frame: 0,
+      animMode: "seq",
+      animSeq: [0, 1, 2],
+      talkHit: { x: 0, y: 0, w: 64, h: 64 },
+      solid: true,
+    }),
   ],
 
   house07: [
