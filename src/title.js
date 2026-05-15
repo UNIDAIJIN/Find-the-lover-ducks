@@ -13,8 +13,8 @@ export function createTitle({ BASE_W, BASE_H, input, pocketEdition = false }) {
 
   const MENU_ITEMS = pocketEdition ? ["new game", "continue"] : ["new game", "continue", "config"];
   const CONFIG_ITEMS = [
-    { key: "z", label: "A / talk" },
-    { key: "x", label: "B / menu" },
+    { key: "z", label: "talk" },
+    { key: "x", label: "menu" },
     { key: "c", label: "dash" },
     { key: "s", label: "save" },
     { key: "l", label: "load" },
@@ -167,7 +167,7 @@ export function createTitle({ BASE_W, BASE_H, input, pocketEdition = false }) {
     }
 
     // メニュー
-    const menuY = BASE_H - 40;
+    const menuY = BASE_H - 40 - (MENU_ITEMS.length > 2 ? 16 : 0);
     const blink = Math.sin(t / 350) > 0;
 
     for (let i = 0; i < MENU_ITEMS.length; i++) {

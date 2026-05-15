@@ -71,6 +71,10 @@ export function runNpcEvent(act, ctx) {
       if (commonPages.length) dialog.open(commonPages, giveItem, ev.talkType || "talk");
       else giveItem();
     };
+    if (ev.skipChoice) {
+      dialog.open(introPages, openCommon, ev.talkType || "talk");
+      return true;
+    }
     dialog.open(introPages, () => {
       choice.open(options, (idx) => {
         if (typeof choice.close === "function") choice.close();
@@ -92,6 +96,7 @@ export function runNpcEvent(act, ctx) {
       unlockInput,
       hasItem,
       getNpcByName,
+      syncDynamicNpcs,
       endInteraction,
     } = ctx;
     const snackItem = ev.snackItem || "love_song_snack";
@@ -118,9 +123,13 @@ export function runNpcEvent(act, ctx) {
             inMs: 500,
             onBlack: () => {
               STATE.flags.loveSongReturned = true;
-              const hawaii = typeof getNpcByName === "function" ? getNpcByName("hawaii") : null;
-              act.x = (hawaii?.x ?? 1828) + 18;
-              act.y = hawaii?.y ?? 2475;
+              if (typeof syncDynamicNpcs === "function") {
+                syncDynamicNpcs();
+              } else {
+                const hawaii = typeof getNpcByName === "function" ? getNpcByName("hawaii") : null;
+                act.x = (hawaii?.x ?? 1828) + 18;
+                act.y = hawaii?.y ?? 2475;
+              }
             },
             onEnd: () => {
               if (typeof unlockInput === "function") unlockInput();

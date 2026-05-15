@@ -7,7 +7,6 @@ export const pubNpc = {
   talkHit: { x: 0, y: 0, w: 16, h: 21 },
   solid: true,
   noWalk: true,
-  animMs: Infinity,
   event: {
     type: "item_shop",
     shopName: "パブ",

@@ -2690,6 +2690,29 @@ function refreshPizzaJobMarkers() {
   act.markMode = "pizza_pop";
 }
 
+function moveNpcTo(act, x, y) {
+  if (!act) return;
+  act.x = x;
+  act.y = y;
+  act.hidden = false;
+  act.noRender = false;
+  act.alpha = 1;
+  act.scale = 1;
+}
+
+function syncDynamicNpcPositions(mapId = current.id) {
+  if (mapId !== "outdoor") return;
+  if (STATE.flags.loveSongReturned) {
+    const loveSong = actors.find((a) => a.kind === "npc" && a.name === "lovesong");
+    const hawaii = actors.find((a) => a.kind === "npc" && a.name === "hawaii");
+    moveNpcTo(loveSong, (hawaii?.x ?? 1828) + 18, hawaii?.y ?? 2475);
+  }
+  if (STATE.achievedQuests.size >= 20) {
+    const keeper = actors.find((a) => a.kind === "npc" && a.id === "keeper");
+    moveNpcTo(keeper, 1613, 2709);
+  }
+}
+
 function talkBoxLeader() {
   return { x: leader.x, y: leader.y, w: SPR, h: SPR };
 }
@@ -2811,14 +2834,6 @@ function spawnActorsForMap(mapId) {
         a.talkHit = { x: 0, y: 0, w: 0, h: 0 };
       }
     }
-    if (STATE.flags.loveSongReturned) {
-      const loveSong = actors.find((a) => a.name === "lovesong");
-      const hawaii = actors.find((a) => a.name === "hawaii");
-      if (loveSong) {
-        loveSong.x = (hawaii?.x ?? 1828) + 18;
-        loveSong.y = hawaii?.y ?? 2475;
-      }
-    }
   }
   if (mapId === "house07" && STATE.flags.ac1Gone) {
     const a = actors.find((a) => a.name === "ac_1");
@@ -2838,10 +2853,7 @@ function spawnActorsForMap(mapId) {
     const a = actors.find(a => a.name === "d_sword_on");
     if (a) { a.img = SPRITES.d_sword_off; a.animMs = Infinity; a.talkHit = { x: 0, y: 0, w: 0, h: 0 }; }
   }
-  if (STATE.achievedQuests.size >= 20) {
-    const a = actors.find(a => a.id === "keeper");
-    if (a) { a.x = 1613; a.y = 2709; }
-  }
+  syncDynamicNpcPositions(mapId);
   if (STATE.flags.galaxyMaou) {
     actors = actors.filter(a => a.name !== "grasan");
   }
@@ -3244,6 +3256,65 @@ function drawSpaceBossCactusHole(tt) {
   ctx.ellipse(0, 0, r * 1.15, r * 0.55, 0, 0, Math.PI * 2);
   ctx.stroke();
   ctx.restore();
+}
+
+function drawMiniBlackHole(cx, cy, tt, alpha = 1, scale = 1) {
+  const pulse = Math.sin(tt / 180) * 0.8;
+  const r = (11 + pulse) * scale;
+  if (alpha <= 0 || r <= 1) return;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(cx, cy);
+  ctx.rotate(tt / 360);
+  ctx.fillStyle = "rgba(92,55,170,0.32)";
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "rgba(20,10,42,0.74)";
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 0.72, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#000";
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 0.48, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(190,220,255,0.45)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, r * 1.15, r * 0.55, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawGatePortals(tt) {
+  if (current.id !== "outdoor") return;
+  for (const act of actors) {
+    if (!act.shootingTrigger) continue;
+    if (act.hidden) continue;
+    if (act.showWhenBgm) {
+      const match = isActiveBgmSrc(act.showWhenBgm);
+      if (act._bgmMatch === undefined) {
+        act._bgmMatch = match;
+        act._bgmAlpha = match ? 1 : 0;
+      }
+      if (act._bgmMatch !== match) {
+        act._bgmMatch = match;
+      }
+      const BGM_FADE_MS = 500;
+      const target = match ? 1 : 0;
+      const dt = Math.max(0, tt - (act._bgmAlphaLast ?? tt));
+      act._bgmAlphaLast = tt;
+      const step = dt / BGM_FADE_MS;
+      if (act._bgmAlpha < target) act._bgmAlpha = Math.min(target, (act._bgmAlpha ?? 0) + step);
+      else if (act._bgmAlpha > target) act._bgmAlpha = Math.max(target, (act._bgmAlpha ?? 1) - step);
+    }
+    const alpha = act._bgmAlpha ?? 1;
+    if (alpha <= 0) continue;
+    const spr = act.spr ?? SPR;
+    const sprH = act.sprH ?? spr;
+    drawMiniBlackHole((act.x + spr / 2 - cam.x) | 0, (act.y + sprH / 2 - cam.y) | 0, tt, alpha, 0.9);
+  }
 }
 
 function drawUraboss(tt) {
@@ -4357,10 +4428,7 @@ function achieveQuest(id) {
   const q = QUESTS.find(q => q.id === id);
   questQueue.push({ id, title: q?.title ?? "" });
   drainQuestQueue();
-  if (STATE.achievedQuests.size >= 20) {
-    const a = actors.find(a => a.id === "keeper");
-    if (a) { a.x = 1613; a.y = 2709; }
-  }
+  syncDynamicNpcPositions();
   if (STATE.achievedQuests.size >= 30 && !STATE.flags.phoneCalled) {
     STATE.flags.phoneCalled = true;
     setTimeout(() => startPhoneCallEvent(), 3000);
@@ -4370,8 +4438,7 @@ function achieveQuest(id) {
 function debugCompleteAllQuests() {
   for (const q of QUESTS) STATE.achievedQuests.add(q.id);
   questQueue.length = 0;
-  const keeper = actors.find(a => a.id === "keeper");
-  if (keeper) { keeper.x = 1613; keeper.y = 2709; }
+  syncDynamicNpcPositions();
   saveNotice = { text: "QUEST ALL", until: nowMs() + 1200 };
   if (!STATE.flags.phoneCalled) {
     STATE.flags.phoneCalled = true;
@@ -5426,6 +5493,10 @@ function loadMap(id, opt = null) {
   mapReady = false;
   const prevMapId = current.id;
   current.id = id;
+  if (/^umi_house\d$/.test(prevMapId || "") && !/^umi_house\d$/.test(id) && STATE.flags.ufoResetAfterWrongHouse) {
+    STATE.flags.ufoStep = 0;
+    delete STATE.flags.ufoResetAfterWrongHouse;
+  }
   afloBlackout = { active: false, phase: "idle", phaseStart: 0 };
   timeMachineFx = { active: false, start: 0, until: 0, onDone: null };
   stopChaosMetalBgm();
@@ -5545,8 +5616,11 @@ function loadMap(id, opt = null) {
       const _isCorrect = _step < _ufoSeq.length && _ufoSeq[_step] === +_ufoM[1];
       if (_isCorrect && _step === _ufoSeq.length - 1) {
         STATE.flags.ufoComplete = true;
+        delete STATE.flags.ufoResetAfterWrongHouse;
+      } else if (_isCorrect) {
+        delete STATE.flags.ufoResetAfterWrongHouse;
       } else if (!_isCorrect) {
-        STATE.flags.ufoStep = 0;
+        STATE.flags.ufoResetAfterWrongHouse = true;
       }
     }
 
@@ -6803,6 +6877,7 @@ function draw() {
   }
 
   drawHouse01PurpleSmoke(tt);
+  drawGatePortals(tt);
 
   for (let i = 0; i < aboveTopList.length; i++) drawEntry(aboveTopList[i]);
 
@@ -7793,6 +7868,7 @@ function tryInteract(t) {
         },
         isTripActive:     () => trip.isActive() || goodTrip.isActive(),
         getNpcByName:     (name) => actors.find(a => a.kind === "npc" && a.name === name),
+        syncDynamicNpcs:   () => syncDynamicNpcPositions(),
         getPlayerPos:     () => ({ x: leader.x, y: leader.y }),
         teleportPlayer:   (x, y) => {
           leader.x = x;
@@ -8641,9 +8717,10 @@ function update(t) {
         inMs: 500,
         onBlack: () => {
           forceGroundHeightState();
-          loadMap("moritasaki_room");
+          loadMap("moritasaki_room", { skipBgm: true });
         },
         onEnd: () => {
+          bgmCtl.setOverride(null);
           setTimeout(() => {
             input.unlock();
             dialog.open([["ひどいめにあった。"]], null, "sign");

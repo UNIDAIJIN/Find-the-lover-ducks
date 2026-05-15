@@ -1581,6 +1581,13 @@ export function startDivingBgm() {
   const bubbleFreqs = [320, 400, 480, 360, 520, 280];
   _divingScheduler = setInterval(() => {
     const ctx2 = getCtx();
+    if (ctx2.state === "suspended") {
+      ctx2.resume().catch(() => {});
+      return;
+    }
+    if (nextTime < ctx2.currentTime - 0.25) {
+      nextTime = ctx2.currentTime + 0.05;
+    }
     while (nextTime < ctx2.currentTime + 0.15) {
       const s = stepIdx % 16;
       if (s === 0 || s === 6 || s === 10 || s === 14) {
@@ -1646,6 +1653,13 @@ export function startAfloClubBgm() {
 
   _afloClubScheduler = setInterval(() => {
     const ctx2 = getCtx();
+    if (ctx2.state === "suspended") {
+      ctx2.resume().catch(() => {});
+      return;
+    }
+    if (nextStepTime < ctx2.currentTime - 0.25) {
+      nextStepTime = ctx2.currentTime + 0.05;
+    }
     while (nextStepTime < ctx2.currentTime + LOOKAHEAD) {
       const s = stepIdx % 16;
 

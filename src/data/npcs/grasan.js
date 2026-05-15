@@ -9,5 +9,4 @@ export const grasanNpc = {
     ["この工場って昔はロボとかを作ってたんだけど、今は稼働してないのよ。"],
   ],
   solid:     true,
-  animMs:    Infinity,
 };

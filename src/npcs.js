@@ -119,6 +119,53 @@ export const NPCS_BY_MAP = {
     }),
     resolve({
       kind: "npc",
+      name: "gj1",
+      spriteKey: "gj1",
+      x: 2110,
+      y: 2048,
+      talkHit: { x: 0, y: 0, w: 16, h: 16 },
+      talkPages: [
+        ["いっつも自然に見てるけどさ、"],
+        ["よく考えるとほんとおおきな木だよねー。"],
+      ],
+      solid: true,
+    }),
+    resolve({
+      kind: "npc",
+      name: "tako",
+      spriteKey: "tako",
+      x: 791,
+      y: 1119,
+      talkHit: { x: 0, y: 0, w: 16, h: 16 },
+      talkPages: [["ぼくはしがないタコです。"]],
+      solid: true,
+    }),
+    resolve({
+      kind: "npc",
+      name: "smithfun",
+      spriteKey: "smithfun",
+      x: 1709,
+      y: 2171,
+      talkHit: { x: 0, y: 0, w: 16, h: 16 },
+      talkPages: [
+        ["ねえあなた、ロバート・スミス見た？"],
+        ["この島にロバート・スミスがきてるの！"],
+        ["きゃー！"],
+      ],
+      solid: true,
+    }),
+    resolve({
+      kind: "npc",
+      name: "smith",
+      spriteKey: "smith",
+      x: 1042,
+      y: 1574,
+      talkHit: { x: 0, y: 0, w: 16, h: 16 },
+      talkPages: [["……"]],
+      solid: true,
+    }),
+    resolve({
+      kind: "npc",
       name: "tanuki_0",
       spriteKey: "tanuki",
       x: 2721,
@@ -548,9 +595,9 @@ export function getUfoHouseNpcs(houseNum) {
   const isLast = step === UFO_SEQ.length - 1;
   if (isCorrect && isLast) {
     npcs.push(
-      resolve({ kind: "npc", name: "spacesisters1_a", spriteKey: "spacesisters1", x: UFO_CX, y: UFO_CY - 12, talkHit: { x: 0, y: 0, w: 16, h: 16 }, solid: true, talkPages: [["……"]] }),
-      resolve({ kind: "npc", name: "spacesisters1_b", spriteKey: "spacesisters1", x: UFO_CX - 16, y: UFO_CY + 10, talkHit: { x: 0, y: 0, w: 16, h: 16 }, solid: true, talkPages: [["……"]] }),
-      resolve({ kind: "npc", name: "spacesisters1_c", spriteKey: "spacesisters1", x: UFO_CX + 16, y: UFO_CY + 10, talkHit: { x: 0, y: 0, w: 16, h: 16 }, solid: true, talkPages: [["……"]] }),
+      resolve({ kind: "npc", name: "spacesisters1_a", spriteKey: "spacesisters1", x: UFO_CX, y: UFO_CY - 12, talkHit: { x: 0, y: 0, w: 16, h: 16 }, solid: true, event: { type: "spacesisters_warp" } }),
+      resolve({ kind: "npc", name: "spacesisters1_b", spriteKey: "spacesisters1", x: UFO_CX - 16, y: UFO_CY + 10, talkHit: { x: 0, y: 0, w: 16, h: 16 }, solid: true, event: { type: "spacesisters_warp" } }),
+      resolve({ kind: "npc", name: "spacesisters1_c", spriteKey: "spacesisters1", x: UFO_CX + 16, y: UFO_CY + 10, talkHit: { x: 0, y: 0, w: 16, h: 16 }, solid: true, event: { type: "spacesisters_warp" } }),
     );
   } else if (isCorrect) {
     npcs.push(resolve({

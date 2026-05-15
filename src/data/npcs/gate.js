@@ -10,6 +10,7 @@ export const gateNpc = {
   talkType:       "sign",
   talkPages:      [[""]],
   solid:          false,
+  noRender:       true,
   showWhenBgm:    "assets/audio/duckJ.mp3",
   shootingTrigger: true,
 };
