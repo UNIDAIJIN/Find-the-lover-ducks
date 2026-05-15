@@ -241,9 +241,6 @@ export function setupMobileController(input, {
     <div class="row-bottom">
       <button class="btn-small" data-key-tap="s">SAVE</button>
       <button class="btn-small" data-key-tap="l">LOAD</button>
-      <button class="btn-icon" data-audio-toggle="1" aria-label="audio">
-        <span class="play"></span><span class="pause"></span>
-      </button>
     </div>
   `;
   document.body.appendChild(ctrl);
@@ -389,19 +386,5 @@ export function setupMobileController(input, {
     };
     btn.addEventListener("touchstart", tap, { passive: false });
     btn.addEventListener("mousedown",  tap);
-  });
-
-  ctrl.querySelectorAll("[data-audio-toggle]").forEach(btn => {
-    const tap = e => {
-      e.preventDefault();
-      wakeAudio();
-      btn.classList.add("pressed");
-      vibrate(15);
-      input.press("v");
-      setTimeout(() => { input.release("v"); }, 80);
-      setTimeout(() => { btn.classList.remove("pressed"); }, 80);
-    };
-    btn.addEventListener("touchstart", tap, { passive: false });
-    btn.addEventListener("mousedown", tap);
   });
 }

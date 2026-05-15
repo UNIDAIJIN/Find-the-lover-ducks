@@ -9,8 +9,8 @@ export const shamanNpc = {
   event: {
     type:      "item_shop",
     shopName:  "シャーマン堂",
-    greeting:  [["……"]],
-    byeDialog: [["……"]],
+    greeting:  [["あなたの町のシャーマン堂です。"]],
+    byeDialog: [["俺の占いは１００パーセントだ。"]],
     items: Array.from({ length: 30 }, (_, i) => {
       const n = i + 1;
       return { id: `otsuge_${String(n).padStart(2, "0")}`, name: `お告げの書${n}`, price: 600 };

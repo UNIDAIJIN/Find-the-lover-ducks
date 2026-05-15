@@ -1355,7 +1355,6 @@ export function playCooking(durationMs = 2400) {
 
 // ---- INFIERNO TRIP テクノBGM ----
 let _shootingScheduler = null;
-let _shootingGain = null;
 let _afloClubScheduler = null;
 let _afloClubKickAt = 0;
 
@@ -1453,6 +1452,13 @@ export function startShootingBgm() {
 
   _shootingScheduler = setInterval(() => {
     const ctx2 = getCtx();
+    if (ctx2.state === "suspended") {
+      ctx2.resume().catch(() => {});
+      return;
+    }
+    if (nextStepTime < ctx2.currentTime - 0.25) {
+      nextStepTime = ctx2.currentTime + 0.05;
+    }
     while (nextStepTime < ctx2.currentTime + LOOKAHEAD) {
       const s = stepIdx % 16;
 

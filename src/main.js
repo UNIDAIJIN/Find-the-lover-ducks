@@ -1123,6 +1123,7 @@ const SHOVEL_DIG_TRIGGER = { x: 1952, y: 2190, w: 16, h: 16 }; // around 1960,21
 const TIMEMACHINE_TALK_TRIGGER = { x: 2641, y: 121, w: 3, h: 5 };
 const TIMEMACHINE_WAIT_TRIGGER_A = { x: 2616, y: 116, w: 24, h: 12 };
 const TIMEMACHINE_WAIT_TRIGGER_B = { x: 2645, y: 116, w: 24, h: 12 };
+const TIMEMACHINE_WAIT_MS = 8000;
 let benchEnterMs    = 0; // プレイヤーが入った時刻（0=外）
 let fountainEnterMs = 0;
 let timeMachineEnterMsA = 0;
@@ -8219,7 +8220,6 @@ function update(t) {
       input.consume("d") ||
       input.consume("s") ||
       input.consume("l") ||
-      input.consume("v") ||
       input.consume("b") ||
       input.consume("m") ||
       input.consume("p") ||
@@ -8415,7 +8415,6 @@ function update(t) {
     input.consume("x");
     input.consume("s");
     input.consume("l");
-    input.consume("v");
     input.consume("b");
     input.consume("d");
     input.consume("ArrowUp");
@@ -8529,7 +8528,6 @@ function update(t) {
   // セーブ / ロード
   if (input.consume("s")) { saveGame(); return; }
   if (input.consume("l")) { loadGame(); return; }
-  if (input.consume("v")) { setBgmOverrideSafe(null); setBgmMapSafe("assets/audio/bgm0.mp3"); return; }
   if (DEBUG && input.consume("p")) {
     startPhoneBrawl();
     return;
@@ -8597,7 +8595,7 @@ function update(t) {
                     fy >= TIMEMACHINE_WAIT_TRIGGER_B.y && fy < TIMEMACHINE_WAIT_TRIGGER_B.y + TIMEMACHINE_WAIT_TRIGGER_B.h;
     if (inTimeA) {
       if (timeMachineEnterMsA === 0) timeMachineEnterMsA = now_ms;
-      else if (STATE.flags.timeMachineStarted && now_ms - timeMachineEnterMsA >= 20000 && !pageTurnFx.active && !timeMachineTravelFx.active) {
+      else if (STATE.flags.timeMachineStarted && now_ms - timeMachineEnterMsA >= TIMEMACHINE_WAIT_MS && !pageTurnFx.active && !timeMachineTravelFx.active) {
         const spawnAt = { x: leader.x, y: leader.y };
         const destMap = current.id === "outdoor" ? "mirai" : "outdoor";
         timeMachineEnterMsA = 0;
@@ -8610,7 +8608,7 @@ function update(t) {
     }
     if (inTimeB) {
       if (timeMachineEnterMsB === 0) timeMachineEnterMsB = now_ms;
-      else if (STATE.flags.timeMachineStarted && now_ms - timeMachineEnterMsB >= 20000 && !pageTurnFx.active && !timeMachineTravelFx.active) {
+      else if (STATE.flags.timeMachineStarted && now_ms - timeMachineEnterMsB >= TIMEMACHINE_WAIT_MS && !pageTurnFx.active && !timeMachineTravelFx.active) {
         const spawnAt = { x: leader.x, y: leader.y };
         const destMap = current.id === "outdoor" ? "kako" : "outdoor";
         timeMachineEnterMsB = 0;
