@@ -2,7 +2,7 @@ export const pubNpc = {
   kind: "npc",
   name: "pub",
   spriteKey: "pub",
-  x: 89,
+  x: 105,
   y: 123,
   talkHit: { x: 0, y: 0, w: 16, h: 21 },
   solid: true,

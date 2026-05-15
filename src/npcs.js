@@ -571,6 +571,16 @@ export const NPCS_BY_MAP = {
 
   pub: [
     resolve(pubNpc),
+    resolve({
+      kind: "npc",
+      name: "samrai",
+      spriteKey: "samrai",
+      x: 164,
+      y: 135,
+      talkHit: { x: 0, y: 0, w: 16, h: 16 },
+      talkPages: [["……"]],
+      solid: true,
+    }),
   ],
 };
 

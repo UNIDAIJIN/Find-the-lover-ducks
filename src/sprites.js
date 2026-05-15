@@ -118,6 +118,7 @@ export const SPRITES = {
   tako: loadSprite("assets/sprites/tako.png"),
   smith: loadSprite("assets/sprites/smith.png"),
   smithfun: loadSprite("assets/sprites/smithfun.png"),
+  samrai: loadSprite("assets/sprites/samrai.png"),
   misaki: loadSprite("assets/sprites/misaki.png"),
   minami_call: loadSprite("assets/sprites/minami-call.png"),
   sogankyo: loadSprite("assets/sprites/sogankyo.png"),

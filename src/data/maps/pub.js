@@ -2,6 +2,7 @@
 // bg: 256×240。moritasaki_room と同じ配置
 export const pubMap = {
   bgSrc:  "assets/maps/pub.png",
+  bgTopSrc: "assets/maps/pub_top.png",
   colSrc: "assets/maps/pub_col.png",
   bgmSrc: "assets/audio/bgm0.mp3",
   spawn:  { x: 128, y: 160 },
