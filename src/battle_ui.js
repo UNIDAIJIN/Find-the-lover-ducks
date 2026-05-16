@@ -118,7 +118,16 @@ export function drawBattleScreen(ctx, st, opt) {
   const cmdW = 88;
 
   // items window（表示中のみ）
-  const invW = 104;
+  let invW = 104;
+  if (st.phase === "items") {
+    const items = Array.isArray(st.invItems) ? st.invItems : [];
+    let maxLabelW = ctx.measureText("(なし)").width;
+    for (const id of items) {
+      const label = typeof itemName === "function" ? itemName(id) : String(id ?? "");
+      maxLabelW = Math.max(maxLabelW, ctx.measureText(label).width);
+    }
+    invW = Math.min(BASE_W - 16, Math.max(invW, Math.ceil(maxLabelW) + 30));
+  }
   const invH = 68;
   const invX = BASE_W - 8 - invW;
   const invY = cmdY - invH - 4;

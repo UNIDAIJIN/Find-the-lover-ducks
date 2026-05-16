@@ -45,6 +45,17 @@ export function runNpcEvent(act, ctx) {
     return true;
   }
 
+  if (ev.type === "samrai_chambara") {
+    const { dialog, startChambara } = ctx;
+    dialog.open([
+      ["うぃーっと、ひっく。"],
+      ["きええーーーい！"],
+    ], () => {
+      if (typeof startChambara === "function") startChambara();
+    }, ev.talkType || "talk");
+    return true;
+  }
+
   if (ev.type === "yes_no_dialog") {
     const { choice, dialog, inventory } = ctx;
     const introPages = ev.introPages || [["……"]];

@@ -24,6 +24,7 @@ import { QUESTS }               from "./data/quests.js";
 import { createShooting, drawShootingBackdrop, SHOOTING_DIFFICULTIES } from "./ui_shooting.js";
 import { createDiving, DIVE_W, DIVE_H } from "./ui_diving.js";
 import { createPhoneBrawl, PHONE_BRAWL_W, PHONE_BRAWL_H } from "./ui_phone_brawl.js";
+import { createChambara } from "./ui_chambara.js";
 import { createInteractionSession } from "./interaction_session.js";
 import { controlPrompt } from "./control_prompts.js";
 import { gateNpc } from "./data/npcs/gate.js";
@@ -101,6 +102,7 @@ const nowMs = (typeof performance !== "undefined" && performance.now)
 // UI / FX
 const shooting  = createShooting({ BASE_W: SHOOTING_W, BASE_H: SHOOTING_H, input, sprites: SPRITES, getLeaderImg: () => leader?.img, mobile: MOBILE });
 const diving    = createDiving({ BASE_W, BASE_H, input, getLeaderImg: () => leader?.img, getHeadwearImg: () => SPRITES.kingyobachi, sprites: SPRITES, mobile: MOBILE });
+const chambara  = createChambara({ input, getPlayerImg: () => leader?.img, enemyImg: SPRITES.samrai });
 const phoneBrawl = createPhoneBrawl({
   input,
   inputTarget: window,
@@ -156,6 +158,33 @@ dialog.open = (pages, onClose, ...args) => {
   interactionSession.scheduleReleaseCheck();
   return ret;
 };
+
+function startChambaraMinigame() {
+  pushBgmOverride("about:blank", { safe: false });
+  chambara.start(() => {
+    fade.startIrisFade(nowMs(), {
+      outMs: 480,
+      holdMs: 160,
+      inMs: 420,
+      inMode: "iris",
+      pauseR: 0,
+      pauseMs: 1,
+      onBlack: () => {
+        chambara.finishClose();
+        popBgmOverride({ safe: false });
+      },
+      onEnd: () => {
+        interactionSession.begin();
+        letterbox.snapAuto(true);
+        dialog.open([["失礼、拙者べろべろでござる。"]], () => {
+          interactionSession.end();
+          letterbox.setAuto(false);
+        }, "talk");
+      },
+    });
+    return true;
+  });
+}
 
 const choiceOpenRaw = choice.open.bind(choice);
 choice.open = (options, onSelect, ...args) => {
@@ -3854,6 +3883,20 @@ const menu = createMenu({
       }, 700);
       return true;
     }
+    if (id === "baby_castella") {
+      inventory.removeItem("baby_castella");
+      lockItemUseWait();
+      setTimeout(() => {
+        STATE.flags.eatCount = (STATE.flags.eatCount || 0) + 1;
+        if (STATE.flags.eatCount >= 10) achieveQuest("26");
+        input.unlock();
+        dialog.open([
+          ["ナツミはベビーカステラをたべてみた！"],
+          ["ふわっとあまい！"],
+        ], null, "sign");
+      }, 700);
+      return true;
+    }
     if (id === "yakisoba") {
       inventory.removeItem("yakisoba");
       lockItemUseWait();
@@ -3968,6 +4011,16 @@ const menu = createMenu({
             },
           });
         }, "sign");
+      }, 700);
+      return true;
+    }
+    if (id === "taping") {
+      lockItemUseWait();
+      setTimeout(() => {
+        input.unlock();
+        dialog.open([
+          ["テーピングのにおいをかぐと少し懐かしい気持ちになった。"],
+        ], null, "sign");
       }, 700);
       return true;
     }
@@ -4777,6 +4830,7 @@ function isSceneActive() {
   if (battle.isActive()) return true;
   if (shooting.isActive()) return true;
   if (diving.isActive()) return true;
+  if (chambara.isActive()) return true;
   if (phoneBrawl.isActive()) return true;
   if (sbBossType) return true;
   if (jumprope.isActive()) return true;
@@ -6550,6 +6604,16 @@ function draw() {
     return;
   }
 
+  if (chambara.isActive()) {
+    ctx._skipTextShadow = true;
+    chambara.draw(ctx);
+    ctx._skipTextShadow = false;
+    fade.draw(ctx);
+    questAlert.update(); drainQuestQueue();
+    questAlert.draw(ctx);
+    return;
+  }
+
   if (phoneBrawl.isActive()) {
     ctx._skipTextShadow = true;
     phoneBrawl.draw(ctx);
@@ -7970,6 +8034,10 @@ function tryInteract(t) {
         startDiving: (onDone) => {
           startDivingMinigame(onDone);
         },
+        startChambara: () => {
+          interactionSession.end();
+          startBattleTransition(() => startChambaraMinigame());
+        },
         startShake: (ms = 500, intensity = 3) => {
           _shakeUntil = performance.now() + ms;
           _shakeIntensity = intensity;
@@ -8131,11 +8199,6 @@ function tryInteract(t) {
 }
 
 function update(t) {
-  if (DEBUG && input.consume("d")) {
-    debugJumpToSpaceBossEndingScene();
-    return;
-  }
-
   // ロード画面
   if (loading.isActive()) {
     loading.update();
@@ -8384,6 +8447,12 @@ function update(t) {
     return;
   }
 
+  // chambara
+  if (chambara.isActive()) {
+    chambara.update();
+    return;
+  }
+
   // phone brawl
   if (phoneBrawl.isActive()) {
     phoneBrawl.update(1 / 60);
@@ -8606,6 +8675,10 @@ function update(t) {
   if (input.consume("l")) { loadGame(); return; }
   if (DEBUG && input.consume("p")) {
     startPhoneBrawl();
+    return;
+  }
+  if (input.consume("d")) {
+    startChambaraMinigame();
     return;
   }
   if (DEBUG && input.consume("1") && !pageTurnFx.active && !timeMachineTravelFx.active) {

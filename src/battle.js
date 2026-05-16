@@ -1,5 +1,6 @@
 // battle.js
 import { drawBattleScreen } from "./battle_ui.js";
+import { createInputRepeat } from "./input_repeat.js";
 import { playCursor, playConfirm } from "./se.js";
 import { SPRITES } from "./sprites.js";
 import { STATE } from "./state.js";
@@ -20,6 +21,7 @@ export function createBattleSystem(cfg) {
   } = cfg;
 
   const DUCK_WIN_COUNT = 10;
+  let navRepeat = null;
 
   function duckLine(text, extra = {}) {
     return {
@@ -359,6 +361,7 @@ export function createBattleSystem(cfg) {
   // =========================
   function start(inputOrKeys) {
     _loseJinglePlayed = false;
+    navRepeat = inputOrKeys ? createInputRepeat(inputOrKeys) : null;
     const inv = getFieldInventorySnapshot ? getFieldInventorySnapshot() : [];
 
     const now0 = (
@@ -747,6 +750,19 @@ export function createBattleSystem(cfg) {
 
     if (a.type === "item") {
       const id = a.itemId;
+      if (id === "taping") {
+        queueMsg([`${c.name}はテーピングを巻いた！`, "HPが80回復！"], {
+          autoMs: 800,
+          apply: () => {
+            c.hp = Math.min(c.maxHp | 0, (c.hp | 0) + 80);
+          },
+          flash: { color: "#ffffff", alpha: 0.22, ms: 140 },
+        });
+
+        if (c.name === "RIKU") enqueueRikuPoisonAfterRikuAction();
+        return;
+      }
+
       const dmg = (typeof itemThrowDmg === "function" ? itemThrowDmg(id) : 0) | 0;
       const isRubberDuck = String(id).startsWith("rubber_duck");
 
@@ -943,14 +959,25 @@ export function createBattleSystem(cfg) {
 
     if (st.msg) return;
 
+    if (st.phase === "items") {
+      const repeat = navRepeat || { consume: (key) => input.consume(key) };
+      if (repeat.consume("ArrowUp")) {
+        if (invMove(-1)) playCursor();
+      }
+      if (repeat.consume("ArrowDown")) {
+        if (invMove(+1)) playCursor();
+      }
+      return;
+    }
+
     if (input.consume("ArrowUp")) {
-      if (st.phase === "items") invMove(-1);
-      else st.menuIdx = (st.menuIdx + st.cmds.length - 1) % st.cmds.length;
+      st.menuIdx = (st.menuIdx + st.cmds.length - 1) % st.cmds.length;
+      if (navRepeat) navRepeat.reset();
       playCursor();
     }
     if (input.consume("ArrowDown")) {
-      if (st.phase === "items") invMove(+1);
-      else st.menuIdx = (st.menuIdx + 1) % st.cmds.length;
+      st.menuIdx = (st.menuIdx + 1) % st.cmds.length;
+      if (navRepeat) navRepeat.reset();
       playCursor();
     }
   }
@@ -1023,6 +1050,7 @@ export function createBattleSystem(cfg) {
       st.invAnimOpen = true;
       st.invAnimSince = st.now | 0;
       st.invCursor = Math.max(0, Math.min(st.invCursor | 0, st.invItems.length - 1));
+      if (navRepeat) navRepeat.reset();
       if (input) input.clear();
       return;
     }
@@ -1046,6 +1074,7 @@ export function createBattleSystem(cfg) {
       st.invAnimOpen = false;
       st.invAnimSince = st.now | 0;
       st.commandPhaseSince = st.now | 0;
+      if (navRepeat) navRepeat.reset();
       if (input) input.clear();
       return;
     }
@@ -1053,8 +1082,10 @@ export function createBattleSystem(cfg) {
 
   function invMove(dy) {
     const n = st.invItems.length | 0;
-    if (n <= 0) return;
-    st.invCursor = Math.max(0, Math.min(n - 1, (st.invCursor | 0) + dy));
+    if (n <= 0) return false;
+    const prev = st.invCursor | 0;
+    st.invCursor = Math.max(0, Math.min(n - 1, prev + dy));
+    return st.invCursor !== prev;
   }
 
   function draw(ctx) {

@@ -286,6 +286,42 @@ export const NPCS_BY_MAP = {
     resolve(iceNpc),
     resolve({
       kind: "npc",
+      name: "hang",
+      spriteKey: "hang",
+      x: 1642,
+      y: 1549,
+      talkHit: { x: 0, y: 0, w: 32, h: 26 },
+      event: {
+        type: "item_shop",
+        shopName: "フワフワ堂",
+        greeting: [["フワフワしてこうぜーい。"]],
+        byeDialog: [["ひひ、へらへら。"]],
+        items: [
+          { id: "baby_castella", name: "ベビーカステラ", price: 200 },
+        ],
+      },
+      solid: true,
+    }),
+    resolve({
+      kind: "npc",
+      name: "gori",
+      spriteKey: "gori",
+      x: 1612,
+      y: 1579,
+      talkHit: { x: 0, y: 0, w: 32, h: 26 },
+      event: {
+        type: "item_shop",
+        shopName: "テープ本舗",
+        greeting: [["やすいよーっと！"]],
+        byeDialog: [["やすかったろう？"]],
+        items: [
+          { id: "taping", name: "テーピング", price: 500 },
+        ],
+      },
+      solid: true,
+    }),
+    resolve({
+      kind: "npc",
       name: "onesan",
       spriteKey: "onesan",
       x: 1711,
@@ -314,7 +350,7 @@ export const NPCS_BY_MAP = {
       spriteKey: "lee",
       x: 1583,
       y: 1609,
-      talkHit: { x: 0, y: 0, w: 16, h: 16 },
+      talkHit: { x: 0, y: 0, w: 32, h: 26 },
       solid: true,
       event: {
         type: "item_shop",
@@ -342,6 +378,19 @@ export const NPCS_BY_MAP = {
   workmen: [
     resolve(workmangirlNpc),
     resolve(workmanNpc),
+  ],
+
+  house09: [
+    resolve({
+      kind: "npc",
+      name: "amina",
+      spriteKey: "amina",
+      x: 125,
+      y: 131,
+      talkHit: { x: 0, y: 0, w: 16, h: 16 },
+      talkPages: [["あそぼうあそぼう！"]],
+      solid: true,
+    }),
   ],
 
   digitmore: [
@@ -578,7 +627,7 @@ export const NPCS_BY_MAP = {
       x: 164,
       y: 135,
       talkHit: { x: 0, y: 0, w: 16, h: 16 },
-      talkPages: [["……"]],
+      event: { type: "samrai_chambara" },
       solid: true,
     }),
   ],

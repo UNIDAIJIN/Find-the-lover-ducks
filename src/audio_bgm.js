@@ -8,6 +8,7 @@ export function createBgm({
   bgm.loop = true;
   bgm.volume = volume;
   bgm.preload = "none";
+  const MP3_BGM_MASTER_SCALE = 0.5;
   // -24 LUFS 揃え値を一律 0.6x（約 -28.4 LUFS 相当）にトリム
   const sourceVolumeScale = {
     "assets/audio/bgm0.mp3":         0.74,
@@ -32,7 +33,7 @@ export function createBgm({
 
   function volumeForSrc(src) {
     const scale = sourceVolumeScale[src] ?? 1;
-    return Math.min(1, volume * scale);
+    return Math.min(1, volume * scale * MP3_BGM_MASTER_SCALE);
   }
 
   function applyVolumeForSrc(src) {

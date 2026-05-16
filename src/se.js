@@ -10,6 +10,8 @@ let _rainHp = null;
 let _rainLp = null;
 let _seasideNodes = null;
 let _seasideGain = null;
+let _chambaraNodes = null;
+let _chambaraScheduler = null;
 
 const SAMPLE_SE_MASTER = 0.72;
 const SAMPLE_SE_SCALE = {
@@ -2102,4 +2104,148 @@ export function playWingFlap() {
   g.gain.setValueAtTime(0.08, t);
   g.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
   ns.start(t); ns.stop(t + 0.1);
+}
+
+function pluckTone(ctx, master, freq, st, dur = 0.22, vol = 0.09) {
+  const osc = ctx.createOscillator();
+  const g = ctx.createGain();
+  const hp = ctx.createBiquadFilter();
+  osc.type = "square";
+  osc.frequency.setValueAtTime(freq, st);
+  osc.frequency.exponentialRampToValueAtTime(freq * 0.985, st + dur);
+  hp.type = "highpass";
+  hp.frequency.value = 180;
+  osc.connect(hp); hp.connect(g); g.connect(master);
+  g.gain.setValueAtTime(vol, st);
+  g.gain.exponentialRampToValueAtTime(0.001, st + dur);
+  osc.start(st); osc.stop(st + dur + 0.02);
+}
+
+function drumHit(ctx, master, st, vol = 0.08) {
+  const osc = ctx.createOscillator();
+  const g = ctx.createGain();
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(120, st);
+  osc.frequency.exponentialRampToValueAtTime(48, st + 0.11);
+  osc.connect(g); g.connect(master);
+  g.gain.setValueAtTime(vol, st);
+  g.gain.exponentialRampToValueAtTime(0.001, st + 0.13);
+  osc.start(st); osc.stop(st + 0.14);
+}
+
+export function startChambaraBgm() {
+  stopChambaraBgm();
+  const ctx = getCtx();
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
+  const master = ctx.createGain();
+  master.gain.value = generatedBgmLevel(0.54);
+  master.connect(ctx.destination);
+
+  const drone = ctx.createOscillator();
+  const droneG = ctx.createGain();
+  const droneLp = ctx.createBiquadFilter();
+  drone.type = "sawtooth";
+  drone.frequency.value = 110;
+  droneLp.type = "lowpass";
+  droneLp.frequency.value = 420;
+  drone.connect(droneLp); droneLp.connect(droneG); droneG.connect(master);
+  droneG.gain.value = 0.035;
+  drone.start();
+
+  const notes = [220, 261.63, 293.66, 329.63, 392, 329.63, 293.66, 261.63];
+  let step = 0;
+  const schedule = () => {
+    if (!_ctx || !_chambaraNodes) return;
+    const base = ctx.currentTime + 0.02;
+    for (let i = 0; i < 4; i += 1) {
+      const st = base + i * 0.18;
+      const idx = (step + i) % notes.length;
+      pluckTone(ctx, master, notes[idx], st, 0.16, i === 0 ? 0.1 : 0.07);
+      if (((step + i) % 4) === 0) drumHit(ctx, master, st, 0.055);
+    }
+    step = (step + 4) % notes.length;
+  };
+  _chambaraNodes = [drone, droneLp, droneG, master];
+  schedule();
+  _chambaraScheduler = setInterval(schedule, 700);
+}
+
+export function stopChambaraBgm() {
+  if (_chambaraScheduler !== null) {
+    clearInterval(_chambaraScheduler);
+    _chambaraScheduler = null;
+  }
+  if (_chambaraNodes) {
+    _chambaraNodes.forEach(n => { try { n.stop(); } catch (_) {} try { n.disconnect(); } catch (_) {} });
+    _chambaraNodes = null;
+  }
+}
+
+export function playChambaraSlash() {
+  const ctx = getCtx();
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
+  const t = ctx.currentTime;
+  const len = ctx.sampleRate * 0.09 | 0;
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 1.6);
+  const src = ctx.createBufferSource();
+  const bp = ctx.createBiquadFilter();
+  const g = ctx.createGain();
+  src.buffer = buf;
+  bp.type = "bandpass";
+  bp.frequency.setValueAtTime(1800, t);
+  bp.frequency.exponentialRampToValueAtTime(5200, t + 0.06);
+  bp.Q.value = 1.6;
+  src.connect(bp); bp.connect(g); g.connect(ctx.destination);
+  g.gain.setValueAtTime(generatedSeLevel(0.16), t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+  src.start(t); src.stop(t + 0.09);
+}
+
+export function playChambaraHit() {
+  const ctx = getCtx();
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
+  const t = ctx.currentTime;
+  const len = ctx.sampleRate * 0.12 | 0;
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2);
+  const src = ctx.createBufferSource();
+  const bp = ctx.createBiquadFilter();
+  const g = ctx.createGain();
+  src.buffer = buf;
+  bp.type = "bandpass";
+  bp.frequency.value = 780;
+  bp.Q.value = 0.9;
+  src.connect(bp); bp.connect(g); g.connect(ctx.destination);
+  g.gain.setValueAtTime(generatedSeLevel(0.32), t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+  src.start(t); src.stop(t + 0.13);
+  const osc = ctx.createOscillator();
+  const og = ctx.createGain();
+  osc.type = "triangle";
+  osc.frequency.setValueAtTime(160, t);
+  osc.frequency.exponentialRampToValueAtTime(70, t + 0.08);
+  osc.connect(og); og.connect(ctx.destination);
+  og.gain.setValueAtTime(generatedSeLevel(0.18), t);
+  og.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
+  osc.start(t); osc.stop(t + 0.1);
+}
+
+export function playChambaraParry() {
+  const ctx = getCtx();
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
+  const t = ctx.currentTime;
+  [1480, 2217, 2960].forEach((freq, i) => {
+    const st = t + i * 0.012;
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.value = freq;
+    osc.connect(g); g.connect(ctx.destination);
+    g.gain.setValueAtTime(generatedSeLevel(i === 0 ? 0.22 : 0.14), st);
+    g.gain.exponentialRampToValueAtTime(0.001, st + 0.16);
+    osc.start(st); osc.stop(st + 0.17);
+  });
 }
