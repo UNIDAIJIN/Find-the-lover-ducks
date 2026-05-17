@@ -4077,7 +4077,7 @@ function drawFloating(ctx) {
 
   function handleKeyDown(event) {
     const key = event.key.toLowerCase();
-    if (["arrowleft", "arrowright", "arrowup", "arrowdown", "a", "d", "w", "s", "x", "z", "enter"].includes(key)) {
+    if (["arrowleft", "arrowright", "arrowup", "arrowdown", "a", "w", "s", "x", "z", "enter"].includes(key)) {
       event.preventDefault();
       ensureAudio();
     }
@@ -4087,7 +4087,7 @@ function drawFloating(ctx) {
     }
     if (state.defeatChoice) {
       if ((key === "arrowup" || key === "w" || key === "arrowleft" || key === "a") && !event.repeat) moveDefeatChoice(-1);
-      else if ((key === "arrowdown" || key === "s" || key === "arrowright" || key === "d") && !event.repeat) moveDefeatChoice(1);
+      else if ((key === "arrowdown" || key === "s" || key === "arrowright") && !event.repeat) moveDefeatChoice(1);
       else if ((key === "z" || key === "enter") && !event.repeat) confirmDefeatChoice();
       return;
     }
@@ -4096,7 +4096,7 @@ function drawFloating(ctx) {
       return;
     }
     if (key === "arrowleft" || key === "a") state.keys.left = true;
-    else if (key === "arrowright" || key === "d") state.keys.right = true;
+    else if (key === "arrowright") state.keys.right = true;
     else if (key === "arrowup" || key === "w") state.keys.up = true;
     else if (key === "arrowdown" || key === "s") state.keys.down = true;
     else if (key === "x" && !event.repeat) selectNextCard();
@@ -4107,7 +4107,7 @@ function drawFloating(ctx) {
   function handleKeyUp(event) {
     const key = event.key.toLowerCase();
     if (key === "arrowleft" || key === "a") state.keys.left = false;
-    else if (key === "arrowright" || key === "d") state.keys.right = false;
+    else if (key === "arrowright") state.keys.right = false;
     else if (key === "arrowup" || key === "w") state.keys.up = false;
     else if (key === "arrowdown" || key === "s") state.keys.down = false;
   }
@@ -4120,12 +4120,12 @@ function drawFloating(ctx) {
     }
     if (state.defeatChoice) {
       if (input.consume("ArrowUp") || input.consume("w") || input.consume("ArrowLeft") || input.consume("a")) moveDefeatChoice(-1);
-      if (input.consume("ArrowDown") || input.consume("s") || input.consume("ArrowRight") || input.consume("d")) moveDefeatChoice(1);
+      if (input.consume("ArrowDown") || input.consume("s") || input.consume("ArrowRight")) moveDefeatChoice(1);
       if (input.consume("z") || input.consume("Enter")) confirmDefeatChoice();
       return;
     }
     state.keys.left = input.down("ArrowLeft") || input.down("a");
-    state.keys.right = input.down("ArrowRight") || input.down("d");
+    state.keys.right = input.down("ArrowRight");
     state.keys.up = input.down("ArrowUp") || input.down("w");
     state.keys.down = input.down("ArrowDown") || input.down("s");
     if (state.victoryCelebration && input.consume("z")) {

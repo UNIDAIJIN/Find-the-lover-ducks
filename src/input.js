@@ -86,7 +86,7 @@ export function createInput() {
   }
 
   function isOurKey(k) {
-    return isArrowKey(k) || k === "z" || k === "x" || k === "c" || k === "d" || k === "s" || k === "l" || k === "v" || k === "b" || k === "p" || k === "m" || k === "1" || k === "2" || k === "Enter" || k === " ";
+    return isArrowKey(k) || k === "z" || k === "x" || k === "c" || k === "s" || k === "l" || k === "v" || k === "b" || k === "p" || k === "m" || k === "1" || k === "2" || k === "Enter" || k === " ";
   }
 
   function onKeyDown(e) {
