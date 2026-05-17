@@ -18,6 +18,7 @@ export function createTitle({ BASE_W, BASE_H, input, pocketEdition = false }) {
     { key: "c", label: "dash" },
     { key: "s", label: "save" },
     { key: "l", label: "load" },
+    { key: "v", label: "camera" },
     { key: "Enter", label: "start" },
     { key: "__reset", label: "reset default" },
     { key: "__back", label: "back" },
@@ -158,7 +159,7 @@ export function createTitle({ BASE_W, BASE_H, input, pocketEdition = false }) {
 
     // バージョン（右上）
     ctx.fillStyle = "#555";
-    const ver = "beta2";
+    const ver = "beta4";
     ctx.fillText(ver, BASE_W - ctx.measureText(ver).width - 4, 4);
 
     if (mode === "config") {

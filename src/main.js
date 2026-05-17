@@ -60,17 +60,29 @@ function downloadScreenCapture() {
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
+  const out = renderScreenCaptureCanvas();
 
-  if (typeof canvas.toBlob === "function") {
-    canvas.toBlob(saveBlob, "image/png");
+  if (typeof out.toBlob === "function") {
+    out.toBlob(saveBlob, "image/png");
     return;
   }
 
-  fetch(canvas.toDataURL("image/png")).then((res) => res.blob()).then(saveBlob).catch(() => {});
+  fetch(out.toDataURL("image/png")).then((res) => res.blob()).then(saveBlob).catch(() => {});
+}
+
+function renderScreenCaptureCanvas() {
+  const scale = 3;
+  const out = document.createElement("canvas");
+  out.width = canvas.width * scale;
+  out.height = canvas.height * scale;
+  const outCtx = out.getContext("2d");
+  outCtx.imageSmoothingEnabled = false;
+  outCtx.drawImage(canvas, 0, 0, out.width, out.height);
+  return out;
 }
 
 function captureBlobFromDataUrl() {
-  const dataUrl = canvas.toDataURL("image/png");
+  const dataUrl = renderScreenCaptureCanvas().toDataURL("image/png");
   const comma = dataUrl.indexOf(",");
   if (comma < 0) return null;
   const mime = (dataUrl.slice(0, comma).match(/data:(.*?);base64/) || [])[1] || "image/png";
@@ -109,6 +121,7 @@ async function shareScreenCapture() {
 window.addEventListener("keydown", (e) => {
   if (e.repeat || e.key !== "v") return;
   e.preventDefault();
+  e.stopImmediatePropagation();
   downloadScreenCapture();
 });
 
@@ -284,7 +297,32 @@ if (typeof dialog.getRect === "function" && typeof choice.setAnchorRect === "fun
 
 // ---- BGM (externalized) ----
 const BGM_VOLUME = 0.35;
-const bgmCtl = createBgm({ defaultSrc: "assets/audio/bgm0.mp3", volume: BGM_VOLUME });
+const MOBILE_MP3_BGM_SRC = {
+  "assets/audio/bgm0.mp3": "assets/audio/bgm0_mobile.mp3",
+  "assets/audio/bgm_end.mp3": "assets/audio/bgm_end_mobile.mp3",
+  "assets/audio/bgm_select.mp3": "assets/audio/bgm_select_mobile.mp3",
+  "assets/audio/duckA.mp3": "assets/audio/duckA_mobile.mp3",
+  "assets/audio/duckB.mp3": "assets/audio/duckB_mobile.mp3",
+  "assets/audio/duckC.mp3": "assets/audio/duckC_mobile.mp3",
+  "assets/audio/duckD.mp3": "assets/audio/duckD_mobile.mp3",
+  "assets/audio/duckE.mp3": "assets/audio/duckE_mobile.mp3",
+  "assets/audio/duckF.mp3": "assets/audio/duckF_mobile.mp3",
+  "assets/audio/duckG-good.mp3": "assets/audio/duckG-good_mobile.mp3",
+  "assets/audio/duckG-bad.mp3": "assets/audio/duckG-bad_mobile.mp3",
+  "assets/audio/duckH.mp3": "assets/audio/duckH_mobile.mp3",
+  "assets/audio/duckI.mp3": "assets/audio/duckI_mobile.mp3",
+  "assets/audio/duckJ.mp3": "assets/audio/duckJ_mobile.mp3",
+  "assets/audio/ikaros2026_intro.mp3": "assets/audio/ikaros2026_intro_mobile.mp3",
+  "assets/audio/ikaros2026.mp3": "assets/audio/ikaros2026_mobile.mp3",
+};
+function resolveMp3BgmSrc(src) {
+  return MOBILE ? (MOBILE_MP3_BGM_SRC[src] || src) : src;
+}
+const bgmCtl = createBgm({
+  defaultSrc: "assets/audio/bgm0.mp3",
+  volume: BGM_VOLUME,
+  srcResolver: resolveMp3BgmSrc,
+});
 let bgmFadeStopTimer = null;
 
 function fadeOutBgmToSilence(durationMs = 1200) {
@@ -8287,6 +8325,11 @@ function update(t) {
     return;
   }
 
+  if (input.consume("v")) {
+    downloadScreenCapture();
+    return;
+  }
+
   if (updateContinueReveal(t)) {
     updateCam();
     return;
@@ -9351,8 +9394,88 @@ function startTitle() {
   });
 }
 
+function startLoadingAfterAudioGate() {
+  loading.start(startTitle);
+}
+
+function showMobileAudioGate() {
+  const gate = document.createElement("button");
+  gate.type = "button";
+  gate.innerHTML = `
+    <span class="audio-gate-panel">
+      <span class="audio-gate-notes">
+        <span>・低電力モードをオフにしてください。</span>
+        <span>・消音モードをオフにしてください。</span>
+      </span>
+      <span class="audio-gate-tap">PLEASE TAP HERE</span>
+    </span>
+  `;
+  gate.style.position = "fixed";
+  gate.style.inset = "0";
+  gate.style.zIndex = "9999";
+  gate.style.border = "0";
+  gate.style.margin = "0";
+  gate.style.padding = "0";
+  gate.style.background = "#000";
+  gate.style.color = "#fff";
+  gate.style.font = "16px PixelMplus10, monospace";
+  gate.style.letterSpacing = "0";
+  gate.style.display = "flex";
+  gate.style.alignItems = "center";
+  gate.style.justifyContent = "center";
+  gate.style.textAlign = "left";
+  gate.style.touchAction = "manipulation";
+
+  const panel = gate.querySelector(".audio-gate-panel");
+  if (panel) {
+    panel.style.display = "flex";
+    panel.style.flexDirection = "column";
+    panel.style.alignItems = "center";
+    panel.style.justifyContent = "center";
+    panel.style.width = "min(340px, calc(100vw - 40px))";
+    panel.style.minHeight = "156px";
+    panel.style.boxSizing = "border-box";
+    panel.style.border = "2px solid #fff";
+    panel.style.padding = "24px 18px 20px";
+  }
+  const notes = gate.querySelector(".audio-gate-notes");
+  if (notes) {
+    notes.style.display = "flex";
+    notes.style.flexDirection = "column";
+    notes.style.alignItems = "flex-start";
+    notes.style.gap = "10px";
+    notes.style.width = "100%";
+    notes.style.paddingLeft = "20px";
+    notes.style.boxSizing = "border-box";
+    notes.style.fontSize = "14px";
+    notes.style.lineHeight = "1.8";
+  }
+  const tap = gate.querySelector(".audio-gate-tap");
+  if (tap) {
+    tap.style.marginTop = "26px";
+    tap.style.fontSize = "16px";
+    tap.style.lineHeight = "1";
+  }
+
+  let started = false;
+  const enter = (e) => {
+    e.preventDefault();
+    if (started) return;
+    started = true;
+    bgmCtl.unlock();
+    unlockSeAudio();
+    gate.remove();
+    startLoadingAfterAudioGate();
+  };
+
+  gate.addEventListener("pointerdown", enter, { once: true });
+  gate.addEventListener("touchstart", enter, { once: true, passive: false });
+  document.body.appendChild(gate);
+}
+
 bgmCtl.setOverride("about:blank"); // ローディング・タイトル中はBGM無音
-loading.start(startTitle);
+if (MOBILE) showMobileAudioGate();
+else startLoadingAfterAudioGate();
 
 if (MOBILE) {
   setupMobileController(input, {

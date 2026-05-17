@@ -18,6 +18,7 @@ export function createInput() {
     c: [2, 7],
     s: [4],
     l: [5],
+    v: [3],
     Enter: [9],
   };
   const GAMEPAD_BUTTON_LABELS = {
@@ -76,6 +77,7 @@ export function createInput() {
     if (k === "B") return "b";
     if (k === "P") return "p";
     if (k === "M") return "m";
+    if (k === "V") return "v";
     return k;
   }
 
@@ -84,7 +86,7 @@ export function createInput() {
   }
 
   function isOurKey(k) {
-    return isArrowKey(k) || k === "z" || k === "x" || k === "c" || k === "d" || k === "s" || k === "l" || k === "b" || k === "p" || k === "m" || k === "1" || k === "2" || k === "Enter" || k === " ";
+    return isArrowKey(k) || k === "z" || k === "x" || k === "c" || k === "d" || k === "s" || k === "l" || k === "v" || k === "b" || k === "p" || k === "m" || k === "1" || k === "2" || k === "Enter" || k === " ";
   }
 
   function onKeyDown(e) {

@@ -3,6 +3,7 @@ export function createBgm({
   defaultSrc = "assets/audio/bgm0.mp3",
   volume = 0.35,
   unlockEvents = ["pointerdown", "keydown", "touchstart"],
+  srcResolver = null,
 } = {}) {
   const bgm = new Audio();
   bgm.loop = true;
@@ -19,14 +20,14 @@ export function createBgm({
     "assets/audio/duckA.mp3":        1.25, // 元音源のまま音量だけ調整
     "assets/audio/duckB.mp3":        0.70,
     "assets/audio/duckC.mp3":        0.77,
-    "assets/audio/duckD.mp3":        0.73,
+    "assets/audio/duckD.mp3":        0.60,
     "assets/audio/duckE.mp3":        0.73,
     "assets/audio/duckF.mp3":        0.71,
     "assets/audio/duckG-good.mp3":   0.69,
     "assets/audio/duckG-bad.mp3":    0.73,
     "assets/audio/duckH.mp3":        0.71,
     "assets/audio/duckI.mp3":        0.71,
-    "assets/audio/duckJ.mp3":        0.73,
+    "assets/audio/duckJ.mp3":        0.60,
     "assets/audio/ikaros2026_intro.mp3": 0.82,
     "assets/audio/ikaros2026.mp3":       0.82,
   };
@@ -65,6 +66,7 @@ export function createBgm({
 
   // 実際にAudio要素にロード済みのsrc
   let currentSrc = null;
+  let currentAudioSrc = null;
   let resumeTimer = null;
   let introLoop = null;
 
@@ -85,6 +87,10 @@ export function createBgm({
 
   function isSilenceSrc(src) {
     return src === "about:blank";
+  }
+
+  function audioSrcFor(src) {
+    return typeof srcResolver === "function" ? (srcResolver(src) || src) : src;
   }
 
   function silenceAudioElement() {
@@ -126,11 +132,12 @@ export function createBgm({
     }
 
     currentSrc = src;
+    currentAudioSrc = audioSrcFor(src);
 
     try {
       bgm.pause();
       bgm.muted = false; // unlock primer 由来の muted=true を念のため解除
-      bgm.src = src;
+      bgm.src = currentAudioSrc;
       bgm.load();
       bgm.currentTime = 0;
       bgm.play().catch(() => {});
@@ -186,7 +193,7 @@ export function createBgm({
     if (!ds || ds === "about:blank") {
       try {
         bgm.muted = true;
-        bgm.src = defaultSrc;
+        bgm.src = audioSrcFor(defaultSrc);
         bgm.load();
         bgm.play().then(() => { bgm.pause(); bgm.muted = false; }).catch(() => { bgm.muted = false; });
         currentSrc = null;
@@ -486,6 +493,7 @@ export function createBgm({
     getMapSrc: () => mapSrc,
     getOverrideSrc: () => overrideSrc,
     getCurrentSrc: () => currentSrc,
+    getCurrentAudioSrc: () => currentAudioSrc,
     getLastMainSrc: () => lastMainSrc,
     getVolumeForSrc: volumeForSrc,
     resetVolumeForCurrentSrc: () => {
