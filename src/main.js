@@ -42,6 +42,39 @@ const trip     = createTripEffect();
 const goodTrip = createGoodTripEffect({ useCssFilter: MOBILE });
 ctx.imageSmoothingEnabled = false;
 
+function downloadScreenCapture() {
+  const stamp = new Date()
+    .toISOString()
+    .replace(/[:.]/g, "-")
+    .replace("T", "_")
+    .replace("Z", "");
+  const filename = `find-the-lover-ducks_${stamp}.png`;
+  const saveBlob = (blob) => {
+    if (!blob) return;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+  if (typeof canvas.toBlob === "function") {
+    canvas.toBlob(saveBlob, "image/png");
+    return;
+  }
+
+  fetch(canvas.toDataURL("image/png")).then((res) => res.blob()).then(saveBlob).catch(() => {});
+}
+
+window.addEventListener("keydown", (e) => {
+  if (e.repeat || e.key !== "v") return;
+  e.preventDefault();
+  downloadScreenCapture();
+});
+
 // 文字に紺色の +1,+1 影を付与（ミニゲーム等で this._skipTextShadow = true にすれば無効）
 const TEXT_SHADOW_COLOR = "#0a1a4d";
 const _origFillText = CanvasRenderingContext2D.prototype.fillText;
@@ -9290,6 +9323,7 @@ if (MOBILE) {
       bgmCtl.unlock();
       unlockSeAudio();
     },
+    onCapture: downloadScreenCapture,
   });
 }
 

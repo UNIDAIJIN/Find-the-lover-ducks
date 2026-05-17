@@ -18,6 +18,7 @@ export function controlPrompt(key, { mobile = false } = {}) {
     case "c": return "C";
     case "s": return "S";
     case "l": return "L";
+    case "v": return "V";
     default: return key;
   }
 }
@@ -41,5 +42,6 @@ export function controlPromptRows({ mobile = false } = {}) {
     ["C", "ダッシュ"],
     ["S/L1", "セーブ"],
     ["L/R1", "ロード"],
+    ["V", "スクリーンショット"],
   ];
 }

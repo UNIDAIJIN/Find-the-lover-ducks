@@ -1,6 +1,7 @@
 // mobile_controller.js
 export function setupMobileController(input, {
   onUserGesture = null,
+  onCapture = null,
 } = {}) {
   const style = document.createElement("style");
   style.textContent = `
@@ -28,6 +29,7 @@ export function setupMobileController(input, {
     }
 
     #mobile-ctrl {
+      position: relative;
       width: 100%;
       max-width: 480px;
       background: #2e2e2e;
@@ -214,6 +216,60 @@ export function setupMobileController(input, {
     }
     .btn-icon .pause::before { left: 0; }
     .btn-icon .pause::after  { right: 0; }
+
+    .btn-camera {
+      position: absolute;
+      right: 22px;
+      bottom: 24px;
+      width: 42px;
+      height: 30px;
+      border-radius: 8px;
+      border: none;
+      background: #111;
+      color: #777;
+      cursor: pointer;
+      box-shadow: 0 3px 0 #0a0a0a;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+    .btn-camera:active, .btn-camera.pressed {
+      box-shadow: 0 1px 0 #0a0a0a;
+      transform: translateY(2px);
+      background: #222;
+    }
+    .camera-icon {
+      position: relative;
+      width: 20px;
+      height: 14px;
+      border: 2px solid #777;
+      border-radius: 3px;
+      box-sizing: border-box;
+    }
+    .camera-icon::before {
+      content: "";
+      position: absolute;
+      left: 3px;
+      top: -5px;
+      width: 8px;
+      height: 4px;
+      border-radius: 2px 2px 0 0;
+      background: #777;
+    }
+    .camera-icon::after {
+      content: "";
+      position: absolute;
+      left: 5px;
+      top: 2px;
+      width: 6px;
+      height: 6px;
+      border: 2px solid #777;
+      border-radius: 50%;
+      box-sizing: border-box;
+    }
   `;
   document.head.appendChild(style);
 
@@ -242,6 +298,9 @@ export function setupMobileController(input, {
       <button class="btn-small" data-key-tap="s">SAVE</button>
       <button class="btn-small" data-key-tap="l">LOAD</button>
     </div>
+    <button class="btn-camera" id="mobile-capture" aria-label="screenshot">
+      <span class="camera-icon" aria-hidden="true"></span>
+    </button>
   `;
   document.body.appendChild(ctrl);
 
@@ -387,4 +446,18 @@ export function setupMobileController(input, {
     btn.addEventListener("touchstart", tap, { passive: false });
     btn.addEventListener("mousedown",  tap);
   });
+
+  const captureBtn = ctrl.querySelector("#mobile-capture");
+  if (captureBtn) {
+    const capture = e => {
+      e.preventDefault();
+      wakeAudio();
+      captureBtn.classList.add("pressed");
+      vibrate(12);
+      if (typeof onCapture === "function") onCapture();
+      setTimeout(() => { captureBtn.classList.remove("pressed"); }, 90);
+    };
+    captureBtn.addEventListener("touchstart", capture, { passive: false });
+    captureBtn.addEventListener("mousedown", capture);
+  }
 }
