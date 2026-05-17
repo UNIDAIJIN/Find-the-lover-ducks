@@ -7,6 +7,8 @@ export const ninjaNpc = {
   spriteKey: "ninja",
   x:         118,
   y:         140,
+  frame:     0,
+  animMs:    180,
   solid:     true,
   talkHit:   { x: 0, y: 0, w: 16, h: 16 },
   event:     ninjaShopEvent,

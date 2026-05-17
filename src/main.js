@@ -8265,7 +8265,8 @@ function tryInteract(t) {
               };
           dialog.open(pages, onClose, act.talkType ?? "talk");
         } else {
-          dialog.open(act.talkPages || [["……"]], null, act.talkType ?? "talk");
+          const pages = MOBILE && act.talkPagesMobile ? act.talkPagesMobile : act.talkPages;
+          dialog.open(pages || [["……"]], null, act.talkType ?? "talk");
         }
       }
       return;

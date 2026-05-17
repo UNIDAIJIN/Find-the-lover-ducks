@@ -326,8 +326,6 @@ export const NPCS_BY_MAP = {
       spriteKey: "onesan",
       x: 1711,
       y: 920,
-      animMs: Infinity,
-      noWalk: true,
       talkHit: { x: 0, y: 0, w: 16, h: 16 },
       talkPages: [["ぷはー！やっぱ酒は昼に飲むに限るで！"]],
       solid: true,
@@ -380,6 +378,76 @@ export const NPCS_BY_MAP = {
     resolve(workmanNpc),
   ],
 
+  house02: [
+    resolve({
+      kind: "npc",
+      name: "emo",
+      spriteKey: "emo",
+      x: 115,
+      y: 142,
+      talkHit: { x: 0, y: 0, w: 16, h: 16 },
+      talkPages: [["俺たちはここでたぬきをつくってるのさ。"]],
+      solid: true,
+    }),
+    resolve({
+      kind: "npc",
+      name: "emo2",
+      spriteKey: "emo2",
+      x: 73,
+      y: 159,
+      talkHit: { x: 0, y: 0, w: 16, h: 16 },
+      talkPages: [["エモボーイも陶芸の時代さ。"]],
+      solid: true,
+    }),
+  ],
+
+  house03: [
+    resolve({
+      kind: "npc",
+      name: "cas",
+      spriteKey: "cas",
+      x: 104,
+      y: 129,
+      talkHit: { x: 0, y: 0, w: 16, h: 16 },
+      talkPages: [
+        ["ハーイ！はじめまして！"],
+        ["ワタシ、昨日引っ越してきたんデス！よろしくね！"],
+        ["いい波あるかなー。"],
+      ],
+      solid: true,
+    }),
+  ],
+
+  house05: [
+    ...[
+      { name: "zenshin_1", x: 72, y: 158 },
+      { name: "zenshin_2", x: 96, y: 154 },
+      { name: "zenshin_3", x: 120, y: 136 },
+      { name: "zenshin_4", x: 144, y: 144 },
+      { name: "zenshin_5", x: 168, y: 162 },
+    ].map(({ name, x, y }) => resolve({
+      kind: "npc",
+      name,
+      spriteKey: "zenshin",
+      x,
+      y,
+      talkHit: { x: 0, y: 0, w: 16, h: 16 },
+      talkPages:
+        name === "zenshin_1"
+          ? [["いつか宇宙に行って見たいな。"]]
+          : name === "zenshin_2"
+          ? [["このスーツかっこいいだろ！"], ["メンバーはみんなお揃いさ！"]]
+          : name === "zenshin_3"
+          ? [["岬にあるタイムマシンをみたか？"], ["俺たちはあれがなにか宇宙のパワーで動くようになると考えてるんだ。"]]
+          : name === "zenshin_4"
+          ? [["ぼくらは宇宙調査団！宇宙的なものをなんでも調査する団だ！"]]
+          : name === "zenshin_5"
+            ? [["俺たちが何者かって？"], ["部外者には内緒だ！"]]
+            : [["……"]],
+      solid: true,
+    })),
+  ],
+
   house09: [
     resolve({
       kind: "npc",
@@ -388,7 +456,31 @@ export const NPCS_BY_MAP = {
       x: 125,
       y: 131,
       talkHit: { x: 0, y: 0, w: 16, h: 16 },
-      talkPages: [["あそぼうあそぼう！"]],
+      talkPages: [["ねー、しゃしんとってー！"]],
+      solid: true,
+    }),
+    resolve({
+      kind: "npc",
+      name: "friends",
+      spriteKey: "friends",
+      x: 82,
+      y: 159,
+      talkHit: { x: 0, y: 0, w: 16, h: 16 },
+      talkPages: [["カメラで写真を撮るのって、ホントさいこー！"], ["Vキーをおしてごらん！"]],
+      talkPagesMobile: [["カメラで写真を撮るのって、ホントさいこー！"], ["右下のカメラボタンをおしてごらん！"]],
+      solid: true,
+    }),
+  ],
+
+  house10: [
+    resolve({
+      kind: "npc",
+      name: "wendy",
+      spriteKey: "wendy",
+      x: 152,
+      y: 128,
+      talkHit: { x: 0, y: 0, w: 16, h: 16 },
+      talkPages: [["まいにち、なーんにも、することない！"]],
       solid: true,
     }),
   ],
