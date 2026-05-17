@@ -69,6 +69,43 @@ function downloadScreenCapture() {
   fetch(canvas.toDataURL("image/png")).then((res) => res.blob()).then(saveBlob).catch(() => {});
 }
 
+function captureBlobFromDataUrl() {
+  const dataUrl = canvas.toDataURL("image/png");
+  const comma = dataUrl.indexOf(",");
+  if (comma < 0) return null;
+  const mime = (dataUrl.slice(0, comma).match(/data:(.*?);base64/) || [])[1] || "image/png";
+  const bin = atob(dataUrl.slice(comma + 1));
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i += 1) bytes[i] = bin.charCodeAt(i);
+  return new Blob([bytes], { type: mime });
+}
+
+async function shareScreenCapture() {
+  const stamp = new Date()
+    .toISOString()
+    .replace(/[:.]/g, "-")
+    .replace("T", "_")
+    .replace("Z", "");
+  const filename = `find-the-lover-ducks_${stamp}.png`;
+  const blob = captureBlobFromDataUrl();
+  if (!blob) {
+    downloadScreenCapture();
+    return;
+  }
+
+  const file = new File([blob], filename, { type: "image/png" });
+  if (navigator.canShare?.({ files: [file] }) && typeof navigator.share === "function") {
+    try {
+      await navigator.share({ files: [file] });
+      return;
+    } catch (e) {
+      if (e && e.name === "AbortError") return;
+    }
+  }
+
+  downloadScreenCapture();
+}
+
 window.addEventListener("keydown", (e) => {
   if (e.repeat || e.key !== "v") return;
   e.preventDefault();
@@ -9323,7 +9360,7 @@ if (MOBILE) {
       bgmCtl.unlock();
       unlockSeAudio();
     },
-    onCapture: downloadScreenCapture,
+    onCapture: shareScreenCapture,
   });
 }
 

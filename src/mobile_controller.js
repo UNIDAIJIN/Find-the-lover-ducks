@@ -128,7 +128,8 @@ export function setupMobileController(input, {
     .row-bottom {
       display: flex;
       gap: 20px;
-      margin-top: 18px;
+      margin-top: 28px;
+      transform: translateY(14px);
       align-items: center;
     }
     .btn-debug {
@@ -220,7 +221,7 @@ export function setupMobileController(input, {
     .btn-camera {
       position: absolute;
       right: 22px;
-      bottom: 24px;
+      bottom: 14px;
       width: 42px;
       height: 30px;
       border-radius: 8px;
