@@ -9424,7 +9424,7 @@ function showMobileAudioGate() {
     <span class="audio-gate-panel">
       <span class="audio-gate-notes">
         <span>・低電力モードをオフにしてください。</span>
-        <span>・消音モードをオフにしてください。</span>
+        <span class="audio-gate-warn">・消音モードをオフにしてください。</span>
       </span>
       <span class="audio-gate-tap">PLEASE TAP HERE</span>
     </span>
@@ -9474,6 +9474,10 @@ function showMobileAudioGate() {
     tap.style.marginTop = "26px";
     tap.style.fontSize = "16px";
     tap.style.lineHeight = "1";
+  }
+  const warn = gate.querySelector(".audio-gate-warn");
+  if (warn) {
+    warn.style.color = "#ff3333";
   }
 
   let started = false;
