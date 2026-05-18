@@ -152,6 +152,17 @@ export function createMenu({
         const unique = [...new Map(items.map(id => [id, id])).keys()];
         const n = unique.length;
         if (n > 0) {
+          if (input.consume("c") && typeof inventory?.sortItems === "function") {
+            const selected = unique[itemCursor] || null;
+            inventory.sortItems();
+            const sortedUnique = [...new Map(getItems().map(id => [id, id])).keys()];
+            itemCursor = selected ? Math.max(0, sortedUnique.indexOf(selected)) : 0;
+            if (itemCursor < 0) itemCursor = 0;
+            clampScroll(sortedUnique.length);
+            moveCursor(sortedUnique, itemCursor);
+            playConfirm();
+            return;
+          }
           if (navRepeat.consume("ArrowUp"))   { moveCursor(unique, itemCursor - 1); playCursor(); }
           if (navRepeat.consume("ArrowDown")) { moveCursor(unique, itemCursor + 1); playCursor(); }
           if (input.consume("z")) {

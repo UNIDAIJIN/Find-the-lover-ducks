@@ -404,6 +404,7 @@ export function createBattleSystem(cfg) {
       logFadeFrom: 0,
       logFadeDur: 0,
       showYouWin: false,
+      bossHidden: false,
       uboaQueued: false,
       bossFrozen: false,
 
@@ -876,10 +877,13 @@ export function createBattleSystem(cfg) {
         st.logFadeFrom    = st.now | 0;
         st.logFadeDur     = EFFECT_MS;
       },
+      onClose: () => {
+        st.bossHidden = true;
+      },
     });
     queueEvent({
       autoMs: 3000,
-      apply:   () => { st.showYouWin = true; setOverrideBgm("about:blank"); playYouWinJingle(); },
+      apply:   () => { st.bossHidden = true; st.showYouWin = true; setOverrideBgm("about:blank"); playYouWinJingle(); },
       onClose: () => endToField("win"),
     });
   }
@@ -1113,6 +1117,7 @@ export function createBattleSystem(cfg) {
       logFadeFrom:    st.logFadeFrom,
       logFadeDur:     st.logFadeDur,
       showYouWin:     st.showYouWin,
+      bossHidden:     st.bossHidden,
 
       uiKickUntil: st.uiKickUntil,
       uiKickMode: st.uiKickMode,

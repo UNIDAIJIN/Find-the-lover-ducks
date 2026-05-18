@@ -1,6 +1,9 @@
 // ui_inventory.js
 import { playCursor, playConfirm, playItemJingle } from "./se.js";
 import { createInputRepeat } from "./input_repeat.js";
+import { ALL_ITEM_IDS, itemName as defaultItemName } from "./items.js";
+
+const ITEM_ORDER = new Map(ALL_ITEM_IDS.map((id, i) => [id, i]));
 
 export function createInventory({
   BASE_W,
@@ -153,6 +156,18 @@ export function createInventory({
     inv.scrollRow = 0;
   }
 
+  function sortItems() {
+    const selected = inv.items[inv.cursor | 0] || null;
+    inv.items.sort((a, b) => {
+      const ao = ITEM_ORDER.has(a) ? ITEM_ORDER.get(a) : 999999;
+      const bo = ITEM_ORDER.has(b) ? ITEM_ORDER.get(b) : 999999;
+      if (ao !== bo) return ao - bo;
+      return defaultItemName(a).localeCompare(defaultItemName(b), "ja");
+    });
+    const nextIdx = selected ? inv.items.indexOf(selected) : 0;
+    moveCursorTo(nextIdx >= 0 ? nextIdx : 0);
+  }
+
   function draw(ctx) {
     if (!open) return;
 
@@ -220,5 +235,6 @@ export function createInventory({
     removeItem,
     getSnapshot,
     resetItems,
+    sortItems,
   };
 }

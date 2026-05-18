@@ -22,6 +22,7 @@ export function drawBattleScreen(ctx, st, opt) {
     logFadeFrom    = st.logFadeFrom    | 0,
     logFadeDur     = st.logFadeDur     | 0,
     showYouWin     = !!st.showYouWin,
+    bossHidden     = !!st.bossHidden,
 
     uiKickUntil = st.uiKickUntil | 0,
     uiKickMode = st.uiKickMode || "none",
@@ -273,7 +274,7 @@ export function drawBattleScreen(ctx, st, opt) {
     : 1;
   const encE = 1 - Math.pow(1 - encT, 3); // easeOut
 
-  if (bossImg && bossImg.complete && bossImg.naturalWidth > 0) {
+  if (!bossHidden && !showYouWin && bossAlpha > 0 && bossImg && bossImg.complete && bossImg.naturalWidth > 0) {
     const sw = bossFrameW > 0 ? bossFrameW : bossImg.naturalWidth;
     const sh = bossFrameH > 0 ? bossFrameH : bossImg.naturalHeight;
     const bw = (sw * bossScale) | 0;

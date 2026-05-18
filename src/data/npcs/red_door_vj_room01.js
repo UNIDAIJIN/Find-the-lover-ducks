@@ -9,5 +9,6 @@ export const redDoorVjRoom01Npc = {
   talkHit:   { x: 0, y: 0, w: 16, h: 14 },
   talkType:  "sign",
   talkPages: [["ここは しゃちょうのきょかがないと はいれない！"]],
+  event:     { type: "double_door" },
   solid:     true,
 };

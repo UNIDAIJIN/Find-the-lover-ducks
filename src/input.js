@@ -74,9 +74,6 @@ export function createInput() {
     if (k === "D") return "d";
     if (k === "S") return "s";
     if (k === "L") return "l";
-    if (k === "B") return "b";
-    if (k === "P") return "p";
-    if (k === "M") return "m";
     if (k === "V") return "v";
     return k;
   }
@@ -86,7 +83,7 @@ export function createInput() {
   }
 
   function isOurKey(k) {
-    return isArrowKey(k) || k === "z" || k === "x" || k === "c" || k === "s" || k === "l" || k === "v" || k === "b" || k === "p" || k === "m" || k === "1" || k === "2" || k === "Enter" || k === " ";
+    return isArrowKey(k) || k === "z" || k === "x" || k === "c" || k === "s" || k === "l" || k === "v";
   }
 
   function onKeyDown(e) {

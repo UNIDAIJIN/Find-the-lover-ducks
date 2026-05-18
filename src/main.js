@@ -2845,8 +2845,26 @@ function syncDynamicNpcPositions(mapId = current.id) {
     moveNpcTo(loveSong, (hawaii?.x ?? 1828) + 18, hawaii?.y ?? 2475);
   }
   if (STATE.achievedQuests.size >= 20) {
-    const keeper = actors.find((a) => a.kind === "npc" && a.id === "keeper");
+    let keeper = actors.find((a) => a.kind === "npc" && (a.id === "keeper" || a.name === "keeper"));
+    if (!keeper) {
+      const def = (NPCS_BY_MAP?.outdoor || []).find((a) => a.id === "keeper" || a.name === "keeper");
+      if (def) {
+        keeper = { ...def, frame: 0, last: 0 };
+        actors.push(keeper);
+      }
+    }
     moveNpcTo(keeper, 1613, 2709);
+    if (keeper) {
+      keeper.kind = "npc";
+      keeper.id = "keeper";
+      keeper.name = "keeper";
+      keeper.img = keeper.img || SPRITES.keeper;
+      keeper.solid = true;
+      keeper.noRender = false;
+      keeper.hidden = false;
+      keeper.talkHit = { x: -8, y: 0, w: 32, h: 16 };
+      keeper.event = { type: "keeper_talk" };
+    }
   }
 }
 

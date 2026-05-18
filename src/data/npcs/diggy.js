@@ -9,7 +9,14 @@ export const diggyNpc = {
   event: {
     type: "item_shop",
     shopName: "DIG IT MORE",
-    greeting: [["いらっしゃい。"], ["すぐ隣にワークメンができて、困っちゃうよ。"]],
+    greeting: [
+      ["いらっしゃい。"],
+      ["すぐ隣にワークメンができて、困っちゃうよ。"],
+      ["まったく、人間ってやつはなんでも便利になればいいと思ってやがる。"],
+      ["ロマンがねーよな、ロマンが。"],
+      ["その点、俺たちカッパはよーくわかってるぜ。そういうとこ。"],
+    ],
+    repeatGreeting: [["お前らか、いらっしゃい。"]],
     byeDialog: [["ありがとよ。"]],
     items: [
       { id: "shovel", name: "スコップ", price: 2000 },

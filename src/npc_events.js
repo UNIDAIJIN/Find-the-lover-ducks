@@ -489,7 +489,11 @@ export function runNpcEvent(act, ctx) {
       }, initialCursor);
     }
 
-    dialog.open(ev.greeting || [["いらっしゃいませ！"]], () => {
+    const greetingFlag = ev.greetingFlag || `shopGreetingSeen_${act.name || ev.shopName || "shop"}`;
+    const greeted = !!STATE.flags[greetingFlag];
+    const greeting = greeted && ev.repeatGreeting ? ev.repeatGreeting : ev.greeting;
+    STATE.flags[greetingFlag] = true;
+    dialog.open(greeting || [["いらっしゃいませ！"]], () => {
       showShop();
     });
 
@@ -988,7 +992,7 @@ export function runNpcEvent(act, ctx) {
     act._eventBusy = true;
     dialog.open([
       ["おつかれさん！おもったよりはやかったな！"],
-      ["見ろ！"],
+      ["見ろ！この大量のロボ軍団を！"],
       ["メカナツミ量産型！エヌツーだ！"],
     ], () => {
           dialog.open([
