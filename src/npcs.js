@@ -1,5 +1,5 @@
 // npcs.js
-import { CONFIG } from "./config.js?v=1.0.0";
+import { CONFIG } from "./config.js?v=1.1.0";
 import { SPRITES } from "./sprites.js";
 import { STATE }   from "./state.js";
 
