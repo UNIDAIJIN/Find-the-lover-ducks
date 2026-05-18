@@ -1,5 +1,5 @@
 // main.js
-import { CONFIG } from "./config.js?v=1.1.0";
+import { CONFIG } from "./config.js?v=1.2.0";
 import { SPRITES } from "./sprites.js";
 import { MAPS } from "./maps.js";
 import { makeColStore } from "./col.js";
@@ -3633,6 +3633,61 @@ function drawSpaceO2Meter() {
   ctx.fillText(label, (cx - (tw >> 1)) | 0, cy);
   ctx.restore();
 }
+
+function hasInventoryItem(id) {
+  return inventory.getSnapshot().includes(id);
+}
+
+function drawMoonRadar(tt) {
+  if (!hasInventoryItem("moon_radar")) return;
+  const px = leader.x + 8;
+  const py = leader.y + 8;
+  const dx = SPACE_MOON.cx - px;
+  const dy = SPACE_MOON.cy - py;
+  const angle = Math.atan2(dy, dx);
+  const dist = Math.hypot(dx, dy);
+  const x = BASE_W - 25;
+  const y = 25;
+  const pulse = 0.65 + 0.35 * Math.sin(tt / 180);
+
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.globalAlpha = 0.92;
+  ctx.fillStyle = "#000";
+  ctx.fillRect(-14, -14, 28, 28);
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(-14.5, -14.5, 29, 29);
+  ctx.strokeStyle = `rgba(120,220,255,${0.35 + pulse * 0.35})`;
+  ctx.beginPath();
+  ctx.arc(0, 0, 8, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.rotate(angle);
+  ctx.fillStyle = "#80dcff";
+  ctx.beginPath();
+  ctx.moveTo(10, 0);
+  ctx.lineTo(1, -5);
+  ctx.lineTo(3, -1);
+  ctx.lineTo(-8, -1);
+  ctx.lineTo(-8, 1);
+  ctx.lineTo(3, 1);
+  ctx.lineTo(1, 5);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
+  if (dist < SPACE_MOON.surfaceR + 90) {
+    ctx.save();
+    ctx.font = "normal 10px PixelMplus10";
+    ctx.fillStyle = "#80dcff";
+    ctx.textAlign = "right";
+    ctx.textBaseline = "top";
+    ctx.fillText("MOON", BASE_W - 8, 44);
+    ctx.restore();
+  }
+}
+
 function startTimemachineFx(onDone = null) {
   interactionSession.begin();
   input.lock();
@@ -4109,6 +4164,16 @@ const menu = createMenu({
           ["ナツミはつきのいしをたべてみた！"],
           ["オエーーーーー！"],
           ["たべれたものではない！"],
+        ], null, "sign");
+      }, 700);
+      return true;
+    }
+    if (id === "moon_radar") {
+      lockItemUseWait();
+      setTimeout(() => {
+        input.unlock();
+        dialog.open([
+          ["レーダーははるか上空を指している。"],
         ], null, "sign");
       }, 700);
       return true;
@@ -7081,6 +7146,7 @@ function draw() {
 
   if (current.id === "space") {
     drawSpaceO2Meter();
+    drawMoonRadar(tt);
   }
 
   if (timeMachineFx.active) {

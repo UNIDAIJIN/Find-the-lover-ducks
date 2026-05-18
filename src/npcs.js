@@ -1,5 +1,5 @@
 // npcs.js
-import { CONFIG } from "./config.js?v=1.1.0";
+import { CONFIG } from "./config.js?v=1.2.0";
 import { SPRITES } from "./sprites.js";
 import { STATE }   from "./state.js";
 
@@ -434,7 +434,7 @@ export const NPCS_BY_MAP = {
       talkHit: { x: 0, y: 0, w: 16, h: 16 },
       talkPages:
         name === "zenshin_1"
-          ? [["いつか宇宙に行って見たいな。"]]
+          ? null
           : name === "zenshin_2"
           ? [["このスーツかっこいいだろ！"], ["メンバーはみんなお揃いさ！"]]
           : name === "zenshin_3"
@@ -444,6 +444,21 @@ export const NPCS_BY_MAP = {
           : name === "zenshin_5"
             ? [["俺たちが何者かって？"], ["部外者には内緒だ！"]]
             : [["……"]],
+      event: name === "zenshin_1"
+        ? {
+            type: "item_shop",
+            shopName: "宇宙調査ラボ",
+            greeting: [["僕たちが作った月レーダー、譲ってあげるよ。"]],
+            byeDialog: [
+              ["月レーダーをもっていると、宇宙で月の方向がわかるんだ！"],
+              ["行ったことないけどね！"],
+            ],
+            items: [
+              { id: "moon_radar", name: "月レーダー", price: 2000 },
+            ],
+            closeLabel: "やめる",
+          }
+        : undefined,
       solid: true,
     })),
   ],
