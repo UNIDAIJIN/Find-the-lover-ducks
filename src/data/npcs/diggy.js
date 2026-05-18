@@ -5,7 +5,6 @@ export const diggyNpc = {
   x: 124,
   y: 122,
   solid: true,
-  animMs: Infinity,
   talkHit: { x: 0, y: 0, w: 16, h: 40 },
   event: {
     type: "item_shop",

@@ -37,7 +37,7 @@ export const cactusNpcs = offsets.map(([ dx, dy ], i) => {
     npc.event   = {
       type:      "item_shop",
       shopName:  "サボテンハット",
-      greeting:  [["ヘイ！ブロ！ハットかえ！"]],
+      greeting:  [["ヘイ！アミーゴ！ハットかえ！"]],
       byeDialog: [["またな！ブロ！"]],
       items:     [
         { id: "s_hat", name: "サボテンハット", price: 2000 },

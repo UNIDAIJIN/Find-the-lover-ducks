@@ -9,5 +9,4 @@ export const charaNpc = {
     ["オレは貯水タンクをながめるのがすきなんだ。"],
   ],
   solid:     true,
-  animMs:    Infinity,
 };

@@ -9,6 +9,7 @@ const GRAVITY = 0.8;
 const BASE_SWIM = -5;
 const BASE_SPEED = 5.6;
 const MAX_FALL = 10;
+const MONEY_MAX = 999999;
 
 const ZONES = [
   { name: "浅層", ds: 0, de: 8, rate: 0.08, dark: 0, col: "#1a6b8a" },
@@ -109,7 +110,7 @@ function placeEnts(map, rows) {
 function getSave() {
   const f = STATE.flags;
   return {
-    money: STATE.money | 0,
+    money: Math.min(Math.max(0, STATE.money | 0), MONEY_MAX),
     dives: f.diveDives || 0,
     bestDepth: f.diveBestDepth || 0,
     upg: {
@@ -123,7 +124,8 @@ function getSave() {
 }
 
 function writeSave(g) {
-  STATE.money = Math.min(g.money | 0, 999999);
+  g.money = Math.min(Math.max(0, g.money | 0), MONEY_MAX);
+  STATE.money = g.money;
   STATE.flags.diveDives = g.dives;
   STATE.flags.diveBestDepth = g.bestDepth;
   STATE.flags.diveUpgTank = g.upg.tank;
@@ -215,10 +217,12 @@ export function createDiving({ BASE_W: _origW, BASE_H: _origH, input, getLeaderI
     }
     const earn = kept.reduce((s, i) => s + i.val, 0);
     const lostVal = lost.reduce((s, i) => s + i.val, 0);
-    g.money += earn;
+    const beforeMoney = g.money | 0;
+    g.money = Math.min(beforeMoney + earn, MONEY_MAX);
+    const gained = g.money - beforeMoney;
     const newRecord = g.currentMaxDepth > g.bestDepth;
     if (newRecord) g.bestDepth = g.currentMaxDepth;
-    g.result = { ok, kept, lost, earn, lostVal, depth: g.currentMaxDepth, newRecord };
+    g.result = { ok, kept, lost, earn: gained, lostVal, depth: g.currentMaxDepth, newRecord };
     g.state = "result"; g.resTimer = 0; input.clear();
     playDiveResult(ok);
     writeSave(g);

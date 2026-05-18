@@ -521,7 +521,6 @@ export const NPCS_BY_MAP = {
       spriteKey: "yasu",
       x: 54,
       y: 150,
-      animMs: Infinity,
       talkHit: { x: 0, y: 0, w: 16, h: 16 },
       talkPages: [["本日、２階常設展はご覧になれません。"], ["ご了承ください。"]],
       solid: true,
