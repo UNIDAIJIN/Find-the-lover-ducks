@@ -5519,6 +5519,7 @@ const stairPosPrev = {
   p3:     { x: 0, y: 0 },
   p4:     { x: 0, y: 0 },
 };
+const OUTDOOR_FORCE_GROUND_Y = 1835;
 
 function resetHeightState() {
   charHeight.leader = "ground";
@@ -5615,10 +5616,27 @@ function checkStairForChar(name, cx, cy) {
   if (on) charHeight[name] = charHeight[name] === "ground" ? "upper" : "ground";
 }
 
+function leaderTouchesOutdoorForceGroundLine() {
+  const f = footBox(leader.x, leader.y);
+  return f.y <= OUTDOOR_FORCE_GROUND_Y && f.y + f.h > OUTDOOR_FORCE_GROUND_Y;
+}
+
+function partyHasUpperHeight() {
+  return charHeight.leader !== "ground" ||
+    charHeight.p2 !== "ground" ||
+    charHeight.p3 !== "ground" ||
+    charHeight.p4 !== "ground";
+}
+
 function stairTriggerCheck() {
   if (!mapReady) return;
   if (current.id !== "outdoor") {
     heightLevel = "ground";
+    return;
+  }
+  if (partyHasUpperHeight() && leaderTouchesOutdoorForceGroundLine()) {
+    forceGroundHeightState();
+    syncStairZonePrev();
     return;
   }
   checkStairForChar("leader", leader.x, leader.y);
