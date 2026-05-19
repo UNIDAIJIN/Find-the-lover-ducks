@@ -730,41 +730,38 @@ export function runNpcEvent(act, ctx) {
   }
 
   if (ev.type === "yahhy_jumprope") {
-    const { dialog, jumprope, achieveQuest, choice, beginInteraction, endInteraction, letterbox, forceGroundHeight } = ctx;
+    const { dialog, jumprope, achieveQuest, beginInteraction, endInteraction, letterbox, forceGroundHeight } = ctx;
     const startJumprope = () => {
-      choice.open(["はい", "いいえ"], (sel) => {
-        if (sel !== 0) {
-          dialog.open([["いってらっしゃい！"]], null, "sign");
-          return;
-        }
-        if (typeof endInteraction === "function") endInteraction();
-        jumprope.start((count) => {
-          if (typeof forceGroundHeight === "function") forceGroundHeight();
-          if (count >= 100 && typeof achieveQuest === "function") achieveQuest("17");
-          let reward = 0;
-          if      (count >= 50) reward = 2000;
-          else if (count >= 20) reward =  500;
-          else if (count >= 10) reward =  200;
-          else if (count >=  3) reward =   50;
-          STATE.money = Math.min(STATE.money + reward, 999999);
-          const msg = reward > 0
-            ? `${count}かい！  ${reward}EN もらった！`
-            : count > 0 ? `${count}かい。` : `…。`;
-          if (typeof beginInteraction === "function") beginInteraction();
-          if (letterbox && typeof letterbox.snapAuto === "function") letterbox.snapAuto(true);
-          dialog.open([[msg]], null, "sign");
-        });
-      }, "なわとびしていく？");
+      if (typeof endInteraction === "function") endInteraction();
+      jumprope.start((count) => {
+        if (typeof forceGroundHeight === "function") forceGroundHeight();
+        if (count >= 100 && typeof achieveQuest === "function") achieveQuest("17");
+        let reward = 0;
+        if      (count >= 50) reward = 2000;
+        else if (count >= 20) reward =  500;
+        else if (count >= 10) reward =  200;
+        else if (count >=  3) reward =   50;
+        STATE.money = Math.min(STATE.money + reward, 999999);
+        const msg = reward > 0
+          ? `${count}かい！  ${reward}EN もらった！`
+          : count > 0 ? `${count}かい。` : `…。`;
+        if (typeof beginInteraction === "function") beginInteraction();
+        if (letterbox && typeof letterbox.snapAuto === "function") letterbox.snapAuto(true);
+        dialog.open([[msg]], null, "sign");
+      });
     };
 
-    if (!STATE.flags.yahhyJumpropeExplained) {
-      STATE.flags.yahhyJumpropeExplained = true;
-      dialog.open([
-        ["なわとびのアルバイト、なわとびのアルバイトだよー。"],
-      ], startJumprope);
-    } else {
-      startJumprope();
-    }
+    const talkCount = STATE.flags.yahhyJumpropeTalkCount ?? (STATE.flags.yahhyJumpropeExplained ? 1 : 0);
+    STATE.flags.yahhyJumpropeTalkCount = talkCount + 1;
+    if (!STATE.flags.yahhyJumpropeExplained) STATE.flags.yahhyJumpropeExplained = true;
+
+    const yahhyPages = [
+      [["なわとびのアルバイト、なわとびのアルバイトだよー。"]],
+      [["まずは世界に負けろ！祭りはそれから！"]],
+      [["モノを愛そう！人と同じように！"]],
+    ];
+    const pages = yahhyPages[talkCount % yahhyPages.length] || ev.greeting || [["なわとびしようよ！"]];
+    dialog.open(pages, startJumprope);
     return true;
   }
 

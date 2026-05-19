@@ -235,6 +235,16 @@ export const NPCS_BY_MAP = {
     }),
     resolve({
       kind: "npc",
+      name: "zenshin_6",
+      spriteKey: "zenshin",
+      x: 2994,
+      y: 793,
+      talkHit: { x: 0, y: 0, w: 16, h: 16 },
+      talkPages: [["ふぅ、やっと自分の場所まで降りてこれたよ。"]],
+      solid: true,
+    }),
+    resolve({
+      kind: "npc",
       name: "tsunagi",
       spriteKey: "tsunagi",
       x: 1878,
