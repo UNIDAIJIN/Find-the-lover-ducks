@@ -159,7 +159,7 @@ export function createTitle({ BASE_W, BASE_H, input, pocketEdition = false }) {
 
     // バージョン（右上）
     ctx.fillStyle = "#555";
-    const ver = "v1.2.1";
+    const ver = "v1.2.2";
     ctx.fillText(ver, BASE_W - ctx.measureText(ver).width - 4, 4);
 
     if (mode === "config") {

@@ -1,5 +1,5 @@
 // main.js
-import { CONFIG } from "./config.js?v=1.2.1";
+import { CONFIG } from "./config.js?v=1.2.2";
 import { SPRITES } from "./sprites.js";
 import { MAPS } from "./maps.js";
 import { makeColStore } from "./col.js";
@@ -5013,6 +5013,7 @@ function resetProgress() {
 }
 
 function isSceneActive() {
+  if (current.id === "orca_ride" || orcaRide.active) return true;
   if (interactionSession.isActive()) return true;
   if (fade.isActive()) return true;
   if (dialog.isActive()) return true;
@@ -5138,6 +5139,10 @@ function drawContinueRevealOverlay(ctx, t) {
 }
 
 function loadGame(opt = {}) {
+  if (!opt.fromTitle && (current.id === "orca_ride" || orcaRide.active)) {
+    saveNotice = { text: "CANT LOAD", until: nowMs() + 1200 };
+    return;
+  }
   const raw = localStorage.getItem(SAVE_KEY);
   if (!raw) { saveNotice = { text: "NO DATA", until: nowMs() + 1200 }; return; }
   try {
