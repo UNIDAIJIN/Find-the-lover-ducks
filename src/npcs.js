@@ -1,5 +1,5 @@
 // npcs.js
-import { CONFIG } from "./config.js?v=1.2.2";
+import { CONFIG } from "./config.js?v=1.3.0";
 import { SPRITES } from "./sprites.js";
 import { STATE }   from "./state.js";
 
@@ -51,7 +51,6 @@ import { shamanNpc }     from "./data/npcs/shaman.js";
 import { ponydeadyouthNpc } from "./data/npcs/ponydeadyouth.js";
 import { pubNpc } from "./data/npcs/pub.js";
 import { kingyobachiSanNpc } from "./data/npcs/kingyobachi_san.js";
-import { moritasakiGiftNpc } from "./data/npcs/moritasaki_gift.js";
 import { ufogirlNpc }        from "./data/npcs/ufogirl.js";
 import { iceNpc }            from "./data/npcs/ice.js";
 import { yumaNpc }           from "./data/npcs/yuma.js";
@@ -547,7 +546,6 @@ export const NPCS_BY_MAP = {
   ],
 
   moritasaki_room: [
-    resolve(moritasakiGiftNpc),
     resolve({
       kind: "npc",
       name: "senpu",

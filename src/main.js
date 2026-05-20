@@ -1,5 +1,5 @@
 // main.js
-import { CONFIG } from "./config.js?v=1.2.2";
+import { CONFIG } from "./config.js?v=1.3.0";
 import { SPRITES } from "./sprites.js";
 import { MAPS } from "./maps.js";
 import { makeColStore } from "./col.js";
