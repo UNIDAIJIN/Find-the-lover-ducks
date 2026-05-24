@@ -6886,7 +6886,7 @@ function draw() {
     ctx.fillStyle = "#3dc5ce";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     drawWaterSea(ctx);
-  } else if (shrineFade >= 1) {
+  } else if (shrineFade >= 1 && current.hasBgShrine) {
     ctx.fillStyle = "#fff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     if (current.hasBgShrine) drawMapImg(bgShrineImg, undefined, current.bgShrineOffset);
@@ -7147,7 +7147,7 @@ function draw() {
   // トップレイヤー：同様に完全移行後は shrine 側のみ
   if (current.id === "space" || current.id === "space_boss") {
     // no top layer
-  } else if (shrineFade >= 1) {
+  } else if (shrineFade >= 1 && current.hasBgShrineTop) {
     if (current.hasBgShrineTop) drawMapImg(bgShrineTopImg, undefined, current.bgShrineTopOffset);
   } else {
     if (current.hasBgTop) drawMapImg(bgTopImg, undefined, current.bgTopOffset);
